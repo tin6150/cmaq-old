@@ -1,0 +1,17 @@
+O4420058c|sjr|/project/m3data2/sjr/cvs/work/ICON/*0|CVSROOT||CVSROOT
+M44200595|sjr|/project/m3data2/sjr/cvs/work/ICON|CVSROOT|1.2|modules
+E44201018|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_e1a*a|src/driver/icon|HEAD|icon
+E4420102d|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_e1a*7|src/par/par_noop|HEAD|par_noop
+E44201038|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_e1a*9|src/input/profile|HEAD|profile
+E44201040|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_e1a*d|src/mech_conv/radm2_to_cb4|HEAD|radm2_to_cb4
+E4420104c|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_e1a*7|src/icl/icl|HEAD|icl
+E4420111b|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_e3a*a|src/driver/icon|HEAD|icon
+E44201136|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_e3a*7|src/par/par_noop|HEAD|par_noop
+E44201149|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_e3a*9|src/input/m3conc|HEAD|m3conc
+E44201165|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_e3a/mc_*e|src/mech_conv/noop|HEAD|mc_noop
+E44201179|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_e3a*7|src/icl/icl|HEAD|icl
+E44201300|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_h1a*a|src/driver/icon|HEAD|icon
+E4420130e|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_h1a*7|src/par/par_noop|HEAD|par_noop
+E4420131b|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_h1a*9|src/input/profile|HEAD|profile
+E44201328|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_h1a*d|src/mech_conv/radm2_to_cb4hg|HEAD|radm2_to_cb4hg
+E44201332|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/icon/BLD_h1a*7|src/icl/icl|HEAD|icl

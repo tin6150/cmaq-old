@@ -1,0 +1,448 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.53;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.53;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/vdiff/acm/eddypx.F,v 1.2 2003/09/02 13:26:51 yoj Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+      SUBROUTINE EDDYPX (EDDYV, JDATE, JTIME, TSTEP)
+
+C--------------------------------------------------------------------------
+C---- KZ computed as function of local Richardson # and vertical shear
+C---- This is the same scheme as used in HIRPBL in MM5
+C---- This is the same scheme as used for FREETROP in EDYINTB except for 
+C---- the cloudy diffusivity.
+C
+C  Revision History:
+C  JEP        4/00 - CCTM implimentation from MM5
+C--------------------------------------------------------------------------
+      USE HGRD_DEFN             ! horizontal domain specifications
+      USE SUBST_MODULES         ! stenex
+
+      IMPLICIT NONE
+
+C Includes:
+ 
+!     INCLUDE SUBST_HGRD_ID     ! horizontal dimensioning parameters
+      INCLUDE SUBST_VGRD_ID     ! vertical dimensioning parameters
+      INCLUDE SUBST_CONST       ! constants
+      INCLUDE SUBST_IOPARMS     ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC     ! file header data structuer
+      INCLUDE SUBST_IODECL      ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID    ! file name parameters
+      INCLUDE SUBST_COORD_ID    ! coord. and domain definitions (req IOPARMS)
+
+C Arguments:
+
+!     REAL         EDDYV ( NCOLS,NROWS,NLAYS ) ! eddy diffusivity (m**2/s)
+      REAL      :: EDDYV ( :,:,: )     ! eddy diffusivity (m**2/s)
+      INTEGER      JDATE        ! current model date , coded YYYYDDD
+      INTEGER      JTIME        ! current model time , coded HHMMSS
+      INTEGER      TSTEP        ! sciproc sync. step (chem)
+
+C Parameters:
+
+      REAL, PARAMETER :: RLAM  = 80.   ! asymptotic mixing length (m)
+      REAL, PARAMETER :: KZ0UT = 1.0   ! minimum eddy diffusivity (m**2/sec) KZ0
+      REAL, PARAMETER :: RIC   = 0.25  ! critical Richardson #
+      
+C External Functions not previously declared in IODECL3.EXT:
+
+      INTEGER, EXTERNAL :: SEC2TIME, TIME2SEC, INDEX1
+
+!                                123456789012345678901234567890
+      CHARACTER( 30 ) :: MSG1 = ' Error interpolating variable '
+
+C File Variables:
+
+      REAL         ZH    ( NCOLS,NROWS,NLAYS )    ! mid-layer elevation
+      REAL         ZF    ( NCOLS,NROWS,0:NLAYS )  ! full layer elevation
+      REAL         TA    ( NCOLS,NROWS,NLAYS )    ! temperature (K)
+      REAL         QV    ( NCOLS,NROWS,NLAYS )    ! water vapor mixing ratio
+      REAL         QC    ( NCOLS,NROWS,NLAYS )    ! cloud water mixing ratio
+      REAL         PRES  ( NCOLS,NROWS,NLAYS )    ! pressure
+
+      REAL, ALLOCATABLE, SAVE :: MSFX2 ( :,: )    ! Squared map scale factors
+
+      REAL          UWIND( NCOLS+1,NROWS+1,NLAYS ) ! x-direction winds
+      REAL          VWIND( NCOLS+1,NROWS+1,NLAYS ) ! y-direction winds
+
+C Local variables:
+
+      LOGICAL,SAVE :: FIRSTIME = .TRUE.
+
+      CHARACTER( 120 ) :: XMSG = ' '
+
+      CHARACTER( 16 ) :: PNAME = 'EDDYPX'
+
+      CHARACTER*16 VNAME
+
+      REAL, SAVE :: P0          ! 1000 mb reference pressure
+      REAL, SAVE :: CONVPA      ! Pressure conversion factor file units to Pa
+
+      CHARACTER( 16 ) :: UNITSCK
+
+      INTEGER      ALLOCSTAT
+      INTEGER      MDATE, MTIME, STEP
+      INTEGER      C, R, L, V
+
+      REAL         DTSEC
+      REAL         TV                      ! virtual temperature (K)
+      REAL         DZL                     ! Z(L+1)-Z(L)
+      REAL         WW2                     ! (wind speed)**2
+      REAL         WS2                     ! (wind shear)**2
+      REAL         RIB                     ! Bulk Richardson Number
+      REAL         RL, RU, ZL, ZU
+      REAL         HEAD, ARG1, BETA
+      REAL         THETAV( NCOLS,NROWS,NLAYS )    ! potential temp
+
+      INTEGER      GXOFF, GYOFF            ! global origin offset from file
+C for INTERPX
+      INTEGER       :: STRTCOLGC2, ENDCOLGC2, STRTROWGC2, ENDROWGC2
+      INTEGER, SAVE :: STRTCOLMC2, ENDCOLMC2, STRTROWMC2, ENDROWMC2
+      INTEGER, SAVE :: STRTCOLMC3, ENDCOLMC3, STRTROWMC3, ENDROWMC3
+      INTEGER, SAVE :: STRTCOLMD3, ENDCOLMD3, STRTROWMD3, ENDROWMD3
+
+      INTEGER      MCOL                   ! these don't need to be initialized
+      INTEGER      MROW
+      INTEGER      MLVL
+      REAL         MTH1                   ! pot. temp. in layer L
+      REAL         MTH2                   ! pot. temp. in layer L+1
+      REAL         MRIB                   ! bulk Richardson Number
+      REAL         MWS                    ! wind shear (/sec)
+      REAL         MEDDYV                 ! eddy diffusivity (m**2/sec)
+
+      INTEGER      LOGDEV
+      INTEGER, SAVE :: LOGDEV
+
+C.......Local variables
+      REAL QMEAN,TMEAN
+      REAL XLV,ALPH,CHI
+      REAL CPAIR,ZK,SQL
+C-----------------------------------------------------------------------
+
+      IF ( FIRSTIME )  THEN
+
+         FIRSTIME  =  .FALSE.
+
+         LOGDEV = INIT3()
+
+C Open the met files
+
+         IF ( .NOT. OPEN3( MET_CRO_3D, FSREAD3, PNAME ) ) THEN
+            XMSG = 'Could not open '// MET_CRO_3D // ' file'
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+                          
+         IF ( .NOT. DESC3( MET_CRO_3D ) ) THEN
+            XMSG = 'Could not get ' // MET_CRO_3D // ' file description'
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT2 )
+            END IF         !  error abort if if desc3() failed
+
+         V = INDEX1( 'PRES', NVARS3D, VNAME3D )
+         IF (V .NE. 0) THEN
+            UNITSCK = UNITS3D( V)
+            ELSE
+            XMSG = 'Could not get variable PRES from ' // MET_CRO_3D
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT2 )
+            END IF
+
+         IF (UNITSCK .EQ. 'PASCAL' .OR. UNITSCK .EQ. 'pascal' .OR.
+     &       UNITSCK .EQ. 'Pascal' .OR. UNITSCK .EQ. 'PA'     .OR.
+     &       UNITSCK .EQ. 'pa'     .OR. UNITSCK .EQ. 'Pa') THEN
+            CONVPA = 1.0
+            P0 = 100000.0
+            ELSE IF (UNITSCK .EQ. 'MILLIBAR' .OR. UNITSCK .EQ. 'millibar' .OR.
+     &               UNITSCK .EQ. 'Millibar' .OR. UNITSCK .EQ. 'MB'       .OR.
+     &               UNITSCK .EQ. 'mb'       .OR. UNITSCK .EQ. 'Mb') THEN
+            CONVPA = 1.0E-02
+            P0 = 1000.0
+            ELSE IF (UNITSCK .EQ. 'CENTIBAR' .OR. UNITSCK .EQ. 'centibar' .OR.
+     &               UNITSCK .EQ. 'Centibar' .OR. UNITSCK .EQ. 'CB'       .OR.
+     &               UNITSCK .EQ. 'cb'       .OR. UNITSCK .EQ. 'Cb') THEN
+            CONVPA = 1.0E-03
+            P0 = 100.0
+            ELSE
+            XMSG = 'Units incorrect on ' // MET_CRO_3D
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT2 )
+            END IF
+
+!        IF ( .NOT. OPEN3( MET_DOT_3D, FSREAD3, PNAME ) ) THEN
+!           XMSG = 'Could not open '// MET_DOT_3D // ' file'
+!           CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+!           END IF
+                          
+!        IF ( .NOT. OPEN3( GRID_CRO_2D, FSREAD3, PNAME ) ) THEN
+!           XMSG = 'Could not open '// GRID_CRO_2D // ' file'
+!           CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+!           END IF
+
+         ALLOCATE ( MSFX2( NCOLS,NROWS ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating MSFX2'
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+
+         CALL SUBHFILE ( GRID_CRO_2D, GXOFF, GYOFF,
+     &                   STRTCOLGC2, ENDCOLGC2, STRTROWGC2, ENDROWGC2 )
+
+         VNAME = 'MSFX2'
+         IF ( .NOT. INTERPX( GRID_CRO_2D, VNAME, PNAME,
+!    &                       1,NCOLS, 1,NROWS, 1,1,
+     &                       STRTCOLGC2,ENDCOLGC2, STRTROWGC2,ENDROWGC2, 1,1,
+     &                       JDATE, JTIME, MSFX2 ) ) THEN
+            XMSG = MSG1 // VNAME // ' from ' // GRID_CRO_2D
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+
+         CALL SUBHFILE ( MET_CRO_2D, GXOFF, GYOFF,
+     &                   STRTCOLMC2, ENDCOLMC2, STRTROWMC2, ENDROWMC2 )
+         CALL SUBHFILE ( MET_CRO_3D, GXOFF, GYOFF,
+     &                   STRTCOLMC3, ENDCOLMC3, STRTROWMC3, ENDROWMC3 )
+         CALL SUBHFILE ( MET_DOT_3D, GXOFF, GYOFF,
+     &                   STRTCOLMD3, ENDCOLMD3, STRTROWMD3, ENDROWMD3 )
+
+         END IF          !  if firstime
+
+C Interpolate time dependent one-layer and layered input variables
+
+      MDATE  = JDATE
+      MTIME  = JTIME
+      STEP   = TIME2SEC( TSTEP )
+      CALL NEXTIME( MDATE, MTIME, SEC2TIME( STEP / 2 ) )
+
+      DTSEC = FLOAT( STEP )
+
+      VNAME = 'UWIND'
+      IF ( .NOT. INTERPX( MET_DOT_3D, VNAME, PNAME,
+!    &                    1,NCOLS+1, 1,NROWS+1, 1,NLAYS,
+     &                    STRTCOLMD3,ENDCOLMD3, STRTROWMD3,ENDROWMD3, 1,NLAYS,
+     &                    MDATE, MTIME, UWIND ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_2D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'VWIND'
+      IF ( .NOT. INTERPX( MET_DOT_3D, VNAME, PNAME,
+!    &                    1,NCOLS+1, 1,NROWS+1, 1,NLAYS,
+     &                    STRTCOLMD3,ENDCOLMD3, STRTROWMD3,ENDROWMD3, 1,NLAYS,
+     &                    MDATE, MTIME, VWIND ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_2D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'TA'
+      IF ( .NOT. INTERPX( MET_CRO_3D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,NLAYS,
+     &                    STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                    MDATE, MTIME, TA ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_3D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'QV'
+      IF ( .NOT. INTERPX( MET_CRO_3D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,NLAYS,
+     &                    STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                    MDATE, MTIME, QV ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_3D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'QC'
+      IF ( .NOT. INTERPX( MET_CRO_3D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,NLAYS,
+     &                    STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                    MDATE, MTIME, QC ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_3D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'PRES'
+      IF ( .NOT. INTERPX( MET_CRO_3D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,NLAYS,
+     &                    STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                    MDATE, MTIME, PRES ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_3D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'ZF'
+      IF ( .NOT. INTERPX( MET_CRO_3D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,NLAYS,
+     &                    STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                    MDATE, MTIME, ZF ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_3D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+C Move 3rd dimension slabbed data from INTERP3 into proper order
+C ( Using ZF both as a read buffer and an argument variable.)
+ 
+      DO L = NLAYS, 1, -1
+         DO R = 1, MY_NROWS
+            DO C = 1, MY_NCOLS
+               ZF( C,R,L ) = ZF( C,R,L-1 )
+               END DO
+            END DO
+         END DO
+      DO R = 1, MY_NROWS
+         DO C = 1, MY_NCOLS
+            ZF( C,R,0 ) = 0.0
+            END DO
+         END DO
+
+      VNAME = 'ZH'
+      IF ( .NOT. INTERPX( MET_CRO_3D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,NLAYS,
+     &                    STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                    MDATE, MTIME, ZH ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_3D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+ 
+      DO L = 1, NLAYS
+         DO R = 1, MY_NROWS
+            DO C = 1, MY_NCOLS
+
+               TV          = TA( C,R,L ) * ( 1.0 + 0.608 * QV( C,R,L ) )
+               THETAV( C,R,L ) = TV * ( P0 / PRES( C,R,L ) ) ** 0.286
+
+               END DO
+            END DO
+         END DO
+
+      MEDDYV = 0.0
+
+      DO 233 L = 1, NLAYS-1
+      DO 222 R = 1, MY_NROWS
+      DO 211 C = 1, MY_NCOLS
+ 
+            DZL = ZH( C,R,L+1 ) - ZH( C,R,L )
+!           RIC = 0.257 * DZL ** 0.175
+            WW2 = 0.25 * MSFX2( C,R )      ! component-wise wind shear
+     &          * ( ( UWIND(C+1,R,  L+1) - UWIND(C+1,R  ,L  )
+     &              + UWIND(C,  R,  L+1) - UWIND(C,  R  ,L  ) ) ** 2
+     &          +   ( VWIND(C,  R+1,L+1) - VWIND(C,  R+1,L)
+     &              + VWIND(C,  R,  L+1) - VWIND(C,  R,  L  ) ) ** 2 )
+            WS2 = WW2 / ( DZL * DZL ) + 1.0E-9
+ 
+            RIB =   2.0 * GRAV * ( THETAV(C,R,L+1) - THETAV( C,R,L ) )
+     &          / ( DZL * WS2  * ( THETAV(C,R,L+1) + THETAV( C,R,L ) ) )
+
+C-- Adjustment to vert diff in Moist air from HIRPBL
+            IF(QC( C,R,L ).GT.0.01E-3.AND.QC( C,R,L+1 ).GT.0.01E-3) THEN                                      
+              QMEAN = 0.5 * (QV( C,R,L ) + QV( C,R,L+1 ))                                    
+              TMEAN = 0.5 * (TA( C,R,L ) + TA( C,R,L+1 ))                                
+              XLV = (2.501 - 0.00237 * (TMEAN - 273.15)) * 1.E6
+              ALPH=XLV*QMEAN/RDGAS/TMEAN                                           
+              CPAIR = 1004.67 * (1.0 + 0.84 * QV( C,R,L ))   ! J/(K KG)
+              CHI=XLV*XLV*QMEAN/(CPAIR*RWVAP*TMEAN*TMEAN)                              
+              RIB=(1.+ALPH)*(RIB-GRAV*GRAV/(WS2*TMEAN*CPAIR)*
+     &           ((CHI-ALPH)/(1.+CHI)))          
+            ENDIF                                                              
+C-----------------
+            ZK = 0.4 * ZF(C,R,L)                                         
+            SQL = (ZK*RLAM/(RLAM+ZK))**2 
+            IF(RIB .GE. RIC) THEN                                                
+               EDDYV( C,R,L ) = KZ0UT
+            ELSE IF(RIB .GE. 0.0) THEN                                          
+              EDDYV( C,R,L ) = KZ0UT + SQRT(WS2) * (1.- RIB/RIC)**2 * SQL         
+            ELSE
+              EDDYV( C,R,L ) = KZ0UT + SQRT(WS2*(1.-25.*RIB)) * SQL
+            ENDIF                                                             
+ 
+          EDDYV( C,R,L ) = AMIN1(1000.0,EDDYV( C,R,L ))
+
+         IF ( EDDYV( C,R,L ) .GT. MEDDYV ) THEN
+C Capture the col, row, lvl, and EDDYV for the global min DT
+            MCOL = C
+            MROW = R
+            MLVL = L
+            MEDDYV = EDDYV( C,R,L )
+            MTH1 = THETAV( C,R,L )
+            MTH2 = THETAV( C,R,L+1 )
+            MRIB = RIB
+            MWS  = SQRT ( WS2 )
+         END IF
+
+211      CONTINUE       !  end loop on columns
+222      CONTINUE       !  end loop on rows
+233      CONTINUE       !  end loop on levels
+ 
+      WRITE( LOGDEV,* ) '    '
+      WRITE( LOGDEV,1001 ) MEDDYV, MCOL, MROW, MLVL
+1001  FORMAT(/ 5X, 'Maximum eddy diffusivity of:', 1PG13.5,
+     &         1X, '(m**2/sec)'
+     &       / 5X, 'at col, row, layer:', I4, 2(', ', I3))
+         WRITE( LOGDEV,1003 ) MWS, MRIB, MTH1, MTH2
+1003     FORMAT(  5X, 'corresponding to a free tropospheric wind shear of:',
+     &            1PG13.5,  1X, '(/sec),'
+     &          /28X, 'a bulk Richardson Number of:', 1PG13.5, ','
+     &          / 5X, 'and pot. temps. in layer and layer+1:', 2(1PG13.5))
+      WRITE( LOGDEV,* ) '    '
+
+      DO R = 1, MY_NROWS
+         DO C = 1, MY_NCOLS
+            EDDYV( C,R,NLAYS ) = 0.0
+            END DO
+         END DO
+ 
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

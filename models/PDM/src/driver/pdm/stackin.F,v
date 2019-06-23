@@ -1,0 +1,295 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/driver/pdm/stackin.F,v 1.8 2005/08/24 12:43:46 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C **********************************************************************
+      SUBROUTINE STACKIN( JDATE, JTIME, SPRFAC, SZ0FAC, HSIZE, XCN, YCN,
+     &                    IPLUM, JPLUM, MT1, MTE, PLMID )
+C **********************************************************************
+
+C ** FUNCTION: Read in the stack parameter data, and determine
+C **              initial plume location at stack on the grid
+
+C ** In  : JDATE, JTIME, MT1, MTE, ETC
+C ** Out : DS, VS, TS, QS, HS, SPRFAC, SZ0FAC, HSIZE, XCN, YCN, IPLUM, JPLUM
+
+C --------------------------------------------------------------------------
+C - DS     : stack internal diameter (m)                        (1D Array) -
+C - QS     : flow rate (m**3/s)                                 (1D Array) -
+C - HS     : stack height (m)                                   (1D Array) -
+C - IPLUM  : x-coord. of initial plume location (grid index)    (2D Array) -
+C - JPLUM  : y-coord. of initial plume location (grid index)    (2D Array) -
+C - SPRFAC : vertical dispersion factor                         (1D Array) -
+C - STACKX : x-coord. of stack location (longitude (deg))
+C - STACKY : y-coord. of stack location (latitude  (deg))        
+C - SZOFAC : sigma_z facter                                     (1D Array) -
+C - TS     : exit temperature (K)                               (1D Array) -
+C - VS     : exit velocity (m/s)                                      
+C - XCN    : x-coord. of initial plume-center location          (2D Array) -
+C - YCN    : y-coord. of initial plume-center location          (2D Array) -
+C --------------------------------------------------------------------------
+
+      IMPLICIT NONE
+
+      INCLUDE SUBST_IOPARMS 
+      INCLUDE SUBST_IOFDESC 
+      INCLUDE SUBST_IODECL
+      INCLUDE SUBST_CONST
+      INCLUDE 'PLUME.EXT'
+      INCLUDE 'FILES_PDM.EXT'
+
+C arguments
+
+      INTEGER JDATE, JTIME
+      REAL    SPRFAC( MS ), SZ0FAC( MS ), XCN( MS,MTE ), YCN( MS,MTE )
+      REAL    HSIZE
+      INTEGER IPLUM( MS,MTE ), JPLUM( MS,MTE )
+      INTEGER MT1, MTE
+      INTEGER PLMID( MS,MTE )
+
+C local variables
+
+      REAL SPRFA, SZ0FA, ENVREAL
+      REAL STACKX( MS ), STACKY( MS ), DS( MS ), TS( MS ), VS( MS ),
+     &       HS( MS ), QS( MS ), XPOS, YPOS, XSIZE, YSIZE
+
+      INTEGER IDATE, ITIME, IERR, MMS
+      INTEGER ICOL( MS ), JROW( MS )
+      INTEGER IT, NS, ISTKS( MS ), IILOC, JJLOC
+      INTEGER MEPS( MS ), SDATE, STIME
+      INTEGER LOGDEV
+
+      CHARACTER( 16 ) :: PROG = 'STACKIN'
+
+C  Stack parameters in common block
+      COMMON /STK/ MEPS, DS, TS, VS, HS, QS
+
+C-----------------------------------------------------------------------
+      LOGDEV = INIT3()
+
+      SPRFA = ENVREAL( 'SPRFA','Initial vertical plume constant',
+     &                 15.0, IERR )
+      IF ( IERR .GT. 0 ) THEN
+         CALL M3ERR ( PROG, 0, 0, ' Error reading SPRFA', .TRUE. )
+      END IF
+      SZ0FA = ENVREAL( 'SZ0FA','Factor between SIGMA_Z and DEPTH',
+     &                 3.545, IERR )
+      IF ( IERR .GT. 0 ) THEN
+         CALL M3ERR ( PROG, 0, 0, ' Error reading SZ0FA', .TRUE. )
+      END IF
+      HSIZE = ENVREAL( 'HSIZE','Initial horizontal plume width',
+     &                 1000.0, IERR )
+      IF ( IERR .GT. 0 ) THEN
+         CALL M3ERR ( PROG, 0, 0, ' Error reading HSIZE', .TRUE. )
+      END IF
+
+C  Open the netCDF STACK file
+
+      IF ( .NOT. OPEN3( STACK_MEPSE, FSREAD3, PROG ) ) THEN
+         CALL M3ERR( PROG, JDATE, JTIME,
+     &   'Could not open ' // STACK_MEPSE // ' file', .TRUE.)
+      END IF
+
+C  Read FDESC3.EXT from STACK_MEPSE to set up grid info
+
+      IF ( .NOT. DESC3 ( STACK_MEPSE ) ) THEN
+         CALL M3ERR( PROG, SDATE3D, STIME3D,
+     &   'Could not get description of  ' // STACK_MEPSE // ' file', .TRUE. )
+      END IF
+
+C  Check # MEPSES against stack file
+      MMS = NROWS3D
+      IF ( MMS .GT. MXMEPSES ) THEN
+         CALL M3ERR( PROG, JDATE, JTIME, 'MMS > MXMEPSES NOT ALLOWED;', .TRUE. )
+      END IF
+      
+C  Check the date between the file and current simulation date.
+      SDATE = SDATE3D
+      STIME = STIME3D
+
+C  QA check.
+!     IF ( SDATE .NE. JDATE ) THEN
+!        CALL M3ERR( PROG, SDATE, STIME3D, 
+!    &   'Mismatch of DATE in ' // STACK_MEPSE // 'file and simulation',
+!    &   .TRUE. )            
+!     END IF
+C  Read the MEPSE stack parameters from the file
+
+C  Retrieve the latitude of the stacks
+      IF ( .NOT. READ3( STACK_MEPSE, 'LATITUDE', 1, SDATE, STIME, STACKY ) )
+     &    THEN
+         CALL M3ERR( PROG, SDATE, STIME,
+     &   'Could not read LATITUDE from  ' // STACK_MEPSE // ' file', .TRUE. )
+      END IF
+C  Retrieve the longitudes of the stacks
+      IF ( .NOT. READ3( STACK_MEPSE, 'LONGITUDE', 1, SDATE, STIME, STACKX ) )
+     &    THEN
+         CALL M3ERR( PROG, SDATE, STIME,
+     &   'Could not read LONGITUDE from  ' // STACK_MEPSE // ' file', .TRUE. )
+      END IF
+C  Retrieve the stack heights
+      IF ( .NOT. READ3( STACK_MEPSE, 'STKHT', 1, SDATE, STIME, HS ) ) THEN
+         CALL M3ERR( PROG, SDATE, STIME,
+     &   'Could not read STKHT from  ' // STACK_MEPSE // ' file', .TRUE. )
+      END IF
+C  Retrieve the stack diameters
+      IF ( .NOT. READ3( STACK_MEPSE, 'STKDM', 1, SDATE, STIME, DS ) ) THEN
+         CALL M3ERR( PROG, SDATE, STIME,
+     &   'Could not read STKDM from  ' // STACK_MEPSE // ' file', .TRUE. )
+      END IF
+C  Retrieve the stack exit temperatures
+      IF ( .NOT. READ3( STACK_MEPSE, 'STKTK', 1, SDATE, STIME, TS ) ) THEN
+         CALL M3ERR( PROG, SDATE, STIME,
+     &   'Could not read STKTK from  ' // STACK_MEPSE // ' file', .TRUE. )
+      END IF
+C  Retrieve the exit velocities
+      IF ( .NOT. READ3( STACK_MEPSE, 'STKVE', 1, SDATE, STIME, VS ) ) THEN
+         CALL M3ERR( PROG, SDATE, STIME,
+     &   'Could not read STKVE from  ' // STACK_MEPSE // ' file', .TRUE. )
+      END IF
+C  Retrieve the flow rates
+      IF ( .NOT. READ3( STACK_MEPSE, 'STKFLW', 1, SDATE, STIME, QS ) ) THEN
+         CALL M3ERR( PROG, SDATE, STIME,
+     &   'Could not read FLOW from  ' // STACK_MEPSE // ' file', .TRUE. )
+      END IF
+C  Retrieve the ID number for the plant/stack 
+      IF ( .NOT. READ3( STACK_MEPSE, 'ISTACK', 1, SDATE, STIME, MEPS ) ) THEN
+         CALL M3ERR( PROG, SDATE, STIME,
+     &   'Could not read MEPSE GROUP array from  ' // STACK_MEPSE //
+     &   ' file', .TRUE. )
+      END IF
+C  Retrieve the number of stacks from each MEPSE
+      IF ( .NOT. READ3( STACK_MEPSE, 'STKCNT', 1, SDATE, STIME, ISTKS ) ) THEN
+         CALL M3ERR( PROG, SDATE, STIME,
+     &   'Could not read STACKS array from  ' //STACK_MEPSE // ' file', .TRUE. )
+      END IF
+C  Retrieve the x-grid indices of all MEPSEs
+      IF ( .NOT. READ3( STACK_MEPSE, 'COL', 1, SDATE, STIME, ICOL ) ) THEN
+         CALL M3ERR( PROG, SDATE, STIME,
+     &   'Could not read COl array from  ' // STACK_MEPSE // ' file', .TRUE. )
+      END IF
+C  Retrieve the y-grid cell indice of all MEPSEs
+      IF ( .NOT. READ3( STACK_MEPSE, 'ROW', 1, SDATE, STIME, JROW ) ) THEN
+         CALL M3ERR( PROG, SDATE, STIME,
+     &   'Could not read ROW array from  ' // STACK_MEPSE // ' file', .TRUE. )
+      END IF
+
+C  Load parameter values into DESC3
+C  (Needed especially for a subdomain of a full domain)
+      IF ( .NOT. DESC3( MET_CRO_3D ) ) THEN
+         CALL M3ERR( PROG, SDATE, STIME,
+     &   'Could not get description of  ' // MET_CRO_3D // ' file', .TRUE. )
+      END IF
+
+      XSIZE = XCELL3D
+      YSIZE = YCELL3D
+
+C  Allow for up to 99 MEPSEs for encoding into ID number.
+      WRITE( LOGDEV,91101 )
+      DO 30  NS = 1, MMS
+
+         PLMID( NS,1 ) = MEPS( NS ) * 10000 + NS * 100
+
+C  Set default values for parameters
+         SPRFAC( NS ) = SPRFA
+         SZ0FAC( NS ) = SZ0FA
+
+C  plume position
+C  Determine coord. location of the MEPSEs on the grid relative to origin 
+C  Find XPOS, YPOS values for each point source PinG stack     
+         CALL LOCATN1( MMS, STACKX( NS ), STACKY( NS ), XPOS, YPOS,
+     &                 IILOC, JJLOC )
+
+C  Initialize for all time periods
+         IDATE = SDATE
+         ITIME = STIME
+         DO IT = MT1, MTE
+            XCN( NS,IT ) = ( XPOS - XORIG3D ) * 0.001
+            YCN( NS,IT ) = ( YPOS - YORIG3D ) * 0.001
+            IPLUM( NS,IT ) = IILOC
+            JPLUM( NS,IT ) = JJLOC
+!           IPLUM( NS,IT ) = ICOL( NS )     ! value from stack file
+!           JPLUM( NS,IT ) = JROW( NS )     ! value from stack file
+!           PLMID( NS,IT ) = PLMID( NS,1 ) + INT( ITIME / 10000 )
+            PLMID( NS,IT ) = MEPS( NS ) * 10000 + NS * 100 + IT   ! each release
+!           write( *,* ) IT, PLMID( NS,IT )
+!           CALL NEXTIME( IDATE, ITIME, 10000 )
+         END DO
+
+C  Write out the stack parameter and grid position
+         WRITE( LOGDEV,91111 ) NS, MT1, MEPS( NS ), PLMID( NS,MT1 ),
+     &                         STACKX( NS ), STACKY( NS ),
+     &                         XCN( NS,MT1 ), YCN( NS,MT1 ),
+     &                         HS( NS ), DS( NS ), TS( NS ), VS( NS ), QS( NS ),
+     &                         ISTKS( NS ), IPLUM( NS,MT1 ), JPLUM( NS,MT1 )
+
+30       CONTINUE
+
+      RETURN
+91101 FORMAT( 5X, 'Mepse stack parameters and grid positions'
+     &        /1X, 'NS', 1X, 'MT1', 7X, 'MEPS', 3X, 'PLMID', 7X, 'STACKX', 3X, 'STACKY',
+     &         4X, 'XCN', 6X, 'YCN', 6X, 'HS', 8X, 'DS', 6X, 'TS', 7X, 'VS', 6X, 'QS',
+     &         3X, 'ISTKS', 1X, 'IPLUM', 1X, 'JPLUM' )
+
+91111 FORMAT( 1X, I3, 1X, I2, 2(1X,I10), 4F9.1, 5F9.2, 2X, I2, 2(1X,I3) )
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

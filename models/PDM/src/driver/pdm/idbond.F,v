@@ -1,0 +1,185 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/driver/pdm/idbond.F,v 1.10 2005/08/29 20:31:12 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C***************************************************************
+      SUBROUTINE IDBOND( JDATE, JTIME, IT, NSORCE, XCN, YCN, TOP, BOT, ANGL,
+     &                   SIGY, SZ0FAC, ZL3, IDLL, IDRU, DX, DY, MTE )
+
+      USE HGRD_DEFN             ! horizontal domain specifications
+      USE VGRD_DEFN
+            
+      IMPLICIT NONE
+
+!     INCLUDE SUBST_HGRD_ID
+!     INCLUDE SUBST_VGRD_ID
+      INCLUDE SUBST_IOPARMS
+!     INCLUDE SUBST_PARAM_ID
+      INCLUDE 'PLUME.EXT'
+
+      INTEGER JDATE, JTIME, IT, NSORCE
+      REAL    XCN( MS,MTE ), YCN( MS,MTE ), TOP( MS,MTE ), BOT( MS,MTE ),
+     &        ANGL( MS,MTE ), SIGY( MS,MTE )
+      REAL    SZ0FAC( MS )
+      REAL    ZL3( MS,MTE,NLAYS )
+      INTEGER IDLL( MS,MTE ), IDRU( MS,MTE )
+      REAL    DX, DY
+      INTEGER MTE
+        
+      CHARACTER( 96 ) :: XMSG = ' '
+      CHARACTER( 16 ) :: PNAME = 'IDBOND'
+!     INTEGER NCOLSM, NROWSM
+!     PARAMETER ( NCOLSM = NCOLS-1, NROWSM = NROWS-1 )
+      REAL    ANG, WDTH, XL, YL, XR, YR
+      INTEGER IR, NS, KL, KT, K, ILF, JLF, IRT, JRT
+      INTEGER ALLOCSTAT
+
+      REAL    ZF( 0:NLAYS )
+
+      INTEGER, ALLOCATABLE :: KLO( :,: )
+      INTEGER, ALLOCATABLE :: KUP( :,: )
+        
+      ALLOCATE ( KLO( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating KLO'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+      ALLOCATE ( KUP( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating KUP'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+C** Purpose : find boundary IDs : IDLL & IDRU
+
+      ZF( 0 ) = 0.0
+C **** find TOP & BOT index ****
+      DO 112 IR = 1, IT
+         DO 111 NS = 1, NSORCE
+!           KL = 0
+!           KT = 0
+            KL = 1
+            KT = 1
+
+            DO K = 1, NLAYS-1
+               ZF( K ) = ( ZL3( NS,IR,K ) + ZL3( NS,IR,K+1 ) ) / 2.0
+            END DO
+            ZF( NLAYS ) = ZF( NLAYS-1 )
+     &                  + 2.0 * ( ZL3( NS,IR,NLAYS ) - ZF( NLAYS-1 ) )
+
+            DO K = 1, NLAYS
+!              IF ( BOT( NS,IR ) .GE. ZL3( NS,IR,K ) ) KL = K
+!              IF ( TOP( NS,IR ) .GE. ZL3( NS,IR,K ) ) KT = K
+               IF ( BOT( NS,IR ) .GE. ZF( K-1 ) .AND.
+     &              BOT( NS,IR ) .LT. ZF( K ) )  KL = K
+               IF ( TOP( NS,IR ) .GE. ZF( K-1 ) .AND.
+     &              TOP( NS,IR ) .LT. ZF( K ) )  KT = K
+            END DO
+
+!           KLO( NS,IR ) = KL + 1
+!           KUP( NS,IR ) = KT + 1
+            KLO( NS,IR ) = KL 
+            KUP( NS,IR ) = KT
+111      CONTINUE
+112   CONTINUE
+
+C **** find left & right indices ****
+C **** then the boundary cells     ****
+C IDLL : cell index of lower left  bound
+C IDRU : cell index of upper right bound
+
+      DO 114 IR = 1, IT
+         DO 113 NS = 1, NSORCE
+            ANG = ANGL( NS,IR )
+!           WDTH = 4.3 * SIGY( NS,IR ) * 0.001
+            WDTH = SZ0FAC( NS ) * SIGY( NS,IR ) * 0.001
+            XL = XCN( NS,IR ) - 0.5 * WDTH * SIN( ANG )
+            YL = YCN( NS,IR ) + 0.5 * WDTH * COS( ANG )
+            XR = XCN( NS,IR ) + 0.5 * WDTH * SIN( ANG )
+            YR = YCN( NS,IR ) - 0.5 * WDTH * COS( ANG )
+
+            ILF = INT( XL / ( DX * 0.001 ) ) + 1
+            JLF = INT( YL / ( DY * 0.001 ) ) + 1
+            IRT = INT( XR / ( DX * 0.001 ) ) + 1
+            JRT = INT( YR / ( DY * 0.001 ) ) + 1
+
+            IDLL( NS,IR ) = ( KLO( NS,IR ) - 1 ) * NCOLS * NROWS
+     &                    + ( JLF - 1 ) * NCOLS + ILF
+            IDRU( NS,IR ) = ( KUP( NS,IR ) - 1 ) * NCOLS * NROWS
+     &                    + ( JRT - 1 ) * NCOLS + IRT
+!           write(*,*) IR, NS, ILF, JLF, KLO( NS,IR ), IDLL( NS,IR )
+!           write(*,*) IR, NS, IRT, JRT, KUP( NS,IR ), IDRU( NS,IR )
+!
+!           IDLL( NS,IR ) = ( KLO( NS,IR ) - 1 ) * NCOLSM * NROWSM
+!    &                    + ( JLF - 1 ) * NCOLSM + ILF
+!           IDRU( NS,IR ) = ( KUP( NS,IR ) - 1 ) * NCOLSM * NROWSM
+!    &                    + ( JRT - 1 ) * NCOLSM + IRT
+113      CONTINUE
+114   CONTINUE
+
+      DEALLOCATE ( KLO )
+      DEALLOCATE ( KUP )
+        
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

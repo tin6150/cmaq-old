@@ -1,0 +1,102 @@
+                       CVS_NETCDF - 14 Sep 2005
+
+
+==========================================================================+ 
+ CVS-1.11 Release---------------------------------------------------------+
+==========================================================================+ 
+
+ Concurrent Versions System (CVS) is a software configuration management 
+ tool that controls the concurrent editing of sources by several users 
+ working on releases built from a hierarchical set of directories.
+
+ For an overview of CVS, see the Web page at:
+    http://www.nongnu.org/cvs/
+
+ This page leads to source code download links and binary distributions for 
+ some Unix platforms:
+
+    http://ftp.gnu.org/non-gnu/cvs/
+
+ A wealth of documentation can be found at:
+
+    http://www.cvshome.org/docs/
+
+ Instructions for installing the CVS package
+
+ 1) cd to the location where you want to unpack the software.
+
+ 2) Download file cvs-1.11.tar.gz from the distribution WEB site
+
+ 3) Uncompress and extract the files using gunzip and tar commands. - enter 
+    "tar -xvfz  cvs-1.11.tar.gz" to uncompress and extract files These 
+    steps should create a cvs-1.11 directory that contains files used to 
+    create the CVS package via make.
+
+ 3) cd to directory cvs-1.11 and read the README and INSTALL files. In the 
+    INSTALL file there are more detailed instructions and suggestions on 
+    configure options and environmental variables needed for various 
+    systems that you may need to set before running the configure script.
+
+ 4) We found that we needed to set the following environment variable:
+    setenv CC 'gcc' (for the C compiler)
+
+ 5) Run the "configure" script with the option shown:
+       -  enter "./configure --prefix=target_directory
+
+    ("--prefix=" defines the target location where CVS will be installed.)
+
+ 6) Run the "make" program.  This compiles the source files.
+
+ 7) Run the "make install" program.  This installs the CVS package in four
+    subdirectories (bin, lib, info, and man) in your target directory.
+
+
+==========================================================================+ 
+ Instructions for building netCDF-3.6.0-p1 for LINUX----------------------+
+==========================================================================+ 
+
+ 1) download the netcdf compressed tar file (netcdf.tar.gz) from
+    the ftp site (ftp://ftp.unidata.ucar.edu/pub/netcdf)
+
+ 2) uncompress and extract files
+
+        tar xvfz netcdf.tar.gz
+
+ 3) go to the netcdf-3.6.0-p1/src directory and read INSTALL file
+
+ 4) set enviroment variables for your system
+
+       setenv FC pgf90
+       setenv CC gcc
+       setenv FFLAGS "-O2"
+       setenv CPPFLAGS "-DNDEBUG -DpgiFortran -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
+
+ 5) execute the configure script
+
+    Decide on where you want to install this package.  This will be used as 
+    the --prefix= argument to the configure script below.  The default 
+    installation prefix is "..", which will install the package's files in 
+    ../bin, ../lib, ../man, etc. -- relative to the top-level source 
+    directory.
+
+    ./configure [--prefix=_whatever_you_decided]
+
+    The square brackets above merely indicate that the "prefix" 
+    specification is optional: do not type them.
+
+ 6) run make to compile and link
+
+       make
+
+ 7) run make to test
+
+       make test
+
+ 8) run make to install
+
+       make install
+
+    These steps should create directories /bin, /include, /lib, and /man in 
+    the location specified with the prefix argument or in the parent 
+    directory as default (see step 5).
+

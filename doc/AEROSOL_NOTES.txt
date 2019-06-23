@@ -1,0 +1,57 @@
+                     AEROSOL_NOTES - 15 Mar 2006
+
+
+1.  ISORROPIA.  Recomputed tabulated Kusik-Meissner binary activity 
+    coefficients:
+
+    The ISORROPIA aerosol equilibrium model can be run either in "online" 
+    mode, in which activity coefficients are computed each time it is 
+    called, or in "tabulated" mode, which instead uses lookup tables for 
+    the activity coefficients of each of 13 salts. The tabulated mode is 
+    used in the default configuration of CMAQ. There are six sets of 
+    tables, computed for ambient temperatures of 198, 223, 248, 273, 298, 
+    and 323 K.  Each table is indexed by ionic strength.  
+  
+    There were some inconsistencies between the online computation method 
+    and the tabulated activity coefficients.  The tabulated coefficients 
+    have been recalculated by calling ISORROPIA in online mode for each of 
+    the above six temperatures and for the midpoint of each discretization 
+    interval of the ionic strength.
+  
+    In addition, 10**GAMA has been replaced by EXP(LN10*GAMA) in subroutine 
+    CALCACT for computational efficiency.
+
+    The aerosol nitrate predictions are frequently lower as a result of 
+    these changes, especially during winter, and are more numerically 
+    stable. 
+
+2.  Aerosol processing in clouds:
+
+    A problem was identified in processing the aerosol size distribution 
+    through the aqueous chemistry module.  In the past, aerosol species EC 
+    and A25 were lumped together into aqchem species "PRI" and species 
+    AORGA, AORGB, and AORGPA were lumped into aqchem species "ORG".  The 
+    species lumping caused a problem because: (1) the molecular weights are 
+    different for each species, affecting the 3rd moment calculation within 
+    AQCHEM; and (2) secondary organics were included in the 3rd moment 
+    calculation, which is later used to update the 2nd moment...but in the 
+    current CMAQ, the 2nd moment is transported without the secondary 
+    organic aerosols (see subroutine GETPAR in the aerosol module); only 
+    primary organics contribute to the 2nd moment during transport.  To 
+    correct this problem, modeled aerosol species were added to AQCHEM for 
+    elemental carbon, primary organic, biogenic secondary organic, and 
+    anthropogenic secondary organic.  In addition, the aerosol "3rd moment" 
+    calculation was updated to include EC and primary organics (not 
+    secondary).
+  
+    All of the chemical mechanisms have been modified to include the 
+    mapping of aerosols to the new aqueous species (EC, ORGA, ORGB, ORGP). 
+    Changes are isolated to include file AE_A2AQ.EXT.
+  
+    In our testing, the standard deviation of the aerosol size distribution 
+    is reduced somewhat and less often approaches the maximum value of 
+    2.5.  In response to the change in standard deviation, the geometric 
+    mean diameter of the aerosol size distribution is increased.  Because 
+    of the changes in the aerosol distribution, generally the particle dry 
+    deposition was reduced and sulfate air concentrations were slightly 
+    increased.

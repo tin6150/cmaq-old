@@ -1,0 +1,651 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.21.13.43.09;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.21.13.43.09;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/BCON/src/mech_conv/radm2_to_cb4hg/gc_spc_map.F,v 1.1.1.1 2006/03/21 13:17:21 sjr Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+
+      SUBROUTINE GC_SPC_MAP( LOGUNIT, NSPCS_IN, N_GC_OUT, SPMAP, 
+     &                       N_MCNV_SP, SFAC, MCNV_COEFF, LCONV, LSCALE,  
+     &                       LCONVSP, EXT_IC_NAME, INFL_SP_NAME,   
+     &                       MCNV_SPCS, SPNAME_OUT )
+
+C*************************************************************************
+C
+C  FUNCTION: Load arrays that are used in subsequent operations 
+C            to convert RADM2 species to CB4HG species             
+C             
+C  PRECONDITIONS: None
+C 
+C  KEY SUBROUTINES/FUNCTIONS CALLED: None  
+C
+C  REVISION HISTORY: Prototype created by Jerry Gipson, January, 1998
+C                    Modified April 24, 1998 by JG to change species
+C                      allocation          
+C                    3/20/05 sjr adapted for CB4HG
+C
+C*************************************************************************
+
+      IMPLICIT NONE
+
+C..INCLUDE FILES:
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table
+      INCLUDE 'BC_PARMS.EXT'  ! BCON parameters
+
+C..ARGUMENTS:
+      CHARACTER*( * ) EXT_IC_NAME( * )      ! List of all IC species in
+                                            ! .EXT files
+
+      CHARACTER*( * ) INFL_SP_NAME( * )     ! List of species on the input
+                                            ! file
+
+      CHARACTER*( * ) SPNAME_OUT( * )       ! Output file species names
+
+      CHARACTER*( * ) MCNV_SPCS(  N_GC_SPCD, * )  ! Mechanism species names
+                                                  ! convert from
+
+      INTEGER LOGUNIT             ! Ouput log unit number
+      INTEGER N_GC_OUT            ! No. of GC species for mech. conversion 
+      INTEGER NSPCS_IN            ! Total no. of species in input file
+      INTEGER SPMAP( * )          ! Map of output species to input species
+      INTEGER N_MCNV_SP( * )      ! No. of mech species to convert from
+
+      LOGICAL LCONV               ! Flag for mech conversion
+      LOGICAL LCONVSP( * )        ! Flag for species mech conversion
+      LOGICAL LSCALE( * )         ! Flag for scaling input concs 
+
+      REAL MCNV_COEFF( N_GC_SPCD, * ) ! Mech input species coefficients
+      REAL SFAC( * )                  ! Input species conc scale factor
+      
+C..PARAMETERS:
+      INTEGER  NCB4HG
+      PARAMETER ( NCB4HG = 35 )  ! No. of CB4HG species defined in this routine
+
+      INTEGER  MAXSP
+      PARAMETER ( MAXSP = 7 )    ! Max no. of RADM species in a CB4HG species
+                                 
+C..EXTERNAL FUNCTIONS:
+      INTEGER INDEX1             ! Looks up name in table
+
+C..SAVED LOCAL VARIABLES: None
+
+C..SCRATCH LOCAL VARIABLES:
+      CHARACTER*80  MSG                         ! Log message
+      CHARACTER*16  PNAME                       ! Program Name
+      CHARACTER*16  CB4HG_SPC( NCB4HG )         ! Hard coded CB4HG spec names
+      CHARACTER*16  RADM2_SPC( NCB4HG, MAXSP )  ! Hard coded RADM2 spec names
+
+      CHARACTER*16 MECHFL_IC_NF( MX_MECHFL_IC ) ! Default CB4HG species 
+                                                ! not in the *.EXT file
+ 
+      CHARACTER*16 MECHFL_SP_NF( MX_INFL_SP )   ! Default RADM2 species
+                                                ! not in the input file
+
+      CHARACTER*16 MECHFL_GC_NF( N_GC_SPCD )    ! Non-default *.EXT CB4HG
+                                                ! species names 
+
+
+      INTEGER IND       ! Array index
+      INTEGER N, SPC    ! Loop indices
+      INTEGER NSP       ! Species counter
+
+      INTEGER N_RADM_SPC( NCB4HG ) ! Hard-coded no. of RADM2 species 
+                                   ! defining each CB4HG species
+
+      LOGICAL LFIRST               ! Flag for first pass
+      LOGICAL LUSED( NCB4HG )      ! Flag for CB4HG species defined for BC output
+
+      REAL COEFF( NCB4HG, MAXSP )  ! Hard coded RADM2 species coefficients
+
+C**********************************************************************
+
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c  The data statements below define the RADM2 to CB4HG Conversion as
+c  follows:  ( [CB4HG species] = [RADM2 species] )
+c
+c   1.   [NO2 ] =       [NO2 ]
+c   2.   [NO  ] =       [NO  ]
+c   3.   [O   ] =       [O3P ]
+c   4.   [O3  ] =       [O3  ]
+c   5.   [NO3 ] =       [NO3 ]
+c   6.   [O1D ] =       [O1D ]
+c   7.   [OH  ] =       [HO  ]
+c   8.   [HO2 ] =       [HO2 ]
+c   9.   [N2O5] =       [N2O5]
+c  10.   [HNO3] =       [HNO3]
+c  11.   [HONO] =       [HONO]
+c  12.   [PNA ] =       [HNO4]
+c  13.   [H2O2] =       [H2O2]
+c  14.   [CO  ] =       [CO  ]
+c  15.   [SO2 ] =       [SO2 ]
+c  16.   [SULF] =       [SULF]
+c  17.   [PAN ] =       [PAN ] 
+c  18.   [FACD] =       [ORA1] 
+c  19.   [AACD] =       [ORA2] 
+c  20.   [PACD] =       [PAA ] 
+c  21.   [UMHP] =       [OP1 ] 
+c  22.   [MGLY] =       [MGLY] 
+c  23.   [OPEN] =       [DCB ] 
+c  24.   [CRES] =       [CSL ] 
+c  25.   [FORM] =       [HCHO] +     * [GLY ]
+c  26.   [ALD2] = 1.0   [ALD ] + 2.0 * [OLI ]  
+c  27.   [PAR ] = 0.4 * [ETH ] + 2.9 * [HC3 ] + 4.8 * [HC5 ] +  
+c                 7.9 * [HC8 ] + 0.8 * [OLT ] + 0.8 * [OLI ] +
+c                 3.9 * [KET ] 
+c  28.   [OLE ] = 1.9 * [OLT ]
+c  29.   [TOL ] =       [TOL ]
+c  30.   [ISOP] =       [ISO ]
+c  31.   [ETH ] =       [OL2 ]
+c  32.   [XYL ] =       [XYL ]
+c  33.   [TERP] =       [TERP]
+c  34.   [HG  ] =       [HG  ]
+c  35.   [HGIIGAS] =    [HGIIGAS]
+c
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c..Number of RADM2 species used to compute the CB4HG species concentration
+
+      DATA N_RADM_SPC(   1 ) / 1 /
+      DATA N_RADM_SPC(   2 ) / 1 /
+      DATA N_RADM_SPC(   3 ) / 1 /
+      DATA N_RADM_SPC(   4 ) / 1 /
+      DATA N_RADM_SPC(   5 ) / 1 /
+      DATA N_RADM_SPC(   6 ) / 1 /
+      DATA N_RADM_SPC(   7 ) / 1 /
+      DATA N_RADM_SPC(   8 ) / 1 /
+      DATA N_RADM_SPC(   9 ) / 1 /
+      DATA N_RADM_SPC(  10 ) / 1 /
+      DATA N_RADM_SPC(  11 ) / 1 /
+      DATA N_RADM_SPC(  12 ) / 1 /
+      DATA N_RADM_SPC(  13 ) / 1 /
+      DATA N_RADM_SPC(  14 ) / 1 /
+      DATA N_RADM_SPC(  15 ) / 1 /
+      DATA N_RADM_SPC(  16 ) / 1 /
+      DATA N_RADM_SPC(  17 ) / 1 /
+      DATA N_RADM_SPC(  18 ) / 1 /
+      DATA N_RADM_SPC(  19 ) / 1 /
+      DATA N_RADM_SPC(  20 ) / 1 /
+      DATA N_RADM_SPC(  21 ) / 1 /
+      DATA N_RADM_SPC(  22 ) / 1 /
+      DATA N_RADM_SPC(  23 ) / 1 /
+      DATA N_RADM_SPC(  24 ) / 1 /
+      DATA N_RADM_SPC(  25 ) / 2 /
+      DATA N_RADM_SPC(  26 ) / 2 /
+      DATA N_RADM_SPC(  27 ) / 7 /
+      DATA N_RADM_SPC(  28 ) / 1 /
+      DATA N_RADM_SPC(  29 ) / 1 /
+      DATA N_RADM_SPC(  30 ) / 1 /
+      DATA N_RADM_SPC(  31 ) / 1 /
+      DATA N_RADM_SPC(  32 ) / 1 /
+      DATA N_RADM_SPC(  33 ) / 1 /
+      DATA N_RADM_SPC(  34 ) / 1 /
+      DATA N_RADM_SPC(  35 ) / 1 /
+
+c..Names of CB4HG species
+      DATA CB4HG_SPC(   1 )  / 'NO2             ' /
+      DATA CB4HG_SPC(   2 )  / 'NO              ' /
+      DATA CB4HG_SPC(   3 )  / 'O               ' /
+      DATA CB4HG_SPC(   4 )  / 'O3              ' /
+      DATA CB4HG_SPC(   5 )  / 'NO3             ' /
+      DATA CB4HG_SPC(   6 )  / 'O1D             ' /
+      DATA CB4HG_SPC(   7 )  / 'OH              ' /
+      DATA CB4HG_SPC(   8 )  / 'HO2             ' /
+      DATA CB4HG_SPC(   9 )  / 'N2O5            ' /
+      DATA CB4HG_SPC(  10 )  / 'HNO3            ' /
+      DATA CB4HG_SPC(  11 )  / 'HONO            ' /
+      DATA CB4HG_SPC(  12 )  / 'PNA             ' /
+      DATA CB4HG_SPC(  13 )  / 'H2O2            ' /
+      DATA CB4HG_SPC(  14 )  / 'CO              ' /
+      DATA CB4HG_SPC(  15 )  / 'SO2             ' /
+      DATA CB4HG_SPC(  16 )  / 'SULF            ' /
+      DATA CB4HG_SPC(  17 )  / 'PAN             ' /
+      DATA CB4HG_SPC(  18 )  / 'FACD            ' /
+      DATA CB4HG_SPC(  19 )  / 'AACD            ' /
+      DATA CB4HG_SPC(  20 )  / 'PACD            ' /
+      DATA CB4HG_SPC(  21 )  / 'UMHP            ' /
+      DATA CB4HG_SPC(  22 )  / 'MGLY            ' /
+      DATA CB4HG_SPC(  23 )  / 'OPEN            ' /
+      DATA CB4HG_SPC(  24 )  / 'CRES            ' /
+      DATA CB4HG_SPC(  25 )  / 'FORM            ' /
+      DATA CB4HG_SPC(  26 )  / 'ALD2            ' /
+      DATA CB4HG_SPC(  27 )  / 'PAR             ' /
+      DATA CB4HG_SPC(  28 )  / 'OLE             ' /
+      DATA CB4HG_SPC(  29 )  / 'TOL             ' /
+      DATA CB4HG_SPC(  30 )  / 'ISOP            ' /
+      DATA CB4HG_SPC(  31 )  / 'ETH             ' /
+      DATA CB4HG_SPC(  32 )  / 'XYL             ' /
+      DATA CB4HG_SPC(  33 )  / 'TERP            ' /
+      DATA CB4HG_SPC(  34 )  / 'HG              ' /
+      DATA CB4HG_SPC(  35 )  / 'HGIIGAS         ' /
+
+c..Names of the RADM2 species used to compute CB4HG species concentrations
+      DATA ( RADM2_SPC(  1, N ), N = 1, 1  )
+     & / 'NO2             ' /
+
+      DATA ( RADM2_SPC(  2, N ), N = 1, 1  )
+     & / 'NO              ' /
+
+      DATA ( RADM2_SPC(  3, N ), N = 1, 1  )
+     & / 'O3P             ' /
+
+      DATA ( RADM2_SPC(  4, N ), N = 1, 1  )
+     & / 'O3              ' /
+
+      DATA ( RADM2_SPC(  5, N ), N = 1, 1  )
+     & / 'NO3             ' /
+ 
+      DATA ( RADM2_SPC(  6, N ), N = 1, 1  )
+     & / 'O1D             ' /
+
+      DATA ( RADM2_SPC(  7, N ), N = 1, 1  )
+     & / 'HO              ' /
+
+      DATA ( RADM2_SPC(  8, N ), N = 1, 1  )
+     & / 'HO2             ' /
+
+      DATA ( RADM2_SPC(  9, N ), N = 1, 1 )
+     & / 'N2O5            ' /
+
+      DATA ( RADM2_SPC( 10, N ), N = 1, 1 )
+     & / 'HNO3            ' /
+
+      DATA ( RADM2_SPC( 11, N ), N = 1, 1 )
+     & / 'HONO            ' /
+
+      DATA ( RADM2_SPC( 12, N ), N = 1, 1 )
+     & / 'HNO4            ' /
+
+      DATA ( RADM2_SPC( 13, N ), N = 1, 1 )
+     & / 'H2O2            ' /
+
+      DATA ( RADM2_SPC( 14, N ), N = 1, 1 )
+     & / 'CO              ' /
+
+      DATA ( RADM2_SPC( 15, N ), N = 1, 1 )
+     & / 'SO2             ' /
+
+      DATA ( RADM2_SPC( 16, N ), N = 1, 1 )
+     & / 'SULF            ' /
+
+      DATA ( RADM2_SPC( 17, N ), N = 1, 1 )
+     & / 'PAN             ' /
+
+      DATA ( RADM2_SPC( 18, N ), N = 1, 1 )
+     & / 'ORA1            ' /
+
+      DATA ( RADM2_SPC( 19, N ), N = 1, 1 )
+     & / 'ORA2            ' /
+
+      DATA ( RADM2_SPC( 20, N ), N = 1, 1 )
+     & / 'PAA             ' /
+
+      DATA ( RADM2_SPC( 21, N ), N = 1, 1 )
+     & / 'OP1             ' /
+
+      DATA ( RADM2_SPC( 22, N ), N = 1, 1 )
+     & / 'MGLY            ' /
+
+      DATA ( RADM2_SPC( 23, N ), N = 1, 1 )
+     & / 'DCB             ' /
+
+      DATA ( RADM2_SPC( 24, N ), N = 1, 1 )
+     & / 'CSL             ' /
+
+      DATA ( RADM2_SPC( 25, N ), N = 1, 2 )
+     & / 'HCHO            ' , 
+     &   'GLY             ' /
+
+      DATA ( RADM2_SPC( 26, N ), N = 1, 2 )
+     & / 'ALD             ' ,
+     &   'OLI             ' /
+
+      DATA ( RADM2_SPC( 27, N ), N = 1, 7 )
+     & / 'ETH             ' ,
+     &   'HC3             ' ,
+     &   'HC5             ' ,
+     &   'HC8             ' ,
+     &   'OLT             ' ,
+     &   'OLI             ' ,
+     &   'KET             ' /
+
+      DATA ( RADM2_SPC( 28, N ), N = 1, 1 )
+     & / 'OLT             ' /
+
+      DATA ( RADM2_SPC( 29, N ), N = 1, 1 )
+     & / 'TOL             ' /
+
+      DATA ( RADM2_SPC( 30, N ), N = 1, 1 )
+     & / 'ISO             ' /
+
+      DATA ( RADM2_SPC( 31, N ), N = 1, 1 )
+     & / 'OL2             ' /
+
+      DATA ( RADM2_SPC( 32, N ), N = 1, 1 )
+     & / 'XYL             ' /
+
+      DATA ( RADM2_SPC( 33, N ), N = 1, 1 )
+     & / 'TERP            ' /
+
+      DATA ( RADM2_SPC( 34, N ), N = 1, 1 )
+     & / 'HG              ' /
+
+      DATA ( RADM2_SPC( 35, N ), N = 1, 1 )
+     & / 'HGIIGAS         ' /
+
+c..Coefficients of the RADM2 species
+      DATA ( COEFF(  1, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF(  2, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF(  3, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF(  4, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF(  5, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF(  6, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF(  7, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF(  8, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF(  9, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 10, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 11, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 12, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 13, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 14, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 15, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 16, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 17, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 18, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 19, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 20, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 21, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 22, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 23, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 24, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 25, N ), N = 1, 2 )
+     &    / 1.0, 1.0 / 
+
+      DATA ( COEFF( 26, N ), N = 1, 2 )
+     &    / 1.0, 2.0 / 
+
+      DATA ( COEFF( 27, N ), N = 1, 7 )
+     &    / 0.4, 2.9, 4.8, 7.9, 0.8, 0.8, 3.9 / 
+
+      DATA ( COEFF( 28, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 29, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 30, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 31, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 32, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 33, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 34, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+      DATA ( COEFF( 35, N ), N = 1, 1 )
+     &    / 1.0 / 
+
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c  Write appropriate log data
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      WRITE( LOGUNIT, 92000 ) 
+
+      LCONV = .TRUE.
+
+      LFIRST = .TRUE.
+
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c  Check that the number of RADM2 species defining a CB4HG species does
+c  not exceed the MXCVSP parameter
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      DO N = 1, NCB4HG
+
+         IF( N_RADM_SPC( N ) .GT. MXCVSP ) THEN
+            MSG = 'Max no. conversion species exceeded -- increase MXCVSP'
+            CALL M3ERR( PNAME, 0, 0, MSG, .TRUE. )
+         ENDIF
+
+      ENDDO
+
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c  Write messages about undefined species
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c..Default CB4HG species not in GC_SPC.EXT
+      NSP = 0
+      DO N = 1, NCB4HG
+
+         LUSED( N ) = .TRUE.
+
+         IF( INDEX1( CB4HG_SPC( N ), N_GC_SPC, GC_SPC ) .EQ. 0 ) THEN
+            LUSED( N ) = .FALSE.
+            NSP = NSP + 1
+            MECHFL_IC_NF( NSP ) = CB4HG_SPC( N )
+         ENDIF  
+
+      ENDDO
+
+      IF( NSP .GT. 0 ) THEN
+         WRITE( LOGUNIT, 92020 ) 
+         WRITE( LOGUNIT, 92040 ) ( MECHFL_IC_NF( N ), N = 1, NSP )
+      ENDIF
+
+c..RADM2 species not in the input file
+      NSP = 0
+      DO N = 1, NCB4HG
+
+         DO SPC = 1, N_RADM_SPC( N )
+            
+            IND = INDEX1( RADM2_SPC( N, SPC ), NSPCS_IN, INFL_SP_NAME ) 
+
+            IF( IND .EQ. 0 ) THEN
+               LUSED( N ) = .FALSE.
+               NSP = NSP + 1
+               MECHFL_SP_NF( NSP ) = RADM2_SPC( N , SPC )
+            ENDIF
+
+         ENDDO
+
+      ENDDO
+
+      IF( NSP .NE. 0 ) THEN
+         WRITE( LOGUNIT, 92060 ) 
+         WRITE( LOGUNIT, 92040 ) ( MECHFL_SP_NF( N ), N = 1, NSP )
+      ENDIF
+
+c..Species in GC_SPC.EXT that are not CB4HG default names
+      NSP = 0
+      DO N = 1, N_GC_SPC
+
+         IND = INDEX1( GC_SPC( N ), NCB4HG, CB4HG_SPC ) 
+
+         IF( IND .EQ. 0 ) THEN
+            NSP = NSP + 1
+            MECHFL_GC_NF( NSP ) = GC_SPC( N )
+         ENDIF
+
+      ENDDO
+
+      IF( NSP .NE. 0 ) THEN
+         WRITE( LOGUNIT, 92100 ) 
+         WRITE( LOGUNIT, 92040 ) ( MECHFL_GC_NF( N ), N = 1, NSP )
+      ENDIF
+
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c  Load arrays and return
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      NSP = 0
+
+      DO N = 1, NCB4HG
+
+         IF( LUSED( N ) ) THEN
+
+            NSP = NSP + 1
+
+            LSCALE( NSP ) = .FALSE.
+            SFAC( NSP ) = 1.0
+
+            SPNAME_OUT( NSP ) = CB4HG_SPC( N )
+            N_MCNV_SP( NSP )  = N_RADM_SPC( N )
+
+            DO SPC = 1, N_RADM_SPC( N )
+               MCNV_SPCS( NSP, SPC )  = RADM2_SPC( N, SPC )
+               MCNV_COEFF( NSP, SPC ) = COEFF( N, SPC )
+            ENDDO
+
+            IF( N_MCNV_SP( NSP ) .EQ. 1 .AND. MCNV_COEFF( NSP, 1 ) .EQ. 1.0 ) 
+     &            THEN
+               IND = INDEX1( MCNV_SPCS( NSP, 1 ), NSPCS_IN, INFL_SP_NAME )
+               SPMAP( NSP )   = IND
+               LCONVSP( NSP ) = .FALSE.
+            ELSE
+               SPMAP( NSP )   = 0
+               LCONVSP( NSP ) = .TRUE.
+            ENDIF
+
+         ENDIF
+
+      ENDDO 
+
+      N_GC_OUT = NSP         
+           
+      RETURN
+
+C************************* FORMAT STATEMENTS ***************************
+
+92000 FORMAT(  /1X, 79 ( '#' ) 
+     &         /1X, '#   Species map section'
+     &         /1X, 79 ( '#' )
+     &        //5X, 'Input IC species converted from RADM2 to CB4HG. '
+     &        / 5X, 'All IC surrogate names for gas phase ',
+     &              'species ignored and default CB4HG and RADM2 ',
+     &              'species names expected.' )
+
+
+92020 FORMAT( // 5X, 'WARNING: The following default CB4HG species were ',
+     &               'not found in the GC_SPC.EXT file.' 
+     &        /  5X, '         ICs were NOT generated for them. ' )
+
+92040 FORMAT(   (15X, 4( A, 2X ) ) )
+
+92060 FORMAT( // 5X, 'WARNING: The following default RADM2 species were ',
+     &               'not found in the input file.'
+     &        /  5X, '         ICs were NOT generated for any ',
+     &               'CB4HG species that references them.' )
+
+92080 FORMAT(   20X, A , 5X, A )
+
+92100 FORMAT(//5X, 'WARNING: The following species in the GC_SPC.EXT ',
+     &             'file are not default CB4HG names. ' 
+     &        /  5X, '         ICs were NOT generated for them. ' )
+
+      END
+
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

@@ -1,0 +1,1068 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/base/ping_dsprsn.F,v 1.9 2005/02/14 15:25:25 yoj Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C=========================================================================
+C This file, ping_dsprsn.F contains:
+C    SUBROUTINE PING_DSPRSN
+C    SUBROUTINE PING_DSPRSN1
+C    SUBROUTINE SPLIT_CONC
+C    SUBROUTINE PING_DILUTN
+C    SUBROUTINE COMBINE_CONC
+C    SUBROUTINE PING_DIFN
+C    SUBROUTINE PING_DIFSET
+C    SUBROUTINE PING_CNFACTOR
+C    SUBROUTINE PING_CNSOLVE
+C=========================================================================
+ 
+      SUBROUTINE PING_DSPRSN ( CPLUME, NPACTIVE, JDATE, JTIME, PSTEP )
+
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- replace IZLL with MY_IZLL for future parallel implementation namely
+C        decompose the third dimension
+C   12/99 Jeff
+C     -- f90 memory mgmt
+
+C-----------------------------------------------------------------------
+
+      USE PLUME_STATE ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_BG    ! inherits PING_GLOBDIM
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC    ! aerosol species table (dim./name/molwt)
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table (dim./name/molwt)
+      INCLUDE SUBST_TR_SPC    ! traver species table (dim./name/molwt)
+
+C Number of species in CPLUME, like CGRID
+
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD
+     &                             + N_AE_SPC
+     &                             + N_NR_SPC
+     &                             + N_TR_SPC
+
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+C...............      Shared Arguments      ................
+ 
+C Plume concentration array
+ 
+!     REAL    CPLUME( N_GC_SPC,NPILLARS,* )
+      REAL :: CPLUME( :,:,: )
+ 
+      INTEGER NPACTIVE                ! Number of active plumes
+      INTEGER JDATE                   ! Current date (YYYYDDD)
+      INTEGER JTIME                   ! Current time (HHMMSS)
+      INTEGER PSTEP                   ! PinG time step (HHMMSS)      
+ 
+C...............      Local Variables            ................
+
+      CHARACTER( 16 ) :: PNAME = 'PING_DSPRSN'
+      CHARACTER( 200 ) :: MSG
+
+      INTEGER I, J, K, L              ! Loop counters
+
+      REAL    DTTR                    ! Transport time step in seconds
+C 3-D temporary concentration array
+      REAL, ALLOCATABLE :: CC3D( :,:,: )
+      INTEGER ALLOCSTAT
+ 
+C Function definitions
+ 
+      INTEGER TIME2SEC
+ 
+C--------------------------------------------------------------------
+
+C Change the time step into seconds
+ 
+      DTTR = TIME2SEC ( PSTEP )
+
+C Allocate memory for CC3D
+
+      ALLOCATE ( CC3D( ALLSPC,NPILLARS+3,NPACTIVE ), STAT =  ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         MSG = '*** CC3D Memory allocation failed'
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+         END IF
+
+!     print *, ' Ping_dsprsn: CC3D allocated'
+
+C---------------------------------------------
+C Loop over all active plumes
+
+      DO L = 1, NPACTIVE
+         I = PLUMEPTR( L )
+
+C Loop over all the species for this plume
+ 
+C Insert the concentrations for the plume pillars
+ 
+         DO J = 1, NPILLARS
+            DO K = 1, ALLSPC
+               CC3D( K,J+1,L ) = CPLUME( K,J,I )
+               END DO
+            END DO
+
+         DO K = 1, ALLSPC
+ 
+C Compute the background concentrations ALOFT
+     
+            IF ( MY_IZLL( I ) .GT. 1 ) THEN
+               CC3D( K,NPILLARS+3,L ) = 0.5 * ( CBBG( K,I ) + CTBG( K,I ) )
+               ELSE
+               CC3D( K,NPILLARS+3,L ) = CTBG( K,I )
+               END IF
+ 
+C Substitute the LEFT and RIGHT background concentrations
+C (averaged over all levels)
+ 
+            CC3D( K,1,L )            = CLBG( K,I )
+            CC3D( K,NPILLARS+2,L )   = CRBG( K,I )
+
+            END DO
+ 
+C End of the plume loop
+
+         END DO
+C---------------------------------------------
+ 
+C Perform plume dispersion
+ 
+      CALL PING_DSPRSN1 ( CC3D, NPACTIVE, DTTR )
+
+C Insert the modified concentration field into the plume array
+ 
+      DO L = 1, NPACTIVE
+         I = PLUMEPTR( L )
+         DO J = 1, NPILLARS
+            DO K = 1, ALLSPC
+               CPLUME( K,J,I ) = CC3D( K,J+1,L )
+               END DO
+            END DO
+         END DO
+
+      DEALLOCATE ( CC3D )
+
+!     print *, ' Ping_dsprsn: CC3D deallocated'
+
+      RETURN
+      END SUBROUTINE PING_DSPRSN
+ 
+C=========================================================================
+ 
+      SUBROUTINE PING_DSPRSN1 ( CC, NPACTIVE, DTTR )
+
+C***********************************************************************
+C This subroutine performs the following dispersion steps in 
+C the order specified, for each DTTR (transport time step) :
+C   1. Dilution/entrainment/detrainment (DILUTN)
+C   2. Lateral diffusion (YDIFN)
+C***********************************************************************
+ 
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- replace NPLUMES with NPACTIVE since the argument means number of
+C        active plumes
+
+C-----------------------------------------------------------------------
+ 
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC    ! aerosol species table (dim./name/molwt)
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table (dim./name/molwt)
+      INCLUDE SUBST_TR_SPC    ! traver species table (dim./name/molwt)
+
+C Number of species in CPLUME, like CGRID
+
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD
+     &                             + N_AE_SPC
+     &                             + N_NR_SPC
+     &                             + N_TR_SPC
+
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+C...............      Shared Arguments      ................
+ 
+      INTEGER NPACTIVE                    ! Number of active plumes
+
+      REAL DTTR                           ! Transport time step in seconds
+      REAL CC( ALLSPC,NPILLARS+3,NPACTIVE )  ! 3 dimensional conc. array
+ 
+C...............      Local Variables            ................
+ 
+      CHARACTER( 16 ) :: PNAME = 'PING_DSPRSN1'
+      CHARACTER( 200 ) :: MSG
+
+C 3-D conc. array (LEFT)
+      REAL, ALLOCATABLE :: CCL( :,:,: )
+
+C 3-D conc. array (RIGHT)
+      REAL, ALLOCATABLE :: CCR( :,:,: )
+ 
+      INTEGER :: ALLOCSTAT
+
+C---------------------------------------------------------------------------
+
+C Allocate memory for conc. arrays
+
+      ALLOCATE ( CCL( ALLSPC,NPILLARS+3,NPACTIVE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         MSG = '*** CCL Memory allocation failed'
+         CALL M3ERR ( PNAME, 0, 0, MSG, .TRUE.)
+         END IF
+
+!     print *, ' Ping_dsprsn1: CCL allocated'
+
+      ALLOCATE ( CCR( ALLSPC,NPILLARS+3,NPACTIVE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         MSG = '*** CCR Memory allocation failed'
+         CALL M3ERR ( PNAME, 0, 0, MSG, .TRUE.)
+         END IF
+
+!     print *, ' Ping_dsprsn1: CCR allocated'
+
+      CALL SPLIT_CONC ( CC, CCL, CCR, NPACTIVE )
+ 
+C Vertical and horizontal expansions together
+ 
+      CALL PING_DILUTN ( CCL, CCR, DTTR, NPACTIVE )
+
+      CALL COMBINE_CONC ( CC, CCL, CCR, NPACTIVE )
+
+      DEALLOCATE ( CCL )
+
+!     print *, ' Ping_dsprsn1: CCL deallocated'
+
+      DEALLOCATE ( CCR )
+
+!     print *, ' Ping_dsprsn1: CCR deallocated'
+
+      CALL PING_DIFN ( CC, DTTR, NPACTIVE )
+
+      RETURN
+      END SUBROUTINE PING_DSPRSN1
+ 
+C=======================================================================
+
+      SUBROUTINE SPLIT_CONC ( CC, CCL, CCR, NPACTIVE )
+
+C***********************************************************************
+C This routine splits concentrations CC into CCL,CCR
+C***********************************************************************
+
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- replace NPLUMES with NPACTIVE since the argument means number of
+C        active plumes
+
+C-----------------------------------------------------------------------
+
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC    ! aerosol species table (dim./name/molwt)
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table (dim./name/molwt)
+      INCLUDE SUBST_TR_SPC    ! traver species table (dim./name/molwt)
+
+C Number of species in CPLUME, like CGRID
+
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD
+     &                             + N_AE_SPC
+     &                             + N_NR_SPC
+     &                             + N_TR_SPC
+
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+C...............      Shared Arguments      ................
+ 
+      INTEGER NPACTIVE                     ! Number of active plumes
+
+C 3-D concentration array
+      REAL CC( ALLSPC,NPILLARS+3,NPACTIVE )
+
+C 3-D concentration array (LEFT)
+      REAL CCL( ALLSPC,NPILLARS+3,NPACTIVE )
+
+C 3-D concentration array (RIGHT)
+      REAL CCR( ALLSPC,NPILLARS+3,NPACTIVE )
+
+C...............      Local Variables            ................
+ 
+      INTEGER J, K, L                   ! Loop index
+ 
+C...............      Global Variables      ................
+ 
+C      INCLUDE      'PING.COMMON'
+ 
+C---------------------------------------------------------------------------
+ 
+      DO L = 1, NPACTIVE
+
+         DO J = 1, NLEFT + 1
+            DO K = 1, ALLSPC
+               CCL( K,J,L ) = CC( K,NLEFT+2-J,L )
+               END DO
+            END DO
+ 
+         DO J = 1, NRIGHT + 2
+            DO K = 1, ALLSPC
+               CCR( K,J,L ) = CC( K,NLEFT+1+J,L )
+               END DO
+            END DO
+
+         END DO
+ 
+      RETURN
+      END SUBROUTINE SPLIT_CONC
+ 
+C=======================================================================
+
+      SUBROUTINE PING_DILUTN ( CCL, CCR, DTTR, NPACTIVE )
+
+C***********************************************************************
+C This subroutine performs vertical and horizontal dilution
+C LAMDAX = LambdaX:  X=V,W,M  (vertical,horizontal, background)
+C***********************************************************************
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- replace NPLUMES with NPACTIVE since the argument means number of
+C        active plumes
+
+C-----------------------------------------------------------------------
+
+      USE PLUME_DYN   ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_STATE ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_ETA   ! inherits PLUME_PARM
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC    ! aerosol species table (dim./name/molwt)
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table (dim./name/molwt)
+      INCLUDE SUBST_TR_SPC    ! traver species table (dim./name/molwt)
+
+C Number of species in CPLUME, like CGRID
+
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD
+     &                             + N_AE_SPC
+     &                             + N_NR_SPC
+     &                             + N_TR_SPC
+
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+C...............      Shared Arguments      ................
+ 
+      INTEGER NPACTIVE                      ! Number of plumes in the array
+
+C 3-D concentration array (LEFT)
+      REAL CCL( ALLSPC,NPILLARS+3,NPACTIVE )
+
+C 3-D concentration array (RIGHT)
+      REAL CCR( ALLSPC,NPILLARS+3,NPACTIVE )
+
+      REAL    DTTR                          ! DT of transport (SECONDS)
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER   I, J, K, L                  ! Loop index
+      REAL      LAMDAV                      ! Work scalars 
+      REAL      LAMDAW                      ! Work scalars
+      REAL      C1, C2                      ! Work scalars
+      REAL      TERM1( ALLSPC )             ! Work scalars
+      REAL      TERM2                       ! Work scalars
+ 
+C---------------------------------------------------------------------------
+ 
+      DO L = 1, NPACTIVE
+         I = PLUMEPTR( L )
+ 
+C Plume is alive and growing and entraining from aloft and sides
+ 
+C Plume cell calculations
+ 
+         LAMDAV = ( RHP( I ) / HP( I ) ) * DTTR
+         LAMDAW = ( RWP( I ) / WP( I ) ) * DTTR
+         C1     = 1.0 / ( 1.0 + LAMDAV )
+         C2     = 1.0 / ( 1.0 + LAMDAW )
+ 
+C Calculate the contribution of aloft concentration for all the species
+ 
+         DO K = 1, ALLSPC
+            TERM1( K ) = LAMDAV * CCR( K,NRIGHT+2,L )
+            END DO
+
+         DO J = 1, NLEFT
+            DO K = 1, ALLSPC
+               TERM2 = CCL( K,J,L ) + LAMDAW 
+     &               * ( ETAL( J+1 ) * CCL( K,J+1,L )
+     &                 - ETAL( J )   * CCL( K,J,L ) )
+     &               / DETAL( J )
+               TERM2 = C2 * TERM2
+               CCL( K,J,L ) = C1 * ( TERM1( K ) + TERM2 )
+               END DO
+            END DO
+ 
+         DO J = 1, NRIGHT
+            DO K = 1, ALLSPC
+               TERM2 = CCR( K,J,L ) + LAMDAW
+     &               * ( ETAR( J+1 ) * CCR( K,J+1,L )
+     &                 - ETAR( J )   * CCR( K,J,L ) )
+     &               / DETAR( J )
+               TERM2 = C2 * TERM2
+               CCR( K,J,L ) = C1 * ( TERM1( K ) + TERM2 )
+               END DO
+            END DO
+ 
+         END DO
+ 
+      RETURN
+      END SUBROUTINE PING_DILUTN
+ 
+C=======================================================================
+ 
+      SUBROUTINE COMBINE_CONC ( CC, CCL, CCR, NPACTIVE )
+ 
+C***********************************************************************
+C Combining concentrations CCL, CCR into CC
+C***********************************************************************
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- replace NPLUMES with NPACTIVE since the argument means number of
+C        active plumes
+
+C-----------------------------------------------------------------------
+ 
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+C INCLUDES:      
+
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC    ! aerosol species table (dim./name/molwt)
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table (dim./name/molwt)
+      INCLUDE SUBST_TR_SPC    ! traver species table (dim./name/molwt)
+
+C Number of species in CPLUME, like CGRID
+
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD
+     &                             + N_AE_SPC
+     &                             + N_NR_SPC
+     &                             + N_TR_SPC
+
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+C Shared Arguments      ................
+ 
+      INTEGER NPACTIVE                     ! Number of plumes in the array
+
+C 3-D concentration array
+      REAL CC( ALLSPC,NPILLARS+3,NPACTIVE )
+
+C 3-D concentration array (LEFT)
+      REAL CCL( ALLSPC,NPILLARS+3,NPACTIVE )
+
+C 3-D concentration array (RIGHT)
+      REAL CCR( ALLSPC,NPILLARS+3,NPACTIVE )
+ 
+C Local Variables            ................
+ 
+      INTEGER J, K, L                       ! Loop index
+ 
+ 
+      DO L = 1, NPACTIVE
+
+         DO J = 1, NLEFT + 1   ! To include the left background
+            DO K = 1, ALLSPC
+               CC( K,NLEFT+2-J,L ) = MAX ( CCL( K,J,L ), 0.0 )
+               END DO
+            END DO
+ 
+         DO J = 1, NRIGHT + 2  ! To include the right background and the aloft
+            DO K = 1, ALLSPC
+               CC( K,NLEFT+1+J,L ) = MAX ( CCR( K,J,L ), 0.0 )
+               END DO
+            END DO
+
+         END DO
+ 
+      RETURN
+      END SUBROUTINE COMBINE_CONC
+ 
+C=======================================================================
+
+      SUBROUTINE PING_DIFN ( CC, DTTR, NPACTIVE ) 
+ 
+C***********************************************************************
+C This subroutine calculates the new concentrations of all the 
+C species after carrying out the crosswind diffusion process.
+C***********************************************************************
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- replace NPLUMES with NPACTIVE since the argument means number of
+C        active plumes
+
+C-----------------------------------------------------------------------
+
+      USE PLUME_DYN   ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_STATE ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_ETA   ! inherits PLUME_PARM
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC    ! aerosol species table (dim./name/molwt)
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table (dim./name/molwt)
+      INCLUDE SUBST_TR_SPC    ! traver species table (dim./name/molwt)
+
+C Number of species in CPLUME, like CGRID
+
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD
+     &                             + N_AE_SPC
+     &                             + N_NR_SPC
+     &                             + N_TR_SPC
+
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+C Shared Arguments      ................
+ 
+      INTEGER NPACTIVE                     ! Number of plumes in the array
+
+C 3-D concentration array
+      REAL CC( ALLSPC,NPILLARS+3,NPACTIVE )
+
+      REAL    DTTR                         ! DT of transport (SECONDS)
+ 
+C Local Variables            ................
+ 
+      INTEGER I, J, K, L                   ! Loop index
+
+      REAL    CC2D( ALLSPC,NPILLARS+3 )  ! 2-D concentration array
+      REAL    LAMBDAW                      ! Work scalars
+      REAL, SAVE :: ETA  ( NPILLARS+3 )
+      REAL, SAVE :: ALPHA( NPILLARS+3 )
+      REAL, SAVE :: BETA ( NPILLARS+3 )
+      REAL, SAVE :: GAMMA( NPILLARS+3 )
+
+      REAL    ATMP, GTMP                   ! temp variables
+
+      REAL    CNLEFT( 3,NPILLARS+3 )       ! Tridiagonal matrix
+      REAL    RHS( ALLSPC,NPILLARS+3 )   ! Right hand side vector
+ 
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+ 
+C---------------------------------------------------------------------------
+ 
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+         ETA( 1 ) = 0
+         DO I = 2, NPILLARS + 3
+            IF ( I .LT. NLEFT+3 ) THEN
+               J = NLEFT + 3 - I
+               ETA( I ) = ETA( I-1 ) + DETAL( J )
+               ELSE
+               J = I - NLEFT - 2
+               ETA( I ) = ETA( I-1 ) + DETAR( J )
+               END IF
+            END DO
+
+         DO I = 1, NPILLARS + 3
+            ALPHA( I ) = 0.0
+            GAMMA( I ) = 0.0
+            BETA( I )  = 0.0
+            END DO
+
+         DO I = 2, NPILLARS + 1
+            ATMP =  ( ETA( I+1 ) - ETA( I ) ) * ( ETA( I+1 ) - ETA( I-1 ) )
+            GTMP =  ( ETA( I+1 ) - ETA( I ) ) * ( ETA( I+2 ) - ETA( I ) )
+            ALPHA( I ) = 1.0 / ATMP
+            GAMMA( I ) = 1.0 / GTMP
+            BETA( I ) = ALPHA( I ) + GAMMA( I )
+            END DO
+
+         END IF
+
+C End of the first time loop
+C............................
+ 
+C Loop over all the active plumes and perform diffusion
+ 
+      DO L = 1, NPACTIVE
+
+         I = PLUMEPTR( L )
+         LAMBDAW = BKY( I ) * DTTR / ( WP( I ) * WP( I ) )
+ 
+C Insert the concentration field for this plume into CC2D array
+ 
+         DO J = 1, NPILLARS + 2
+            DO K = 1, ALLSPC
+               CC2D( K,J ) = CC( K,J,L )
+               END DO
+            END DO
+ 
+C The following routine sets-up the system of equations for Crank-Nicolson
+C method.  Then it sets the boundary conditions and calculates the right
+C hand side of the system.
+ 
+C Set up the system of equations (i.e., Ax=b)
+ 
+         CALL PING_DIFSET ( CC2D, LAMBDAW, ALPHA, BETA, GAMMA, CNLEFT, RHS )
+ 
+         CALL PING_CNFACTOR ( CNLEFT,NPILLARS+2 )
+ 
+C   This routine factors the matrix A=CNLEFT in the system Au=RHS.
+C   Where A is nxn matrix and u and RHS are vectors.
+C   It factors A into L=lower unit triangular and U=upper triangular
+C   matrices, but it saves the output in the same matrix of size A(3,n), 
+C   in the following way:
+      
+C         [    1      0      0           ]
+C         [ A(1,2)    1      0           ]
+C         [    0   A(1,3)    1           ]
+C     L = [           .      .     .     ]
+C         [           0   A(1,n-1)   1   ]
+C         [                  0    A(1,N) ]
+ 
+C         [ A(2,1) A(3,1)    0      .      .       .      ]
+C         [    0   A(2,2) A(3,2)    0      .       .      ]
+C         [    0      0   A(2,3) A(3,3)    .       .      ]
+C     U = [    .      .      .      .      .       .      ]
+C         [    .      .      .      0   A(2,n-1) A(3,n-1) ]
+C         [    .      .      .      .      0     A(2,n  ) ]
+ 
+C   i.e., A=LU.
+ 
+C Solve the system of equations (Ax=RHS)
+C - The result of calculation is both in u and rhs arrays.
+  
+         CALL PING_CNSOLVE ( CNLEFT, RHS, CC2D )
+
+C Insert the solution back into the CC array
+  
+         DO J = 1, NPILLARS + 2
+            DO K = 1, ALLSPC
+               CC( K,J,L ) = CC2D( K,J )
+               END DO
+            END DO
+ 
+C End of plume loop (loop for active plumes)
+ 
+      END DO
+ 
+      RETURN
+      END SUBROUTINE PING_DIFN
+ 
+C=======================================================================
+ 
+C Program written by:            Arastoo P. Biazar
+ 
+      SUBROUTINE PING_DIFSET ( CC2D, LAMBDAW, ALPHA, BETA, GAMMA, CNLEFT, RHS )
+ 
+C This routine sets up the matrices for the left and right hand sides 
+C of the equation for the Crank-Nicolson method.
+    
+C Equation:
+C   (I-K) Un = (I+K) Un-1
+            
+C   Where Un   is the function value at the present time
+C         Un-1 is the function value at the previous time
+C         I    is the identity matrix 
+C         K =  LAMBDAW * TRI { ALPHA , -BETA , GAMMA }
+ 
+C Variable names used:
+ 
+C         CNLEFT (i,j)  = [I-K](i,j)  MATRIX  (TRIDIAGONAL)
+C         CNRIGHT(i,j)  = [I+K](i,j)  MATRIX  (TRIDIAGONAL)
+ 
+C NOTE: the size of the matrix is (NPILLARS+2)x(NPILLARS+2)
+C-------------------------------------------------------------------------
+ 
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC    ! aerosol species table (dim./name/molwt)
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table (dim./name/molwt)
+      INCLUDE SUBST_TR_SPC    ! traver species table (dim./name/molwt)
+
+C Number of species in CPLUME, like CGRID
+
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD
+     &                             + N_AE_SPC
+     &                             + N_NR_SPC
+     &                             + N_TR_SPC
+
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+C...............      Shared Arguments      ................
+ 
+C 2-D concentration array
+      REAL    CC2D( ALLSPC,NPILLARS+3 )
+      REAL    LAMBDAW                      ! BKY*delta_time/Wp**2
+      REAL    ALPHA( NPILLARS+3 )
+      REAL    BETA ( NPILLARS+3 )
+      REAL    GAMMA( NPILLARS+3 )
+
+      REAL    CNLEFT( 3,NPILLARS+3 )       ! Tridiagonal matrix
+      REAL    RHS( ALLSPC,NPILLARS+3 )   ! Right hand side vector
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER I, K                         ! Loop index
+      REAL    CNRIGHT( 3 )                 ! Work scalar
+
+C---------------------------------------------------------------------------
+ 
+C Set up the system Ax=b, where A is the left hand side Crank-Nicolson
+C matrix, and b is the right hand side vector.
+ 
+      DO I = 3, NPILLARS
+         CNRIGHT( 1 ) = LAMBDAW * ALPHA( I )
+         CNRIGHT( 2 ) = 1.0 - LAMBDAW * BETA( I )
+         CNRIGHT( 3 ) = LAMBDAW * GAMMA( I )
+
+         CNLEFT( 1,I ) = - CNRIGHT( 1 )
+         CNLEFT( 2,I ) = 1.0 + LAMBDAW * BETA( I )
+         CNLEFT( 3,I ) = - CNRIGHT( 3 )
+
+         DO K = 1, ALLSPC
+            RHS( K,I ) = CC2D( K,I-1 ) * CNRIGHT( 1 )
+     &                 + CC2D( K,I )   * CNRIGHT( 2 )
+     &                 + CC2D( K,I+1 ) * CNRIGHT( 3 )
+            END DO
+         END DO
+ 
+C==============================
+C Set up the Boundary Conditions
+C==============================
+ 
+C 1) Zero flux boundary condition:
+C Set up the first and last row of the matrix for no flux boundary
+C i.e.,
+C   [alpha(x)*U(x)](x(.5),t)    = 0
+C   [alpha(x)*U(x)](x(KZ-.5),t) = 0
+ 
+!      I = 1
+!      CNLEFT( 1,I ) = 0.0
+!      CNLEFT( 2,I ) = 1.0
+!      CNLEFT( 3,I ) = 0.0
+ 
+!      DO K = 1, N_GC_SPC
+!         RHS(K,I) = CC2D(K,I)
+!         END DO
+ 
+!      I = 2
+!      CNLEFT( 1,I ) = 0.0
+!      CNLEFT( 2,I ) = 1.0 + LAMBDAW * GAMMA( I )
+!      CNLEFT( 3,I ) = - LAMBDAW * GAMMA( I )
+ 
+!      CNRIGHT( 2 )   = 1.0 - LAMBDAW * GAMMA( I )
+!      CNRIGHT( 3 )   = LAMBDAW * GAMMA( I )
+!      DO K = 1, N_GC_SPC
+!         RHS( K,I ) = CNRIGHT( 2 ) * CC2D( K,I ) + CNRIGHT( 3 ) * CC2D( K,I+1 )
+!         END DO
+ 
+!      I = NPILLARS + 1
+!      CNLEFT( 1,I ) = - LAMBDAW * ALPHA( I )
+!      CNLEFT( 2,I ) = 1.0 + LAMBDAW * ALPHA( I )
+!      CNLEFT( 3,I ) = 0.0
+ 
+!      CNRIGHT( 1 )   = LAMBDAW * ALPHA( I )
+!      CNRIGHT( 2 )   = 1.0 - LAMBDAW * ALPHA( I )
+!      DO K = 1, N_GC_SPC
+!         RHS( K,I ) = CNRIGHT( 1 ) * CC2D( K,I-1 ) + CNRIGHT( 2 ) * CC2D( K,I )
+!         END DO
+ 
+!      I = NPILLARS + 2
+!      CNLEFT( 1,I ) = 0.0
+!      CNLEFT( 2,I ) = 1.0 + LAMBDAW*ALPHA( I )
+!      CNLEFT( 3,I ) = 0.0
+ 
+!      DO K = 1, N_GC_SPC
+!         RHS( K,I ) = CC2D( K,I )
+!         END DO
+ 
+C 2) Allowing interaction with the boundary
+C set up the first and last two rows of the matrix
+ 
+C NOTICE: This means that we are allowing leakage in the boundaries, since
+C pillar 1 and pillar NPILLARS+2 are the left and right background pillars.
+C The diffusion is only taking place in pillars 2 through NPILLARS+1.
+C To change this into Zero-Flux boundary condition, uncomment the 
+C previous section (section 1).
+ 
+      I = 1
+      CNLEFT( 1,I ) = 0.0
+      CNLEFT( 2,I ) = 1.0
+      CNLEFT( 3,I ) = 0.0
+
+      DO K = 1, ALLSPC
+         RHS( K,I ) = CC2D( K,I )
+         END DO
+
+      I = 2
+      CNRIGHT( 1 ) = LAMBDAW * ALPHA( I )
+      CNRIGHT( 2 ) = 1.0 - LAMBDAW * BETA( I )
+      CNRIGHT( 3 ) = LAMBDAW * GAMMA( I )
+
+      CNLEFT( 1,I ) = -CNRIGHT( 1 )
+      CNLEFT( 2,I ) = 1.0 + LAMBDAW * BETA( I )
+      CNLEFT( 3,I ) = -CNRIGHT( 3 )
+
+      DO K = 1, ALLSPC
+         RHS( K,I ) = CC2D( K,I-1 ) * CNRIGHT( 1 ) 
+     &              + CC2D( K,I )   * CNRIGHT( 2 )
+     &              + CC2D( K,I+1 ) * CNRIGHT( 3 )
+         END DO
+
+      I = NPILLARS + 1
+      CNRIGHT( 1 ) = LAMBDAW * ALPHA( I )
+      CNRIGHT( 2 ) = 1.0 - LAMBDAW * BETA( I )
+      CNRIGHT( 3 ) = LAMBDAW * GAMMA( I )
+
+      CNLEFT( 1,I ) = -CNRIGHT( 1 )
+      CNLEFT( 2,I ) = 1.0 + LAMBDAW * BETA( I )
+      CNLEFT( 3,I ) = -CNRIGHT( 3 )
+
+      DO K = 1, ALLSPC
+         RHS( K,I ) = CC2D( K,I-1 ) * CNRIGHT( 1 )
+     &              + CC2D( K,I )   * CNRIGHT( 2 )
+     &              + CC2D( K,I+1 ) * CNRIGHT( 3 )
+         END DO
+
+      I = NPILLARS + 2
+      CNLEFT( 1,I ) = 0.0
+      CNLEFT( 2,I ) = 1.0
+      CNLEFT( 3,I ) = 0.0
+
+      DO K = 1, ALLSPC
+         RHS( K,I ) = CC2D( K,I )
+         END DO
+
+      RETURN
+      END SUBROUTINE PING_DIFSET
+ 
+C=======================================================================
+ 
+C Program written by:            Arastoo P. Biazar 
+ 
+C       PROGRAM DIFFUSION
+C     
+C This program solves a 2nd. order P.D.E. of the form:
+C                 du/dt = d/dz ( k(z)*(du/dz) ) 
+C    i.e.,        Ut    = d/dz ( k(z)*Uz )
+C    using the CRANK NICOLSON method.
+C=======================================================================
+ 
+C Program written by:            Arastoo P. Biazar
+ 
+      SUBROUTINE PING_CNFACTOR ( A, N )
+ 
+C  This subroutine factors a tridiagonal matrix into lower and upper triangular
+C  matrices.
+C  It factors A into L=lower unit triangular and U=upper triangular
+C  matrices, but it saves the output in the same matrix of size A(3,n), 
+C  in the following way:
+      
+C         [    1      0      0           ]
+C         [ A(1,2)    1      0           ]
+C         [    0   A(1,3)    1           ]
+C     L = [           .      .     .     ]
+C         [           0   A(1,n-1)   1   ]
+C         [                  0    A(1,N) ]
+ 
+C         [ A(2,1) A(3,1)    0      .      .       .      ]
+C         [    0   A(2,2) A(3,2)    0      .       .      ]
+C         [    0      0   A(2,3) A(3,3)    .       .      ]
+C     U = [    .      .      .      .      .       .      ]
+C         [    .      .      .      0   A(2,n-1) A(3,n-1) ]
+C         [    .      .      .      .      0     A(2,n  ) ]
+ 
+C   i.e., A=LU.
+
+      IMPLICIT NONE
+
+      INTEGER N
+      REAL    A( 3,* )
+
+!     REAL :: TOL = 1.0E-15
+
+      INTEGER I
+ 
+C Factoring the matrix "A" into a unit lower triangle matrix "L" and an upper
+C triangle matrix "U" such that A = LU, then we can solve LY=F by forward
+C substitution, and from these calculated Y values it solves UX=Y for X'S by
+C backward substitution. 
+ 
+C Matrix factorization
+ 
+      DO I = 2, N
+         A( 1,I ) = A( 1,I ) / A( 2, I-1 )
+         A( 2,I ) = A( 2,I ) - A( 1,I ) * A( 3,I-1 )
+      END DO
+ 
+C Check for singularity
+ 
+!      IF ( ABS(A(1,N)) .LT. TOL .AND. ABS(A(2,N)) .LT. TOL ) THEN
+!         WRITE (*,*) ' **** MATRIX IS ALMOST SINGULAR ****'
+!         WRITE (*,*) '   ** NO UNIQUE SOLUTION EXISTS **'
+!         STOP'EXECUTION HAULTED IN SUBROUTINE "TRI" '
+!      END IF
+
+      RETURN
+      END SUBROUTINE PING_CNFACTOR
+
+C=======================================================================
+ 
+C Program written by:            Arastoo P. Biazar
+ 
+      SUBROUTINE PING_CNSOLVE ( CNLEFT, RHS, CC2D )
+ 
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC    ! aerosol species table (dim./name/molwt)
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table (dim./name/molwt)
+      INCLUDE SUBST_TR_SPC    ! traver species table (dim./name/molwt)
+
+C Number of species in CPLUME, like CGRID
+
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD
+     &                             + N_AE_SPC
+     &                             + N_NR_SPC
+     &                             + N_TR_SPC
+
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+C...............      Shared Arguments      ................
+ 
+      REAL CNLEFT( 3,NPILLARS+3 ) ! Tridiagonal matrix
+      REAL RHS ( ALLSPC,NPILLARS+3 )  ! 2-D arrays
+      REAL CC2D( ALLSPC,NPILLARS+3 )
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER I, K                      ! Loop index
+      INTEGER N                         ! Work scalar
+
+C------------------------------------------------------------------------
+
+C NOTE: the size of the matrix is (NPILLARS+2)x(NPILLARS+2)
+C       The extra two rows are just another way of implementing the 
+C       boundary conditions.
+C NOTE: In forward substitution when I=N, the value of RHS(I) does not
+C       change (i.e., RHS(K,I) = RHS(K,I) - 0.*RHS(K,I-1) ).
+C       Also, when I=1, the same thing is true.
+C       Therefore, we only loop from I=2 to I=N-1, and eliminate
+C       the substitution step for C(N) in the back-sub section.
+ 
+C Do forward substitution
+ 
+      N = NPILLARS + 2
+      DO I = 2, N - 1
+         DO K = 1, ALLSPC
+            RHS( K,I ) = RHS( K,I ) - CNLEFT( 1,I ) * RHS( K, I-1 )
+            END DO
+         END DO
+ 
+C Do backward substitution
+ 
+!      DO K = 1, N_GC_SPC
+!         RHS( K,N )  = RHS( K,N ) / CNLEFT( 2,N )
+!         CC2D( K,N ) = RHS( K,N )
+!         END DO
+
+      DO I = N - 1, 2, -1
+         DO K = 1, ALLSPC
+            RHS( K,I ) = ( RHS( K,I ) - CNLEFT( 3,I ) * RHS( K,I+1 ) )
+     &                 / CNLEFT( 2,I )
+            CC2D( K,I ) =   RHS( K,I )
+            END DO
+         END DO
+
+      RETURN
+      END SUBROUTINE PING_CNSOLVE
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

@@ -1,0 +1,112 @@
+                 CARBON_APPORTIONMENT - 19 Sep 2005
+
+CMAQv4.5 includes an optional diagnostic model configuration that provides
+detailed information on the source origin of primary carbonaceous aerosol.  
+This model version, referred to as the CMAQ Carbon Apportionment Model,
+tracks the contributions of elemental carbon and primary organic carbon
+from 10 different source categories or source regions.  A pre-release
+version of this model has been described and evaluated by Bhave et al.
+(2004).
+
+In order to build the carbon apportionment version of the CTM executable
+program, several different modules, a different chemical mechanism, and a
+different IOAPI library must be specified in the model build script.  You
+can modify the bldit.cctm.pgf script as follows and build the carbon
+apportionment version of the CCTM:
+
+      40c40
+      <  set APPL  = e2a
+      ---
+      >  set APPL  = ce2a
+      91c91
+      <  set ModVdiff  = ( module eddy               $Revision; )
+      ---
+      >  set ModVdiff  = ( module eddy_carb          $Revision; )
+      106,107c106,107
+      < #set ModAero   = ( module aero3              $Revision; )
+      <  set ModAero   = ( module aero4              $Revision; )
+      ---
+      > #set ModAero   = ( module aero3_carb         $Revision; )
+      >  set ModAero   = ( module aero4_carb         $Revision; )
+      110c110
+      <  set ModAdepv  = ( module aero_depv2         $Revision; )
+      ---
+      >  set ModAdepv  = ( module aero_depv2_carb    $Revision; )
+      124c124
+      <  set Mechanism = cb4_ae4_aq
+      ---
+      >  set Mechanism = cb4_ae4ca_aq
+      160c160
+      <  set ICL_IOAPI = ${M3LIB}/ioapi_3/fixed_src
+       ---
+      >  set ICL_IOAPI = ${M3LIB}/ioapi_3/largeMXVARS3/fixed_src
+      199c199
+      <  set LIB5 = "-L${IOAPI}"
+      ---
+      >  set LIB5 = "-L${M3LIB}/ioapi_3/largeMXVARS3/${BLD_OS}2_x86pg -lioapi"
+
+Note: the number of species in the carbon apportionment model version
+exceeds the default upper limit in IOAPI (MXVARS3 = 120).  To exceed this
+limit, the IOAPI library must be recompiled with the following changes:
+ 1. In parms3.h, change MXVARS3 from 120 to a larger number (e.g., 540).
+ 2. In PARMS3.EXT, change MXVARS3 to the value selected above.
+ 3. In fixed_src/PARMS3.EXT, change MXVARS3 again.
+
+In the build script changes listed above, replace both occurrences of
+"largeMXVARS3" with the path to the new IOAPI library that you just
+created.
+
+Next, modify the run script as follows:
+
+      19,20c19,20
+      <  set APPL     = e2a
+      <  set CFG      = e2a
+      ---
+      >  set APPL     = ce2a
+      >  set CFG      = ce2a
+      102,103c102,103
+      <  set EMISpath  = $M3DATA/emis/tut02
+      <  set EMISfile  = e_32km_cb4.19990702.ncf
+      ---
+      >  set EMISpath  = $M3DATA/emis/tutcarb
+      >  set EMISfile  = e_32km_cb4ae3ca.19990702.ncf
+
+ Note: You can change the default scripts by using the Unix "patch" 
+       utility. Cut the indented section listed above into a file, say 
+       "mod." Then type, for example, "patch run.cctm mod."
+
+  The carbon apportionment model will work with the same IC and BC files
+available for use with the standard CMAQ model.  However, special
+processing is required to generate the emission input files.  In addition
+to the standard list of emitted species, the model-ready emission files
+must contain the following variables: POA1, POA2, ... , POA9, PEC1, PEC2,
+... , and PEC9.  Note that these variables do not replace POA and PEC;
+they are additional variables.
+  In the model, POA1 through POA9 represent primary organic aerosol from
+nine distinct source categories (or source regions) that the user wishes
+to track.  POA represents primary organic aerosol from other miscellaneous
+source categories (or source regions).  To yield results that are
+consistent with a standard CMAQ run, the sum of POA1 + POA2 + ... + POA9 +
+POA should be equal to POA in a standard CMAQ emission file.  Similar
+statements apply for PEC1, PEC2, ..., PEC9, and PEC, which represent
+elemental carbon emissions.
+  To track primary carbonaceous aerosol concentrations from different
+source categories, users may modify the GSPRO and GSREF files and rerun
+SMOKE in a manner similar to that described by Bhave et al. (2005).  To
+track primary carbonaceous aerosol concentrations from different source
+regions, users must create their own emission processing procedure.
+  In the run script created above, replace the EMISpath and EMISfile
+definitions to point to the newly-generated emission file.
+
+The carbon apportionment model may be operated with any combination of CB4
+and SAPRC99 chemical mechanisms, and AERO3 and AERO4 aerosol modules.  
+However, only the combination of CB4 & SAPRC99 was tested prior to the
+release of CMAQv4.5.
+
+
+Reference:
+  Bhave, P.V., G.A. Pouliot, and M. Zheng, 2004, Source apportionment of
+primary carbonaceous aerosol using the Community Multiscale Air Quality
+model.  Preprints, 27th NATO/CCMS International Technical Meeting on Air
+Pollution Modeling and its Applications, October 24-29, 2004, Banff,
+Alberta, Canada.  NATO/CCMS, 25-32.

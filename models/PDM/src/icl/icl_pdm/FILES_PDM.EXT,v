@@ -1,0 +1,101 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/icl/icl_pdm/FILES_PDM.EXT,v 1.5 2005/08/24 13:26:57 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C @@(#)FILES3_PDM.EXT
+
+C....................................................................
+C  INCLUDE FILE  FILES3.EXT
+C
+C  CONTAINS:  Parameters containing standard logical names for
+C             the complete current set of Models-3 PDM INCLUDE files
+C
+C  DEPENDENT UPON:  <files>
+C
+C  REVISION HISTORY:
+C       Prototype 5/93 by CJC
+C       FOr IOV   1/96 by DWB
+C       For IOV   3/96 by RTT
+C....................................................................
+
+        CHARACTER*16    GRID_CRO_2D    ! input - MCIP
+        CHARACTER*16    GRID_DOT_2D    ! input - MCIP
+        CHARACTER*16    MET_CRO_2D     ! input - MCIP
+        CHARACTER*16    MET_CRO_3D     ! input - MCIP
+        CHARACTER*16    MET_DOT_3D     ! input - MCIP
+        CHARACTER*16    STACK_MEPSE    ! input - SMOKE
+        CHARACTER*16    PDM_PING_1     ! output
+        CHARACTER*16    PDM_PING_O     ! input - previous PDM output file
+        CHARACTER*16    PDM_OUT        ! print output 
+
+        DATA            GRID_CRO_2D     / 'GRID_CRO_2D     ' /    
+        DATA            GRID_DOT_2D     / 'GRID_DOT_2D     ' /
+        DATA            MET_CRO_2D      / 'MET_CRO_2D      ' /
+        DATA            MET_CRO_3D      / 'MET_CRO_3D      ' /
+        DATA            MET_DOT_3D      / 'MET_DOT_3D      ' /
+        DATA            PDM_PING_1      / 'PDM_PING_1      ' /
+        DATA            PDM_PING_O      / 'PDM_PING_O      ' /
+        DATA            STACK_MEPSE     / 'STACK_MEPSE     ' /
+        DATA            PDM_OUT         / 'PDM_OUT         ' /
+
+C................   end   FILES_PDM.EXT   ....................................
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

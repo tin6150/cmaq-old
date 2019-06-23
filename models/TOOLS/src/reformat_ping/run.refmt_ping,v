@@ -1,0 +1,106 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2006.03.13.19.36.08;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.36.08;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#! /bin/csh -f
+
+# RCS file, release, date & time of last delta, author, state, [and locker]
+# $Header: /project/work/rep/TOOLS/src/reformat_ping/run.refmt_ping,v 1.1 2004/10/04 17:56:31 sjr Exp $ 
+
+# what(1) key, module and SID; SCCS file; date and time of last delta:
+# %W% %P% %G% %U%
+
+#> method: refmt_ping.q >&! refmt_ping.log &
+
+# @@ account_no       = mod3dev
+# @@ notification     = never
+# @@ wall_clock_limit = 1:00:00
+# @@ network.MPI      = csss,shared,US
+# @@ job_type         = parallel
+# @@ class            = mod3eval
+# @@ node_usage       = shared
+# @@ file_limit       = unlimited, unlimited
+# @@ output           = refmt_ping.log.$(jobid)
+# @@ error            = refmt_ping.log.$(jobid)
+# @@ queue
+
+ set BASE = $cwd
+ cd $BASE
+
+ date; echo "    "; set echo
+
+ set EXEC = REFMT_PING
+
+#> turn off WRITE3 logging
+
+ setenv IOAPI_LOG_WRITE F
+
+#> input files and directories
+
+ set InPath  = /project/rain1/yoj/data/ping/out/2X2
+ set INfile  = CCTM_H9a14PING.jul31s
+ set PDMfile = /project/rain1/yoj/data/ping/in/pdm.ioapi_010730L14S5x
+
+ setenv     PDM_FILE     $PDMfile
+ if ( ! (-e $PDM_FILE) ) then
+    echo " $PDM_FILE not found "
+    exit 1
+    endif
+
+ setenv     BASE_FILE     $InPath/$INfile
+ if ( ! (-e $BASE_FILE) ) then
+    echo " $BASE_FILE not found "
+    exit 1
+    endif
+
+#> output
+
+ set OutPath = $InPath
+
+ if ( ! -d $OutPath ) then
+    echo "   Creating directory $OutPath"
+    mkdir -p $OutPath
+    endif
+
+ setenv REFMT_FILE "$OutPath/${INfile}_rfmt -v"
+
+ ls -l $BASE/$EXEC
+
+ time $BASE/$EXEC
+
+ exit
+
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

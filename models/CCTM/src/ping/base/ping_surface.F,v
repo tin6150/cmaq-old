@@ -1,0 +1,1067 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/base/ping_surface.F,v 1.12 2005/09/07 17:53:23 jug Exp $ 
+
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C=========================================================================
+C This file, ping_surface.F contains:
+C    SUBROUTINE PING_GRDREM
+C=========================================================================
+
+      SUBROUTINE PING_GRDREM ( CPLUME, DDEP, NPACTIVE, JDATE, JTIME, TSTEP )
+
+C This subroutine implements ground removal for selected species.
+
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- use MY_* variables to identify information belongs to local processor
+C     -- use GL_* variables when the global dimensions are needed
+C     -- calculate ISIZE according to local dimenions
+C   25 Sep 01 J.Young: dyn alloc - Use HGRD_DEFN
+C    2 Jan 02 J.Young: fix FLUXIN
+C   30 Sep 04 J.Young: extend to all chem species, add drydep, add earth
+C                      radius parameter
+C   20 Dec 04 J.Godowitch: fix aerosol modal indices
+C   02 Feb 05 J.Young: dyn alloc - establish both horizontal & vertical
+C                      domain specifications in one module (GRID_CONF)
+C    3 Feb 05 J.Young: fix FLUXIN for NR species
+C-----------------------------------------------------------------------
+ 
+      USE GRID_CONF      ! horizontal & vertical domain specifications
+      USE SUBST_MODULES  ! stenex
+      USE CGRID_SPCS     ! CGRID species number and offsets
+      USE PLUME_DYN      ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_MET      ! inherits PLUME_STATE, which inherits PLUME_LOC,
+                         ! which inherits PING_GLOBDIM
+      USE PLUME_PARM     ! Plume dimensioning/control parameters
+      USE AERO_EMIS
+      USE AERO_INFO_AE3  ! replaces aero include files      
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_GC_DEPV   ! gas chem dep vel surrogate names and map table
+      INCLUDE SUBST_GC_DDEP   ! gas chem dry dep species and map table
+      INCLUDE SUBST_GC_DIFF   ! gas chem diffusion species and map table
+
+      INCLUDE SUBST_AE_SPC    ! aerosol species table
+      INCLUDE SUBST_AE_DEPV   ! aerosol species deposition table
+      INCLUDE SUBST_AE_DDEP   ! aerosol dry dep species and map table
+      INCLUDE SUBST_AE_DIFF   ! aerosol diffusion species and map table
+
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table
+      INCLUDE SUBST_NR_DEPV   ! non-react dep vel surrogate names and map table
+      INCLUDE SUBST_NR_DDEP   ! non-react dry dep species and map table
+      INCLUDE SUBST_NR_DIFF   ! non-react diffusion species and map table
+
+      INCLUDE SUBST_TR_SPC    ! tracer species table
+      INCLUDE SUBST_TR_DEPV   ! tracer dep vel surrogate names and map table
+      INCLUDE SUBST_TR_DDEP   ! tracer dry dep species and map table
+      INCLUDE SUBST_TR_DIFF   ! tracer diffusion species and map table
+
+!     INCLUDE SUBST_CONST     ! constants
+
+C for emissions ........................................................
+      INCLUDE SUBST_GC_EMIS   ! emissions name and mapping tables
+      INCLUDE SUBST_EMPR_VD   ! 
+!     INCLUDE SUBST_EMLYRS_ID ! emissions layers parameter
+      INCLUDE SUBST_NR_EMIS   ! emissions name and mapping tables
+      INCLUDE SUBST_TR_EMIS   ! emissions name and mapping tables
+      
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+#include      SUBST_IODECL    # I/O definitions and declarations
+!     INCLUDE SUBST_COORD_ID  ! coordinate & domain definitions (req IOPARMS)
+      INCLUDE SUBST_FILES_ID  ! I/O definitions and declarations
+
+C...............      Shared Arguments      ................
+ 
+C Plume concentration array
+ 
+!     REAL :: CPLUME( N_GC_SPC,NPILLARS,* )
+      REAL :: CPLUME( :,:,: )
+      REAL :: DDEP( :,:,: )
+
+      INTEGER NPACTIVE        ! Number of active plumes
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD
+     &                             + N_AE_SPC
+     &                             + N_NR_SPC
+     &                             + N_TR_SPC
+ 
+C Time variables
+ 
+      INTEGER JDATE            ! Current model date (Julian), YYYYDDD
+      INTEGER JTIME            ! Current model time, HHMMSS
+      INTEGER TSTEP( 2 )       ! time step vector (HHMMSS)
+                               ! TSTEP(1) = local output step
+                               ! TSTEP(2) = pingstep sync. time
+      INTEGER MDATE, MTIME
+ 
+C...............      Local Variables            ................
+
+C global dep vel species
+      INTEGER, PARAMETER :: N_SPC_DEPV = N_GC_DEPV
+     &                                 + N_AE_DEPV
+     &                                 + N_NR_DEPV
+     &                                 + N_TR_DEPV
+
+      INTEGER, PARAMETER :: N_SPC_DDEP = N_GC_DDEP
+     &                                 + N_AE_DDEP
+     &                                 + N_NR_DDEP
+     &                                 + N_TR_DDEP
+C global diffusion species
+      INTEGER, PARAMETER :: N_SPC_DIFF = N_GC_DIFF
+     &                                 + N_AE_DIFF
+     &                                 + N_NR_DIFF
+     &                                 + N_TR_DIFF
+ 
+      INTEGER I, J, K, L, N, C, R         ! Loop counters
+      INTEGER S, V, KK
+      INTEGER ISPC
+      INTEGER, SAVE :: EMISLYRS
+
+      INTEGER, SAVE :: N_SPC_EMIS
+      INTEGER, SAVE :: NEMIS_AE
+      INTEGER, EXTERNAL :: INDEX1
+
+      REAL    DTTR                    ! DT of transport (seconds)
+      REAL    HGRND                   ! Plume top Height from ground
+      REAL, ALLOCATABLE, SAVE :: FLUXIN_GC( :,: )
+      REAL, ALLOCATABLE, SAVE :: FLUXIN_AE(:,:)
+      REAL, ALLOCATABLE, SAVE :: FLUXIN_NR( :,: )
+      REAL    FLUXOUT                 ! ppm.m/s taken out of the plume
+      REAL    FLUXNET                 ! ppm.m/s net effect on the plume
+
+      CHARACTER( 200 ) :: XMSG        ! message buffer
+      CHARACTER( 16 ) :: VNAME        ! variable name
+
+      REAL, ALLOCATABLE, SAVE :: VDEP_AE(:,:,: ) ! aerosol dep velocities
+
+      REAL, ALLOCATABLE, SAVE :: DENS( :,: )     ! layer 1 air density
+      REAL, ALLOCATABLE, SAVE :: RVAR2D( :,: )   ! read buffer
+
+      REAL, ALLOCATABLE, SAVE :: VDEMIS_GC( :,:,:,: ) ! gas emissions
+      REAL, ALLOCATABLE, SAVE :: VDEMIS_AE( :,:,:,: ) ! aerosol emissions
+      REAL, ALLOCATABLE, SAVE :: VDEMIS_NR( :,:,:,: ) ! non-reactive emissions
+      REAL, ALLOCATABLE, SAVE :: AE_EM( : )      ! converted emissions      
+!     REAL, ALLOCATABLE :: VDEMIS_NR( :,:,: )    ! nonreactive gas emissions
+!     REAL, ALLOCATABLE :: VDEMIS_TR( :,:,: )    ! tracer emissions
+      REAL, ALLOCATABLE, SAVE :: RJACM( :,:,: )  ! Jacobian reciprocal
+
+      REAL, SAVE :: DD_CONV( N_SPC_DEPV+1 )      ! ddep spc conversion factors
+      REAL          DD_FAC( N_SPC_DEPV )         ! combined subexpression
+!     REAL          DDBF  ( N_SPC_DEPV )         ! secondary DDEP
+      REAL( 8 )  :: DDBF  ( N_SPC_DEPV )         ! secondary DDEP
+
+      INTEGER ALLOCSTAT
+      REAL    EMIS              ! Temporary real storage
+      LOGICAL OK, EMOK          ! Status indicators
+
+      REAL    DX, DY            ! grid-geometry constants
+
+      REAL,    SAVE :: RCAREA   ! Reciprocal Cell area (1/del_X*del_Y)
+      REAL             PAREA    ! Plume section area
+
+      INTEGER, SAVE :: NPLUMTOT ! Total number of plume sections
+      REAL,    SAVE :: CONVF    ! Conversion factor: MolWt(air)*Kg/g*ppmV/MLMR
+
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+      INTEGER, SAVE :: LOGDEV
+
+      INTEGER, SAVE :: IVAT0    ! aerosol Aitken mode index for CPLUME
+      INTEGER, SAVE :: IVAC0    ! aerosol accumulation mode index for CPLUME
+      INTEGER, SAVE :: IVCOR0   ! aerosol coarse mode index for CPLUME
+  
+      CHARACTER( 16 ) :: PNAME = 'PING_GRDREM'
+
+C Plume pillar factor
+      REAL, PARAMETER :: PFACT = 1.0 / FLOAT( NPILLARS )
+
+C *** factors to set minimum value for number concentrations
+      REAL, PARAMETER :: CONMIN = 1.0E-30   ! concentration lower limit
+
+      REAL( 8 ), SAVE :: NUMMIN_AT    ! Aitken mode
+      REAL( 8 ), SAVE :: NUMMIN_AC    ! accumulation mode
+      REAL( 8 ), SAVE :: NUMMIN_C     ! coarse mode
+
+C *** factor to set minimum value for second moment
+
+      REAL( 8 ), SAVE :: M2MIN_AT     ! Aitken  mode
+      REAL( 8 ), SAVE :: M2MIN_AC     ! accumulation mode
+
+      REAL    XXLSGAT                 ! temp variable
+      REAL    XXLSGAC                 ! temp variable
+
+C minimum aerosol sulfate concentration for acccumulation mode
+      REAL, PARAMETER :: AEROCONCMIN_AC = 1.0E-6 ! 1 pg
+                                       ! [ ug/m**3 ] ! changed 12/13/99 by FSB
+C *** This value is smaller than any reported tropospheric concentrations.
+
+C minimum aerosol sulfate concentration for the Aitken mode
+      REAL, PARAMETER :: AEROCONCMIN_AT = 1.0E-6 * AEROCONCMIN_AC
+
+C minimum  aerosol concentration for coarse mode
+      REAL, PARAMETER :: AEROCONCMIN_CO = 1.151917E-6
+      
+      REAL, PARAMETER :: REARTH = 6370997.0
+      REAL, PARAMETER :: DG2M = REARTH * PI180
+
+      REAL, PARAMETER :: CONVM = 1.0E+06
+      
+      INTEGER, SAVE :: DF2EM   ( N_SPC_DIFF+1 ) ! map from diff spc to emis spc
+      INTEGER, SAVE :: DF2DV   ( N_SPC_DIFF+1 ) ! map from diff spc to depv spc
+      INTEGER, SAVE :: DD2DV   ( N_SPC_DDEP+1 ) ! map from ddep spc to depv spc
+      INTEGER, SAVE :: DV2DF   ( N_SPC_DEPV )   ! map from depv spc to diff spc
+      INTEGER, SAVE :: DEPV_MAP( N_SPC_DEPV+1 ) ! global depv map to CGRID
+      INTEGER, SAVE :: DIFF_MAP( N_SPC_DIFF+1 ) ! global diff map to CGRID
+      CHARACTER( 16 ), SAVE :: DDEP_SPC( N_SPC_DDEP + 1 )
+
+      INTEGER GXOFF, GYOFF              ! global origin offset from file
+C for INTERPX
+      INTEGER, SAVE :: STRTCOLEM, ENDCOLEM, STRTROWEM, ENDROWEM
+      INTEGER, SAVE :: STRTCOLMC3, ENDCOLMC3, STRTROWMC3, ENDROWMC3
+
+C *** Parameters:
+
+      REAL, PARAMETER :: M2PHA = 1.0E+04       ! 1 hectare = 1.0e4 m**2
+      REAL, PARAMETER :: CMLMR = 1.0E+06       ! ppmV/Molar Mixing Ratio
+      REAL, PARAMETER :: CNVTD = M2PHA / CMLMR / MWAIR ! combined ddep
+
+      REAL, PARAMETER :: GPKG = 1.0E+03        ! g/kg
+      REAL, PARAMETER :: MGPG = 1.0E+06        ! micro-g/g
+
+!     REAL, PARAMETER :: MOLWT_SO4AJ  =  96.0
+!     REAL, PARAMETER :: MOLWT_NO3AJ  =  62.0
+!     REAL, PARAMETER :: MOLWT_ORGPAJ = 120.0
+!     REAL, PARAMETER :: MOLWT_ORGPAI = 120.0
+!     REAL, PARAMETER :: MOLWT_ECJ    =  12.0
+!     REAL, PARAMETER :: MOLWT_ECI    =  12.0
+!     REAL, PARAMETER :: MOLWT_P25AJ  = 200.0
+!     REAL, PARAMETER :: MOLWT_ANTHA  = 100.0
+!     REAL, PARAMETER :: MOLWT_SEAS   =  58.0
+!     REAL, PARAMETER :: MOLWT_SOILA  = 100.0
+!!    REAL, PARAMETER :: MOLWT_AT0    =   1.0
+!!    REAL, PARAMETER :: MOLWT_AC0    =   1.0
+!!    REAL, PARAMETER :: MOLWT_COR0   =   1.0
+!!    REAL, PARAMETER :: MOLWT_SURFAT =   1.0
+!!    REAL, PARAMETER :: MOLWT_SURFAC =   1.0
+
+      REAL, PARAMETER :: EFAC = CMLMR * MWAIR / GPKG / MGPG
+
+      REAL  CONVN, CONVS, CONVMM
+      REAL, SAVE :: MOLWT_AEM( 13 )            ! aero mass component's mol wts.
+
+!     integer, parameter :: ptime = 140000
+
+C Function definitions
+ 
+      INTEGER, EXTERNAL :: TIME2SEC, TRIMLEN
+      INTEGER INDEXSPCS
+
+      INTERFACE
+         SUBROUTINE PING_AERO_DEPV ( CPLUME, JDATE, JTIME, TSTEP,
+     &                               NPLUMTOT, NPACTIVE, VDEP_AE )
+            IMPLICIT NONE
+            REAL, INTENT( INOUT ) :: CPLUME( :,:,: )
+            INTEGER, INTENT( IN ) :: JDATE, JTIME, TSTEP
+            INTEGER, INTENT( IN ) :: NPLUMTOT, NPACTIVE
+            REAL, INTENT( INOUT ) :: VDEP_AE( :,:,: )
+         END SUBROUTINE PING_AERO_DEPV
+      END INTERFACE
+       
+C-----------------------------------------------------------------------
+C Get CGRID offsets
+
+      CALL CGRID_MAP( NSPCSD, GC_STRT, AE_STRT, NR_STRT, TR_STRT )
+
+C Find the indicies only the first time this routine is called
+ 
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+         LOGDEV = INIT3 ()
+
+C Set the mapping for the surface emitted (area emissions) species
+ 
+         OK = OPEN3 ( EMIS_1, FSREAD3, PNAME )
+         OK = DESC3 ( EMIS_1 )
+         IF ( .NOT. OK ) THEN
+            XMSG = 'Cannot read description of '// EMIS_1
+            CALL M3ERR ( PNAME, JDATE, JTIME, XMSG, .TRUE. )
+            END IF
+
+!        IF ( EMISLYRS .NE. NLAYS3D ) THEN
+!           XMSG = 'Expected number of emis. layers not in file'
+!           CALL M3ERR( PNAME, JDATE, JTIME, XMSG, .TRUE. )
+!           END IF
+
+         IF ( NCOLS3D .NE. GL_NCOLS .OR.
+     &        NROWS3D .NE. GL_NROWS ) THEN
+!           XMSG = 'Emissions file, ' // EMIS_1( 1:TRIMLEN( EMIS_1 ) )
+!    &          // ' for the wrong domain'
+!           CALL M3ERR( PNAME, JDATE, JTIME, XMSG, .TRUE. )
+!           WRITE( XMSG, '( 2( A, 2I4 ) )' )
+!    &           'NCOLS and NROWS for emissions file: ',  NCOLS3D, NROWS3D,
+!    &           'Vs. NCOLS and NROWS for subdomain: ', GL_NCOLS, GL_NROWS
+!           CALL M3WARN ( PNAME, JDATE, JTIME, XMSG )
+            WRITE( LOGDEV,1005 ) NCOLS3D, NROWS3D, GL_NCOLS, GL_NROWS
+1005        FORMAT( / 5X, '>>--->> NOTE:'
+     &              / 5X, 'NCOLS and NROWS for emissions file ', 2I4,
+     &              / 5X, ' Vs. NCOLS and NROWS for subdomain ', 2I4 )
+            END IF
+ 
+C Warn if the number of gas species in the data file and in the 
+C EXT file are different (we use the EXT file information)
+ 
+         IF ( NVARS3D .NE. N_GC_EMIS ) THEN
+            XMSG = 'Different number of species in the emissions file, ' 
+     &          // EMIS_1( 1:TRIMLEN( EMIS_1 ) )
+     &          // ' and GC_EMIS EXT'
+!           CALL M3WARN( PNAME, JDATE, JTIME, XMSG )
+            CALL M3ERR( PNAME, JDATE, JTIME, XMSG, .FALSE. )
+            WRITE( XMSG,'("Emis:", I3, " vs. GC_EMIS EXT:", I3)' )
+     &             NVARS3D, N_GC_EMIS
+            CALL M3MESG( XMSG )
+            END IF
+
+         IF ( N_AE_SPC .GT. 0 ) THEN  
+             NEMIS_AE = N_AE_EMIS             ! from AERO_EMIS module
+             write(*,*) 'NEMIS_AE = ', NEMIS_AE
+             ELSE
+             NEMIS_AE = 0
+             END IF
+
+!        write( logdev,* ) ' Ping_grdrem: @@@@@@1'
+
+C Set size variables
+ 
+!        EMISLYRS = NLAYS3D
+         EMISLYRS = 1
+ 
+!        write( logdev,* ) ' Ping_grdrem: @@@@@@2'
+
+C Check to make sure that the mapping in the EXT file is correct
+
+!        write( logdev,* ) ' N_GC_EMIS, NVARS3D: ', N_GC_EMIS, NVARS3D
+ 
+         DO I = 1, N_GC_EMIS
+
+            J = INDEXSPCS( GC_EMIS( I ), VNAME3D, NVARS3D )
+            IF ( J .EQ. 0 ) THEN
+               XMSG = 'Emission species '
+     &             // GC_EMIS( I )( 1:TRIMLEN( GC_EMIS( I ) ) )
+     &             // ' not in the emissions file.'
+     &             // ' Emissions will be set to zero.'
+               CALL M3ERR ( PNAME, JDATE, JTIME, XMSG, .FALSE. )
+               END IF
+
+!           write( logdev,* ) ' Ping_grdrem: @@@@@@2a'
+!           write( logdev,* ) ' I,GC_EMIS(I): ', I, GC_EMIS( I )
+
+            J = INDEXSPCS( GC_EMIS( I ), GC_SPC, N_GC_SPC )
+            IF ( J .EQ. 0 ) THEN
+               XMSG = 'Emission species '
+     &             // GC_EMIS( I )( 1:TRIMLEN( GC_EMIS( I ) ) )
+     &             // ' not in the GC_SPC list'
+               CALL M3ERR( PNAME, JDATE, JTIME, XMSG, .FALSE. )
+               J = GC_EMIS_MAP( I )
+               XMSG = 'It was mapped to ' // GC_SPC( J )
+               CALL M3MESG ( XMSG )
+               END IF
+
+!           write( logdev,* ) ' Ping_grdrem: @@@@@@2b'
+
+            IF ( J .NE. GC_EMIS_MAP( I ) ) THEN
+               XMSG = 'Emission species '
+     &             // GC_EMIS( I )( 1:TRIMLEN( GC_EMIS( I ) ) )
+     &             // 'not correctly mapped, EMIS.EXT file must be corrected'
+               CALL M3ERR( PNAME, JDATE, JTIME, XMSG, .TRUE. )
+               END IF
+
+!           write( logdev,* ) ' Ping_grdrem: @@@@@@2c'
+
+            END DO
+
+C Calculate the cell area
+ 
+!        write( logdev,* ) ' Ping_grdrem: @@@@@@3'
+
+         IF ( GDTYP3D .EQ. LATGRD3 ) THEN
+            DX = DG2M * XCELL_GD ! in m.
+            DY = DG2M * YCELL_GD
+     &         * COS( PI180*( YORIG_GD + YCELL_GD * FLOAT( GL_NROWS/2 ))) !in m.
+            ELSE
+            DX = XCELL_GD        ! in m.
+            DY = YCELL_GD        ! in m.
+            END IF
+
+         RCAREA = 1.0 / ( DX * DY )
+
+         CONVF = MWAIR * 1.0E+03
+
+C get grid offsets
+
+         CALL SUBHFILE ( EMIS_1, GXOFF, GYOFF,
+     &                   STRTCOLEM, ENDCOLEM, STRTROWEM, ENDROWEM )
+         CALL SUBHFILE ( MET_CRO_3D, GXOFF, GYOFF,
+     &                   STRTCOLMC3, ENDCOLMC3, STRTROWMC3, ENDROWMC3 )
+
+C get plume dimensions
+
+         CALL GET_NMEPSES ( )
+         NPLUMTOT = N_MEPSES * N_RLEASES
+
+      IF ( N_AE_SPC .GT. 0 ) THEN
+
+C *** calculate minimum values for number and 2nd moment.
+            XXLSGCO = LOG( SGINICO )
+            ESC36 = EXP( 4.5 * XXLSGCO * XXLSGCO )
+            XXLSGAT = LOG( SGINIAT )
+            XXLSGAC = LOG( SGINIAC )
+
+            NUMMIN_AT = SO4FAC * AEROCONCMIN_AT /
+     &               ( DGINIAT ** 3 * EXP( 4.5 * XXLSGAT * XXLSGAT ) )
+
+            NUMMIN_AC = SO4FAC * AEROCONCMIN_AC /
+     &               ( DGINIAC ** 3 * EXP( 4.5 * XXLSGAC * XXLSGAC ) )
+
+            M2MIN_AT = NUMMIN_AT * DGINIAT * DGINIAT
+     &               * EXP( 2.0 * XXLSGAT * XXLSGAT )
+
+            M2MIN_AC = NUMMIN_AC * DGINIAC * DGINIAC
+     &               * EXP( 2.0 * XXLSGAC * XXLSGAC )
+
+            NUMMIN_C = ANTHFAC * AEROCONCMIN_CO / ( DGINICO ** 3 * ESC36 )
+
+!           write(logdev,* ) 'In Pingsfc : NUMMINS are: ', nummin_at, nummin_ac,
+!    &                        nummin_c, anthfac, aeroconcmin_co, dginico, esc36
+!     Sample data:
+!           nummin_at :      0.29885232
+!           nummin_ac :      356.01910400
+!           nummin_c :       0.06096270
+!           anthfac :        8.68117806E-13
+!           aeroconcmin_co : 1.15191699E-06
+!           dginico :        1.0E-06
+!           esc36 :          16.40346718
+
+            VNAME = 'NUMATKN'
+            N = INDEX1( VNAME, N_AE_SPC, AE_SPC )
+            IF ( N .NE. 0 ) THEN
+               IVAT0 = N + N_GC_SPC
+            ELSE
+               XMSG = 'Could not find ' // VNAME // 'in aerosol table'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT3 )
+            END IF
+
+            VNAME = 'NUMACC'
+            N = INDEX1( VNAME, N_AE_SPC, AE_SPC )
+            IF ( N .NE. 0 ) THEN
+               IVAC0 = N + N_GC_SPC
+               ELSE
+               XMSG = 'Could not find ' // VNAME // 'in aerosol table'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT3 )
+               END IF
+
+            VNAME = 'NUMCOR'
+            N = INDEX1( VNAME, N_AE_SPC, AE_SPC )
+            IF ( N .NE. 0 ) THEN
+               IVCOR0 = N + N_GC_SPC
+               ELSE
+               XMSG = 'Could not find ' // VNAME // 'in aerosol table'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT3 )
+               END IF
+
+C set conversion factor and aerosol molecular weights
+
+            MOLWT_AEM(  1 ) =  96.0  ! MOLWT_SO4AJ
+            MOLWT_AEM(  2 ) =  96.0  ! ASO4I
+            MOLWT_AEM(  3 ) =  62.0  ! MOLWT_NO3AJ
+            MOLWT_AEM(  4 ) =  62.0  ! ANO3I
+            MOLWT_AEM(  5 ) = 120.0  ! MOLWT_ORGPAJ
+            MOLWT_AEM(  6 ) = 120.0  ! MOLWT_ORGPAI
+            MOLWT_AEM(  7 ) =  12.0  ! MOLWT_ECJ
+            MOLWT_AEM(  8 ) =  12.0  ! MOLWT_ECI
+            MOLWT_AEM(  9 ) = 200.0  ! MOLWT_P25AJ
+            MOLWT_AEM( 10 ) = 200.0  ! A25I
+            MOLWT_AEM( 11 ) = 100.0  ! MOLWT_ANTHA
+            MOLWT_AEM( 12 ) =  58.0  ! MOLWT_SEAS
+            MOLWT_AEM( 13 ) = 100.0  ! MOLWT_SOILA
+
+            END IF   ! aero
+
+         N_SPC_EMIS = NEMIS
+     &              + NEMIS_AE
+     &              + N_NR_EMIS
+     &              + N_TR_EMIS
+
+C create global maps for vertical diffusion
+
+         CALL VDIFF_MAP ( DF2EM, DF2DV, DD2DV, DEPV_MAP, DIFF_MAP, DDEP_SPC,
+     &                    DV2DF )
+
+         S = 0
+         DO V = 1, N_GC_DEPV
+            S = S + 1
+            DD_CONV( S ) = CNVTD * GC_MOLWT( GC_DEPV_MAP( V ) )
+!           write( logdev,* ) 'DD_CONV: ', s, dd_conv( s ), cnvtd,
+!    &                                     gc_molwt( gc_depv_map( v ) )
+            END DO
+         DO V = 1, N_AE_DEPV
+            S = S + 1
+            IF ( AE_SPC( AE_DEPV_MAP( V ) )( 1:3 ) .EQ. 'NUM' ) THEN
+               DD_CONV( S ) = CNVTD * AVO * 1.0E+03    ! --> #/Ha
+               ELSE IF ( AE_SPC( AE_DEPV_MAP( V ) )( 1:3 ) .EQ. 'SRF' ) THEN
+               DD_CONV( S ) = M2PHA * 1.0E+03 / MWAIR  ! --> M**2/Ha
+               ELSE
+C Aerosols in mass units in plumes herein so use next conversion factor.
+               DD_CONV( S ) = M2PHA / GPKG / MGPG
+               END IF
+!           write( logdev,* ) 'DD_CONV : ', s, dd_conv( s )
+            END DO
+         DO V = 1, N_NR_DEPV
+            S = S + 1
+            DD_CONV( S ) = CNVTD * NR_MOLWT( NR_DEPV_MAP( V ) )
+            END DO
+         DO V = 1, N_TR_DEPV
+            S = S + 1
+            DD_CONV( S ) = CNVTD * TR_MOLWT( TR_DEPV_MAP( V ) )
+            END DO
+
+C Set output file characteristics based on COORD.EXT and open PING dry dep file
+C Set time to zero to initialize ping dry dep file start time
+
+C Assume that gas chem species are always modeled
+
+         ALLOCATE ( RVAR2D( MY_NCOLS,MY_NROWS ),STAT = ALLOCSTAT )
+         ALLOCATE ( VDEMIS_GC( N_GC_EMIS,EMISLYRS,MY_NCOLS,MY_NROWS ),
+     &              STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'RVAR2D or VDEMIS_GC Memory allocation failed'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 ) 
+            END IF
+
+         ALLOCATE ( DENS( MY_NCOLS,MY_NROWS ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'DENS Memory allocation failed'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 ) 
+            END IF
+
+         ALLOCATE ( FLUXIN_GC( N_GC_SPC,NPLUMTOT ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Memory allocation failed for FLUXIN_GC'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+
+         IF ( N_AE_SPC .GT. 0 ) THEN
+
+            ALLOCATE ( RJACM( MY_NCOLS,MY_NROWS,NLAYS ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               XMSG = 'Failure allocating RJACM'
+               CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+               END IF
+
+            ALLOCATE ( VDEMIS_AE( NEMIS_AE,EMISLYRS,MY_NCOLS,MY_NROWS ),
+     &                 STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               XMSG = 'VDEMIS_AE memory allocation failed'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+               END IF
+
+            ALLOCATE ( AE_EM( NEMIS_AE ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               XMSG = 'EMIS_AE Memory allocation failed'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1)
+               END IF
+
+            ALLOCATE ( VDEP_AE( N_AE_DEPV,NPILLARS,NPLUMTOT ),
+     &                 STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               XMSG = 'Memory allocation failed for VDEP_AE'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 ) 
+               END IF
+ 
+            ALLOCATE ( FLUXIN_AE( N_AE_SPC,NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               XMSG = 'FLUXIN_AE Memory allocation failed'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1)
+               END IF
+
+            END IF
+
+         IF ( N_NR_SPC .GT. 0 ) THEN
+
+            ALLOCATE ( VDEMIS_NR( N_NR_EMIS,EMISLYRS,MY_NCOLS,MY_NROWS ),
+     &                 STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               XMSG = 'VDEMIS_NR Memory allocation failed'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 ) 
+               END IF
+
+            ALLOCATE ( FLUXIN_NR( N_NR_SPC,NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               XMSG = 'Memory allocation failed for FLUXIN_NR'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+               END IF
+
+            END IF
+
+!     write( logdev,* ) ' END OF FIRSTIME in ping_surface' 
+      END IF
+C End of first time block
+C..........................
+
+      FLUXIN_GC = 0.0
+ 
+C Calculate the fluxes into the plumes
+
+C Get Surface emissions (FLUXIN_GC)
+ 
+      EMOK = .TRUE.
+      DO J = 1, N_GC_EMIS
+         VNAME = GC_EMIS( J )
+         OK = INTERPX( EMIS_1, VNAME, PNAME,
+     &                 STRTCOLEM,ENDCOLEM, STRTROWEM,ENDROWEM, 1,1,
+     &                 JDATE, JTIME, RVAR2D )
+         IF ( .NOT. OK ) THEN
+            EMOK = .FALSE.
+            XMSG = 'Could not read the species ' // VNAME // ' in '
+     &          // EMIS_1 // ' Emissions are set to zero.'
+            CALL M3ERR( PNAME, JDATE, JTIME, XMSG, .FALSE.)
+            DO K = 1, MY_NROWS
+               DO I= 1, MY_NCOLS
+                  RVAR2D( I,K ) = 0.0
+                  END DO
+               END DO
+            END IF
+C "Stores read an entire cache line, modify the target, then write back the
+C  entire line. Thus, non-consecutive stores are worse than non-consecutive
+C  loads."
+         DO R = 1, MY_NROWS
+            DO C = 1, MY_NCOLS
+               VDEMIS_GC( J,1,C,R ) = GC_EMIS_FAC( J ) * RVAR2D( C,R )
+               END DO
+            END DO
+         END DO     ! end loop over gas species
+
+C read & interpolate met data
+
+      OK = INTERPX( MET_CRO_3D, 'DENS', PNAME,
+     &              STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,1,
+     &              JDATE, JTIME, DENS )
+      IF ( .NOT. OK ) THEN
+         XMSG = 'Could not read DENS from ' // MET_CRO_3D
+         IF ( EMOK ) THEN
+            CALL M3ERR( PNAME, JDATE, JTIME, XMSG, .TRUE.)
+            ELSE
+            CALL M3ERR( PNAME, JDATE, JTIME, XMSG, .FALSE.)
+            END IF
+         END IF
+      
+C aerosol emissions - all units conversions done in RDEMIS_AE for aerosols
+
+      IF ( N_AE_SPC .GT. 0 ) THEN
+
+         VDEMIS_AE = 0.0   ! Initialize the aerosol emis. arrays. 
+      
+         OK = INTERPX( MET_CRO_3D, 'JACOBM', PNAME,
+     &                 STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                 JDATE, JTIME, RJACM )
+         IF ( .NOT. OK ) THEN
+            XMSG = 'Could not read JACOBM from ' // MET_CRO_3D
+            IF ( EMOK ) THEN
+               CALL M3ERR( PNAME, JDATE, JTIME, XMSG, .TRUE. )
+               ELSE
+               CALL M3ERR( PNAME, JDATE, JTIME, XMSG, .FALSE. )
+               END IF
+            END IF
+         DO R = 1, MY_NROWS
+            DO C = 1, MY_NCOLS
+               RJACM( C,R,1 ) = 1.0 / RJACM( C,R,1 )
+               END DO
+            END DO
+      
+C RDEMIS_AE in f90 module AERO_EMIS
+
+         CALL RDEMIS_AE ( JDATE, JTIME, TSTEP, EMISLYRS, RJACM, VDEMIS_GC, VDEMIS_AE )
+
+         DO I = 1, NPACTIVE
+            DO J = 1, N_AE_SPC
+               FLUXIN_AE( J,I ) = 0.0
+               END DO
+            END DO
+
+         END IF
+  
+      IF ( N_NR_SPC .GT. 0 ) THEN
+
+C Get non-reactive emissions (FLUXIN_NR)
+ 
+         EMOK = .TRUE.
+         DO J = 1, N_NR_EMIS
+            VNAME = NR_EMIS( J )
+            OK = INTERPX( EMIS_1, VNAME, PNAME,
+     &                    STRTCOLEM,ENDCOLEM, STRTROWEM,ENDROWEM, 1,1,
+     &                    JDATE, JTIME, RVAR2D )
+            IF ( .NOT. OK ) THEN
+               EMOK = .FALSE.
+               XMSG = 'Could not read the species ' // VNAME // ' in '
+     &             // EMIS_1 // ' Emissions are set to zero.'
+               CALL M3ERR( PNAME, JDATE, JTIME, XMSG, .FALSE.)
+               DO K = 1, MY_NROWS
+                  DO I= 1, MY_NCOLS
+                     RVAR2D( I,K ) = 0.0
+                     END DO
+                  END DO
+               END IF
+            DO R = 1, MY_NROWS
+               DO C = 1, MY_NCOLS
+                  VDEMIS_NR( J,1,C,R ) = NR_EMIS_FAC( J ) * RVAR2D( C,R )
+                  END DO
+               END DO
+            END DO     ! end loop over gas species
+
+         END IF
+
+      DTTR = TIME2SEC ( TSTEP( 2 ) )
+!     write( logdev,* ) 'pingsurface: DTTR, NPACTIVE: ', DTTR, NPACTIVE
+
+C Loop over active plumes only, then choose the plumes that are in 
+C contact with surface
+ 
+      DO L = 1, NPACTIVE
+         I = PLUMEPTR( L )
+
+         IF ( ZBOT( I ) .EQ. 0.0 ) THEN
+
+C Determine the current plume section area.
+            PAREA = WP( I ) * UPLUME( I ) * (3600.0/FLOAT(NRRATE))
+
+            C = MY_IXC( I ); R = MY_IYC( I )
+
+!           if ( jtime .ge. ptime ) write( logdev,* ) l, i, c, r, parea*rcarea
+
+            DO J = 1, N_GC_EMIS
+
+               ISPC = GC_EMIS_MAP( J )
+               EMIS = GC_EMIS_FAC( J ) * VDEMIS_GC( J,1,C,R )
+C Scale the sfc emissions by the ratio of plume to grid cell areas
+               EMIS = EMIS * PAREA * RCAREA
+
+C EMIS is mol/s, convert it to ppm*m/s
+               FLUXIN_GC( ISPC,L ) = EMIS * CONVF * RCAREA / DENS( C,R )
+
+               END DO
+
+            IF ( N_NR_SPC .GT. 0 ) THEN
+
+               DO J = 1, N_NR_EMIS
+
+                  ISPC = NR_EMIS_MAP( J )
+                  EMIS = NR_EMIS_FAC( J ) * VDEMIS_NR( J,1,C,R )
+C Scale the sfc emissions by the ratio of plume to grid cell areas
+                  EMIS = EMIS * PAREA * RCAREA
+
+C EMIS is mol/s, convert it to ppm*m/s
+                  FLUXIN_NR( ISPC,L ) = EMIS * CONVF * RCAREA / DENS( C,R )
+
+                  END DO
+
+               END IF
+
+!           if ( jtime .ge. ptime ) write( logdev,* )
+!    &                             'Finished gas emis array at:', jtime
+
+            IF ( N_AE_SPC .GT. 0 ) THEN
+
+C Get sfc aerosol emis flux into plume.
+C Convert VDEMIS_AE into proper units since modified in RDEMIS_AE for CTM,
+C results in AE_EMIS
+
+               CONVMM = DENS( C,R ) / EFAC                     ! [s/ppm]
+               CONVS = CONVMM / MGPG                           ! [s/ppm]
+               CONVN = CONVS * AVO
+               CONVS = CONVM * CONVS                           ! [mol*s/m**2]
+
+!              if ( jtime .ge. ptime ) then
+!                 write( logdev,* ) convmm, convs, convn, convs
+!                 write( logdev,* )
+!    &            ( vdemis_ae( s,1,c,r ), s = 1, 10 )
+!                 end if
+
+!               DO J = 1, 10
+                DO J = 1, 13
+                  AE_EM( J ) = VDEMIS_AE( J,1,C,R ) * MOLWT_AEM( J ) * CONVMM
+                  END DO
+
+!              if ( jtime .ge. ptime ) then
+!                  write( logdev,* )
+!    &            ( ae_em( s ), s = 1, 10 )
+!                 write( logdev,* )
+!    &            ( vdemis_ae( s,1,c,r ), s = 11, 15 )
+!                 end if
+
+!               DO J = 11, 13
+                DO J = 14, 16
+                  AE_EM( J ) = VDEMIS_AE( J,1,C,R ) * CONVN
+                  END DO
+
+!               DO J = 14, NEMIS_AE
+                DO J = 17, NEMIS_AE
+                  AE_EM( J ) = VDEMIS_AE( J,1,C,R ) * CONVS
+                  END DO
+
+!              if ( jtime .ge. ptime ) then
+!                 write( logdev,* )
+!    &            ( ae_em( s ), s = 11, 15 )
+!                 write( logdev,* ) 'Finished converting vdemis_ae at:', jtime
+!                 end if
+
+!               DO J = 1, 10
+                DO J = 1, 13
+                  ISPC  = AE_EMIS_MAP( J )
+                  FLUXIN_AE( ISPC,L ) = AE_EM( J ) * CONVM * RCAREA
+                  END DO
+
+!               DO J = 11, NEMIS_AE
+                DO J = 14, NEMIS_AE
+                  ISPC  = AE_EMIS_MAP( J )
+                  FLUXIN_AE( ISPC,L ) = AE_EM( J ) * RCAREA
+                  END DO
+
+               END IF   ! aero
+
+            END IF   ! ZBOT = 0
+         END DO   ! active plumes
+
+C End of surface emission calculation
+C.....................................
+
+C In the plume loop only consider the active plumes (PFLAG=3)
+C that are under normal conditions (PDMFLAG=3).
+ 
+C  Plume flag Description:
+C      Value      Description
+C        0        non existence plume
+C        1        new inactive plume (not initialized yet)
+C        2        new active plume (to be initialized)
+C        3        old active plume (plume has been initialized)
+C        4        handing over plume
+C        5        dead plume
+C  PDMflag Description:
+C      Value      DESCRIPTION
+C        0        newly released plume (at the source, not active yet)
+C        1        new plume after plume rise (Wp, Hp > 0)
+C        2        plume has reached the critical width for initialization
+C        3        normal case (plume inside the domain, all conditions normal)
+C        4        Zi dramatically drops ( Partial Hand-over)
+C       10        night-time condition, total hand-over (night)
+C       11        wind directional shear is more than the critical level
+C       12        wind speed shear is above the critical level
+C       13        final width criterion met
+C      +21        out of domain (positive X-direction)
+C      +22        out of domain (positive Y-direction)
+C      -21        out of domain (negative X-direction)
+C      -22        out of domain (negative Y-direction)
+C     -100        plumes not released yet (initial setting)
+
+!     write( logdev,* ) ' In ping_surface before ping_aero_depv: '
+
+      IF ( N_AE_SPC .GT. 0 ) THEN
+
+C get aero depostion velocities
+
+         CALL PING_AERO_DEPV ( CPLUME, JDATE, JTIME, TSTEP( 2 ), NPLUMTOT,
+     &                         NPACTIVE, VDEP_AE )
+
+!        VDEP_AE = 0.0
+!        write( logdev,* ) '    Skipped over ping_aero_depv: '
+!        write( logdev,* ) ' After ping_aero_depv: ', JDATE, JTIME
+
+         END IF
+
+      DO L = 1, NPACTIVE
+         I = PLUMEPTR( L )   ! Active plume, continue
+
+         IF ( ZBOT( I ) .EQ. 0.0 ) THEN   ! plume has intersected the ground
+!           write( logdev,* ) ' ping_surface - plume/ground: ', I, JDATE, JTIME
+            HGRND = HP( I )
+
+            C = MY_IXC( I ); R = MY_IYC( I )
+
+            DO V = 1, N_SPC_DEPV
+               DDBF( V ) = DDEP( V,C,R )
+               DD_FAC( V ) = DTTR * DD_CONV( V )
+               END DO
+
+            DO V = 1, N_GC_DEPV
+               DD_FAC( V ) = DD_FAC( V ) * DENS( C,R )
+               END DO
+
+            K = N_GC_DEPV + N_AE_DEPV
+            DO V = K + 1, K + N_NR_DEPV
+               DD_FAC( V ) = DD_FAC( V ) * DENS( C,R )
+               END DO
+
+            DO J = 1, NPILLARS
+ 
+C calculate gas dry depositions (FLUXOUT)
+C NOTE: GC_DEPV_FAC has been already factored in VDEP_GC 
+ 
+               DO K = 1, N_GC_DEPV
+                  ISPC = GC_DEPV_MAP( K )
+                  FLUXOUT = CPLUME( ISPC,J,I ) * VDEP_GC( ISPC,I )
+                  DDBF( K ) = DDBF( K ) + DD_FAC( K ) * FLUXOUT
+!                 if ( jtime .ge. ptime .and. jtime .le. ptime+010000 ) then
+!                    write( logdev,* ) 'VDEP_GC:', jtime, l, i, j, k, ispc,
+!    &                                  gc_depv_map( k ) 
+!                    write( logdev,* )  cplume( ispc,j,i ), vdep_gc( ispc,i ),
+!    &                                  fluxout, dd_fac( k ), ddbf( k )
+!                    end if
+                  FLUXNET = PFACT * FLUXIN_GC( ISPC,L ) - FLUXOUT
+                  CPLUME( ISPC,J,I ) = CPLUME( ISPC,J,I )
+     &                               + FLUXNET * ( DTTR / HGRND )
+                  CPLUME( ISPC,J,I ) = MAX( CPLUME( ISPC,J,I ), 0.0 )
+                  END DO
+
+               IF ( N_AE_SPC .GT. 0 ) THEN
+
+C calculate aerosol dry depositions (FLUXOUT)
+ 
+                  DO K = 1, N_AE_DEPV
+                     KK = N_GC_DEPV + K
+                     ISPC = AE_DEPV_MAP( K ) + AE_STRT - 1
+                     FLUXOUT = CPLUME( ISPC,J,I ) * VDEP_AE( K,J,I )
+                     DDBF( KK ) = DDBF( KK ) + DD_FAC( KK ) * FLUXOUT
+!                    if ( jtime .ge. ptime .AND. jtime .le. ptime+010000 ) then
+!                       write( logdev,* ) 'VDEP_AE:', jtime, l, i, j, k, ispc,
+!    &                                     ae_depv_map( k ) 
+!                       write( logdev,* )  cplume( ispc,j,i ), vdep_ae( k,j,i ),
+!    &                                     fluxout, dd_fac( kk ), ddbf( kk )
+!                       end if
+                     FLUXNET = PFACT * FLUXIN_AE( K,L ) - FLUXOUT
+!                    if ( jtime .ge. ptime .and. jtime .le. ptime+010000 )
+!    &                  write( logdev,* ) jtime, l, i, j, k, ispc, pfact,
+!    &                                    fluxin_ae( k,l ), fluxout, fluxnet
+                     CPLUME( ISPC,J,I ) = CPLUME( ISPC,J,I )
+     &                                  + FLUXNET * ( DTTR / HGRND )
+!                    if ( jtime .ge. ptime .and. jtime .le. ptime+010000 )
+!    &                  write( logdev,*) 'After net:', cplume( ispc,j,i ),
+!    &                                              dttr, hgrnd
+                     CPLUME( ISPC,J,I ) = MAX( CPLUME( ISPC,J,I ), 0.0 )
+                     END DO
+
+                  CPLUME( IVAT0,J,I ) = MAX ( CPLUME( IVAT0,J,I ),
+     &                                        REAL( NUMMIN_AT ) )
+                  CPLUME( IVAC0,J,I ) = MAX ( CPLUME( IVAC0,J,I ),
+     &                                        REAL( NUMMIN_AC ) )
+                  CPLUME( IVCOR0,J,I ) = MAX ( CPLUME( IVCOR0,J,I ),
+     &                                         REAL( NUMMIN_C ) )
+
+                  END IF
+
+               IF ( N_NR_SPC .GT. 0 ) THEN
+
+C calculate nonreactive dry depositions (FLUXOUT)
+ 
+!                 DO K = 1, N_NR_DEPV
+                  DO K = 1, 1          ! only NH3
+                     V = NR_DEPV_MAP( K )
+                     ISPC = V + NR_STRT - 1
+                     KK = N_GC_DEPV + N_AE_DEPV + K
+                     FLUXOUT = CPLUME( ISPC,J,I ) * VDEP_NR( V,I )
+                     DDBF( KK ) = DDBF( KK ) + DD_FAC( KK ) * FLUXOUT
+!                    if ( jtime .ge. ptime .and. jtime .le. ptime+010000 ) then
+!                       write( logdev,* ) 'VDEP_NR:', jtime, l, i, j, k, ispc,
+!    &                                     nr_depv_map( k ) 
+!                       write( logdev,* )  cplume( ispc,j,i ), vdep_nr( v,i ),
+!    &                                     fluxout, dd_fac( kk ), ddbf( kk )
+!                       end if
+                     FLUXNET = PFACT * FLUXIN_NR( K,L ) - FLUXOUT
+                     CPLUME( ISPC,J,I ) = CPLUME( ISPC,J,I )
+     &                                  + FLUXNET * ( DTTR / HGRND )
+                     CPLUME( ISPC,J,I ) = MAX( CPLUME( ISPC,J,I ), 0.0 )
+                     END DO
+
+                  END IF
+
+               END DO  ! J (pillars)
+
+C Transfer accumulated species dry dep and scale by plume section area to
+C grid area
+
+!           write( logdev,* ) 'PAREA*RCAREA: ', parea * rcarea
+
+!           DO V = 1, N_GC_DEPV + N_AE_DEPV + N_NR_DEPV
+            DO V = 1, N_GC_DEPV + N_AE_DEPV + 1       ! only NH3
+!              write( logdev,* ) 'DDBF:', jtime, l, i, v, ddbf( v )
+               DDEP(  V,C,R ) = DDBF( V ) * PAREA * RCAREA
+               END DO
+
+            END IF   ! plume has intersected ground
+         END DO   ! L (plumes)
+ 
+      RETURN
+      END SUBROUTINE PING_GRDREM
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

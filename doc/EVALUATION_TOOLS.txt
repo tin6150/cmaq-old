@@ -1,0 +1,336 @@
+                      EVALUATION_TOOLS - 14 Sep 2005
+
+
+ Several utility programs have been included with this release to process 
+ and prepare data for model evaluation.  These programs are located in the 
+ $M3MODEL/TOOLS archive.  You can access these programs by first setting your
+ CVSROOT path to the tools archive:
+ 
+      setenv CVSROOT $M3MODEL/TOOLS
+      
+ Then create a working directory.
+ 
+      mkdir $M3HOME/work/tools
+      cd $M3HOME/work/tools
+      
+ Further instructions are provided in with each utility program listed 
+ below.
+ 
++==========================================================================+
+COMBINE utility program ---------------------------------------------------+
++==========================================================================+
+
+      This program combines fields from a set of IOAPI input files to an 
+      output file.  The file assigned to environmental variable SPECIES_DEF 
+      defines the new species variables and how they are constructed.
+
+      To retrieve this program, execute the following:
+      
+         cvs co combine
+
+      Environmental variables used
+          GENSPEC     --> Indicates to generate a new SPECIES_DEF file
+                          (does not generate OUTFILE)
+          SPECIES_DEF --> Species definition file defining the new
+                          variables of the output file
+          INFILE1     --> input file number 1, (max of 9)
+          OUTFILE     --> IOAPI output file name
+
+       record type descriptions in SPECIES_DEF file
+         / records are comment lines
+         # records can be used to define parameters
+                  #start   YYYYDDD  HHMMSS
+                  #end     YYYYDDD  HHMMSS
+                  #layer      KLAY     (default is all layers)
+
+         All other records are read as variable definition records
+
+         format of variable definition records (comma seperated fields)
+          field 1: variable name (maximun of 16 characters)
+          field 2: units (maximum of 10 characters)
+          field 3: formular expression (maximun of 512 characters)
+
+          Formular expressions supports operators +-*/ and are evaluated 
+          from left to right using precedence order of */+-. Order of 
+          evaluation can be forced by use of parentheses. When part of an 
+          experssion is enclosed in parentheses, that part is evaluated 
+          first.  Variables from input files are defined by their name 
+          followed by it's file number enclosed in brackets.
+
+       Note: This version will accept species definition files in old
+             formats, but they may not be supported in future versions.
+
+
++==========================================================================+
+SITECMP utility program ---------------------------------------------------+
++==========================================================================+
+
+      This program generates a csv (comma separated values) file that 
+      compares CMAQ generated concentrations with an observed dataset.
+
+      To retrieve this program, execute the following:
+      
+         cvs co sitecmp
+
+      Environment Variables (required):
+        TABLE_TYPE  dataset type {IMPROVE, CASTNET, STN, NADP, MDN, SEARCH}
+        M3_FILE_n   ioapi input files containing modeled species data (max
+                    of 12)
+        SITE_FILE   site file containing site-id, longitude, latitude (tab
+                    delimited)
+        IN_TABLE    observed data (comma delimited with header)
+        OUT_TABLE   output data table with columns of observed and modeled
+                    values
+
+      Environment Variables (not required):
+        PRECIP      defines the precipitation field used in WETDEP and
+                    WETCON calculations (default="Precip")
+        IOAPI_ISPH  projection sphere type (use type #19 to match CMAQ)
+                    (default is 8)
+        MISSING     string to indicate missing output data values
+                    (default="-999")
+        START_DATE  starting date of time period to process (YYYYJJJ)
+        START_TIME  starting time of time period to process (HHMMSS)
+        END_DATE    ending date of time period to process (YYYYJJJ)
+        END_TIME    ending time of time period to process (HHMMSS)
+
+      Species Definitions: Defines the data columns for your output file. 
+      Each can specify the observed and modeled variables of the species 
+      you are analyzing. These definitions are specified by environment 
+      variables [species-type]_[1-10], where species type is one of the 
+      following {AERO, GAS, WETCON, WETDEP, PREC}.
+
+        format: [Obs_expression], [Obs_units], [Mod_expression], [Mod_unit], [Variable_name]
+
+          expression format: [factor1]*Obs_name1 [+][-] [factor2]*Obs_name2 ...
+
+          types: AERO_n  (AEROSOL Variables (1-10) - compute average over time)
+                 GAS_n   (GAS Variables (1-10)  - compute average over time)
+                 WETCON_n (Wet Concentration Variables (1-10) - compute
+                           volume-weighted average)
+                 WEPDEP_n (Wet Deposition Variables (1-10) - compute
+                           accumulated wet deposition)
+                 PREC_n  (Precipitation Variables (1-10) - compute
+                          accumulated precipitation)
+
+          examples:
+                AERO_1="SO4f_val,ug/m3, ASO4T,,sulfate"
+                (this defines an aerosol species where the observed values 
+                are obtained from the "SO4f_val" column setting it's units 
+                to ug/m3, the modeled values are obtained from the "ASO4T" 
+                variable using it's predefined units, both columns will be 
+                named "sulfate")
+
+                PREC_1="Sub Ppt,mm,10*RT,mm,Precip"
+                (this defines a precipitation species where the observed 
+                values are obtained from the "Sub Ppt" column setting it's 
+                units to mm, the modeled values are obtained by multiplying 
+                10 times the "RT" variable and setting it's units to mm, 
+                both columns will be named "Precip")
+
+                AERO_2="NH4f_val,ug/m3,,,ammonium"
+                (this defines an aerosol species where the observed values 
+                are obtained from the "NH4f_val" column setting it's units 
+                to ug/m3, there is no modeled values column, the column 
+                will be named ammonium)
+
+                See run scripts for more species definition examples.
+
+
+      File formats:
+        SITE_FILE - tab delimited text file containing site-id, longitude, 
+                    latitude
+
+        M3_FILE_n - IOAPI file containing modeled species data (n=1->12)
+
+        IN_TABLE  - text (csv) file containing observed data values
+           Each type of dataset requires a site field and fields that define
+           the data record's time period. These are the required fields for
+           each type.
+
+           IMPROVE - site field: "site_code"
+                     date field: "obs_date"  (YYYYMMDD)
+                     The time period is 24 hours (midnight to midnight)
+
+           NADP    - site field: "Site"
+                     starting date: "DateOn" (MM/DD/YYYY)
+                     ending date:   "DateOff" (MM/DD/YYYY)
+                     The time period is 9:00am to 8:59am
+
+           STN     - site field: "airs_site_code"
+                     date field: "DATETIME"  (MM/DD/YYYY)
+                     The time period is 24 hours (9:00am to 8:59am)
+
+           MDN     - site field: "SITE"
+                     starting date: "START" (MM/DD/YYYY)
+                     ending date: "STOP"    (MM/DD/YYYY)
+                     The time period is 9:00am to 8:59am
+
+           CASTNET - site field: "Site_id"
+                     starting date: "DateOn" ("YYYY-MM-DD hh:mm:ss")
+                     ending date: "DateOff"  ("YYYY-MM-DD hh:mm:ss")
+
+           SEARCH  - site field: "Site_id"
+                     starting date: "DateOn" (MM/DD/YYYY hh:mm)
+                     ending date: "DateOff"  (MM/DD/YYYY hh:mm)
+
+           OUT_TABLE - (csv) text file containing columns of observed and
+                        modeled values
+
+
++==========================================================================+
+RD_AIRS utility program ---------------------------------------------------+
++==========================================================================+
+
+      This program reads the raw AIRS(AQS) data and writes hourly values in 
+      one day per record format.
+
+      To retrieve this program, execute the following:
+      
+         cvs co rd_airs
+
+      Environment Variables:
+        INFILE      AIRS data file downloaded from web site
+        SITEFILE    list of AIRS site codes with latitude and longitude
+                    values
+        OUTFILE     output data file, hourly values 24/record format
+        STATES      list of states to process (default is all states)
+        YEARS       list of years to process (default is all years)
+        PARAMETER   code of species to process (default is 44201 OZONE)
+        CHECKUNITS  switch to check for valid units
+
+      Example input file:
+
+      RD|I|01|003|0010|44201|1|1|007|047|20010301|00:00|0.018|||||||||||||||
+      RD|I|01|003|0010|44201|1|1|007|047|20010301|01:00|0.018|||||||||||||||
+      RD|I|01|003|0010|44201|1|1|007|047|20010301|02:00|0.017|||||||||||||||
+      RD|I|01|003|0010|44201|1|1|007|047|20010301|03:00|0.017|||||||||||||||
+      RD|I|01|003|0010|44201|1|1|007|047|20010301|04:00|0.015|||||||||||||||
+      RD|I|01|003|0010|44201|1|1|007|047|20010301|05:00|0.014|||||||||||||||
+
+
+      Example site file:
+
+      AA|I|01|001|0001|32.437222|-86.472778|
+      AA|I|01|001|0002|32.428333|-86.443611|
+      AA|I|01|001|0003|32.332222|-86.791667|
+      AA|I|01|003|0001|0|0|
+      AA|I|01|003|0002|30.552222|-87.706944|
+      AA|I|01|003|0003|30.555278|-87.713611|
+      AA|I|01|003|0010|30.497778|-87.881389|
+      AA|I|01|005|0001|31.891111|-85.135278|
+      AA|I|01|005|0002|31.664137|-85.606234|
+      AA|I|01|007|0001|32.903889|-87.233056|
+
+
+      Example output file:
+
+      01 003 0010 44201 1 1 007 047 2001 03 02  30.498 -87.881 0   -99 0.022 0.021 0.020 0.019 0.019 0.019 0.019 0.023 0.026 0.027 0.029 0.030 0.030 0.031 0.029 0.030 0.029 0.029 0.027 0.027 0.025 0.024 0.023
+      01 003 0010 44201 1 1 007 047 2001 03 03  30.498 -87.881 0   -99 0.022 0.021 0.022 0.022 0.021 0.022 0.024 0.023 0.022 0.026 0.028 0.028 0.029 0.029 0.030 0.028 0.033 0.034 0.031 0.030 0.027 0.032 0.039
+      01 003 0010 44201 1 1 007 047 2001 03 04  30.498 -87.881 0   -99 0.036 0.032 0.029 0.023 0.021 0.028 0.030 0.031 0.037 0.037 0.039 0.043 0.047 0.046 0.046 0.047 0.045 0.042 0.039 0.040 0.042 0.041 0.040
+      01 003 0010 44201 1 1 007 047 2001 03 05  30.498 -87.881 0   -99 0.043 0.041 0.040 0.039 0.041 0.036 0.036 0.035 0.039 0.045 0.049 0.051 0.053 0.053 0.054 0.053 0.052 0.051 0.050 0.051 0.052 0.049 0.049
+      01 003 0010 44201 1 1 007 047 2001 03 06  30.498 -87.881 0   -99 0.048 0.046 0.043 0.044 0.040 0.038 0
+
+
++==========================================================================+
+AIRS2EXT utility program --------------------------------------------------+
++==========================================================================+
+
+      This program reads the output from the rd_airs program and writes 
+      hourly or daily values in the sitecmp CASTNET input format (csv)
+
+      To retrieve this program, execute the following:
+      
+         cvs co airs2ext
+
+      Environment Variables:
+        INFILE      data file generated with the rd_airs program
+        OUTFILE     output data file used with sitecmp, (hourly or daily
+                    values)
+        SPECIES     name of species for header line
+        STEP        time step of output (DAY or HOUR)
+        START_DATE  starting date to window data (YYYYDDD) format
+        END_DATE    end date of window data (YYYYDDD) format
+
+      ## domain window (default is all sites)
+        LAT_MIN     minimum latitude value for domain window (default is 0)
+        LAT_MAX     maximum latitude value for domain window (default is 90)
+        LON_MIN     minimum longitude value for domain window (default is -180)
+        LON_MAX     maximum longitude value for domain window (default is 180)
+
+      Example input file (output of rd_airs program):
+
+      01 003 0010 44201 1 1 007 047 2001 03 02  30.498 -87.881 0   -99 0.022 0.021 0.020 0.019 0.019 0.019 0.019 0.023 0.026 0.027 0.029 0.030 0.030 0.031 0.029 0.030 0.029 0.029 0.027 0.027 0.025 0.024 0.023
+      01 003 0010 44201 1 1 007 047 2001 03 03  30.498 -87.881 0   -99 0.022 0.021 0.022 0.022 0.021 0.022 0.024 0.023 0.022 0.026 0.028 0.028 0.029 0.029 0.030 0.028 0.033 0.034 0.031 0.030 0.027 0.032 0.039
+      01 003 0010 44201 1 1 007 047 2001 03 04  30.498 -87.881 0   -99 0.036 0.032 0.029 0.023 0.021 0.028 0.030 0.031 0.037 0.037 0.039 0.043 0.047 0.046 0.046 0.047 0.045 0.042 0.039 0.040 0.042 0.041 0.040
+      01 003 0010 44201 1 1 007 047 2001 03 05  30.498 -87.881 0   -99 0.043 0.041 0.040 0.039 0.041 0.036 0.036 0.035 0.039 0.045 0.049 0.051 0.053 0.053 0.054 0.053 0.052 0.051 0.050 0.051 0.052 0.049 0.049
+      01 003 0010 44201 1 1 007 047 2001 03 06  30.498 -87.881 0   -99 0.048 0.046 0.043 0.044 0.040 0.038 0
+
+
+      Example site file (tab delimited):
+
+      010010001	-86.472778	32.437222
+      010010002	-86.443611	32.428333
+      010010003	-86.791667	32.332222
+      010030002	-87.706944	30.552222
+      010030003	-87.713611	30.555278
+      010030010	-87.881389	30.497778
+      010050001	-85.135278	31.891111
+      010050002	-85.606234	31.664137
+      010070001	-87.233056	32.903889
+      010090001	-86.464444	33.956944
+      010090002	-86.473056	33.949444
+      010150001	-85.824444	33.656667
+      010150002	-85.837778	33.685556
+
+
+
+      Example output file (comma delimited):
+
+      site_id,dateon,dateoff,ozone
+      010030010,"2001-03-01 00:00:00","2001-03-01 23:59:00",0.21750E-01
+      010030010,"2001-03-02 00:00:00","2001-03-02 23:59:00",0.25130E-01
+      010030010,"2001-03-03 00:00:00","2001-03-03 23:59:00",0.27087E-01
+      010030010,"2001-03-04 00:00:00","2001-03-04 23:59:00",0.37435E-01
+      010030010,"2001-03-05 00:00:00","2001-03-05 23:59:00",0.46174E-01
+      010030010,"2001-03-06 00:00:00","2001-03-06 23:59:00",0.44043E-01
+      010030010,"2001-03-07 00:00:00","2001-03-07 23:59:00",0.33652E-01
+      010030010,"2001-03-08 00:00:00","2001-03-08 23:59:00",0.43174E-01
+      010030010,"2001-03-09 00:00:00","2001-03-09 23:59:00",0.42043E-01
+      010030010,"2001-03-10 00:00:00","2001-03-10 23:59:00",0.34435E-01
+      010030010,"2001-03-11 00:00:00","2001-03-11 23:59:00",0.41652E-01
+      010030010,"2001-03-12 00:00:00","2001-03-12 23:59:00",0.36261E-01
+
+
++==========================================================================+
+CAST2EXT utility program --------------------------------------------------+
++==========================================================================+
+
+      This program reads the CASTNET hourly values downloaded from web site 
+      and generates an input file for the sitecmp program.
+
+      To retrieve this program, execute the following:
+      
+         cvs co airs2ext
+
+      Environment Variables:
+        INFILE      hourly CASTNET data file
+        OUTFILE     output file in format to use with sitecmp
+
+      Example input file (downloaded from CASTNET web site):
+
+      site_id,date_time,temperature,temperature_f,delta_temp,delta_temp_f,rel_humidity,rel_humidity_f,solar_radiation,solar_radiation_f,ozone,ozone_f,precip,precip_f,wind_speed,wind_speed_f,wind_direction,wind_direction_f,sigma_theta,sigma_theta_f,flow_rate,flow_rate_f,s_wind_speed,s_wind_speed_f,wetness,wetness_f,qa_code
+      ABT147,"2001-01-01 00:00:00",-7.1500,,0.2500,,74.4500,,0.0000,,31.7500,,0.0000,,5.0000,,281.8800,,13.0837,,1.1839,,5.1500,,0.0000,,
+      ABT147,"2001-01-01 01:00:00",-7.3000,,0.2750,,75.5500,,0.0000,,31.2500,,0.0000,,4.3000,,279.9000,,14.5510,,1.1894,,4.4500,,0.0000,,
+      ABT147,"2001-01-01 02:00:00",-7.4000,,0.3250,,75.5500,,0.6980,,31.0000,,0.0000,,4.1750,,274.3200,,14.5510,,1.2394,,4.3500,,0.0000,,
+
+
+      Example output file (comma delimited):
+
+      site_id,dateon,dateoff,temperature,temperature_f,delta_temp,delta_temp_f,rel_humidity,rel_humidity_f,solar_radiation,solar_radiation_f,ozone,ozone_f,precip,precip_f,wind_speed,wind_speed_f,wind_direction,wind_direction_f,sigma_theta,sigma_theta_f,flow_rate,flow_rate_f,s_wind_speed,s_wind_speed_f,wetness,wetness_f,qa_code
+      ABT147,"2001-01-01 00:00:00","2001-01-01 00:59:59",-7.1500,,0.2500,,74.4500,,0.0000,,31.7500,,0.0000,,5.0000,,281.8800,,13.0837,,1.1839,,5.1500,,0.0000,,
+      ABT147,"2001-01-01 01:00:00","2001-01-01 01:59:59",-7.3000,,0.2750,,75.5500,,0.0000,,31.2500,,0.0000,,4.3000,,279.9000,,14.5510,,1.1894,,4.4500,,0.0000,,
+      ABT147,"2001-01-01 02:00:00","2001-01-01 02:59:59",-7.4000,,0.3250,,75.5500,,0.6980,,31.0000,,0.0000,,4.1750,,274.3200,,14.5510,,1.2394,,4.3500,,0.0000,,
+      ABT147,"2001-01-01 03:00:00","2001-01-01 03:59:59",-7.2500,,0.3100,,75.0500,,0.0000,,31.7500,,0.0000,,4.2250,,278.2800,,15.0401,,1.2671,,4.4250,,0.0000,,
+      ABT147,"2001-01-01 04:00:00","2001-01-01 04:59:59",-7.3500,,0.2700,,75.6500,,0.0000,,31.5000,,0.0000,,3.6750,,278.2800,,17.4857,,1.2671,,3.9000,,0.0000,,
+

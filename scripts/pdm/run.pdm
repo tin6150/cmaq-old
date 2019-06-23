@@ -1,0 +1,175 @@
+#! /bin/csh -f
+
+# RCS file, release, date & time of last delta, author, state, [and locker]
+# $Header: /project/work/rep/SCRIPTS/src/pdm/run.pdm,v 1.3 2006/03/10 21:26:42 sjr Exp $ 
+
+# ======================= PDMv4.5.1 Run Script ====================== #
+# Usage: run.pdm >&! pdm_e2a.log &                                    #
+# The following environment variables must be set for this script to  #
+# execute properly:                                                   #
+#   setenv M3DATA =  source code CVS archive                          #
+# To report problems or request help with this script/program:        #
+#             http://www.cmascenter.org/html/help.html                #
+# =================================================================== #
+
+#> Check that M3DATA is set:
+ if ( ! -e $M3DATA ) then
+    echo "   $M3DATA path does not exist"
+    exit 1
+    endif
+ echo " "; echo " Input data path, M3DATA set to $M3DATA"; echo " "
+
+ set APPL     = e2a
+ set CFG      = e2a
+ set EXEC     = PDM_$CFG       # pdm version
+ 
+#> Set the working directory:
+ set BASE     = $cwd
+ cd $BASE; date; cat $BASE/cfg.$CFG; echo "    "; set echo
+
+#> set log file [ default = unit 6 ]; uncomment to write standard output to a log
+#setenv LOGFILE $BASE/$APPL.log
+
+ set STDATE   = 1999183    # beginning date
+ set STTIME   = 000000     # beginning GMT time (HHMMSS)
+ set NSTEPS   = 24         # time duration (HH) for this run
+
+# Continuation flag
+ setenv IOLDFIL 0          # IOLDFIL = 0 for 1st simulation day only, otherwise 1
+
+# Parameters below are set to default values already defined in
+# subroutine GENRLIN and do not need to be specified in the script unless
+# alternate values are preferred by the user for certain variables.
+# Optional methods are described in science document, and alternate values
+# for ICHUST, ICHUSY are noted in subroutine YPARAM.
+#setenv ICHUST 1           # Lagrangian time scale method (1=default)
+#setenv ICHUSY 2           # Horizontal dispersion parameter method (2=default)
+#setenv ISHEAR 1           # Wind shear = 1 , wind shear omitted = 0
+#setenv IMETHD 1           # Linear interpolation method = 1, 0 = PBL method
+#setenv IDPLUM 0           # 0 = Turner method, 1 = temp grad method
+#setenv IPRFLG F           # F = omit extra print files, T for printing
+#setenv IPARTFLG 0         # set to 0, since no vertical partitioning
+#setenv FACTC  1.0         # set to 1 to handover at grid cell size
+#setenv INITC  1000.       # initialization width (m)
+#setenv DDIRC  1.8         # Wind shear factor across plume
+#setenv DSPDC  0.7         # wind speed shear factor 
+#setenv SPRFA 15.          # vertical plume spread factor
+#setenv SZ0FA  3.545       # width factor for plume sections
+#setenv HSIZE  1000.       # starting plume width size (m)
+
+#> remove existing output files?
+#set DISP = delete
+#set DISP = update
+ set DISP = keep
+
+#> output files and directories
+ set OUTDIR   = $M3DATA/pdm
+ if ( ! -d "$OUTDIR" ) mkdir -p $OUTDIR
+ set PINGfile = $EXEC"PING".$APPL           # PDM_PING_1
+# diagnostic print files
+ set NFOUT1file = $EXEC"NFOUT1".$APPL       # NFOUT1 optional plume rise output
+ set NFOUT2file = $EXEC"NFOUT2".$APPL       # NFOUT2 optional plume parameters
+ set NFOUT3file = $EXEC"NFOUT3".$APPL       # NFOUT3 standard plume parameters
+
+#> horizontal grid defn; check GRIDDESC file for GRID_NAME options
+ setenv GRIDDESC ../GRIDDESC1
+ setenv GRID_NAME M_32_99TUT02
+
+#> vertical layer defn
+ setenv LAYER_FILE $M3DATA/mcip3/M_32_99NASH/METCRO3D_benchmark2005
+
+# stack file   
+ set MEPSEpath = /home/jug/m3emis/neweval36ago/cb4/bnafiles
+ set MEPSEfile = stack_mepse_cpp1.ioapi
+
+ set METpath   = $M3DATA/mcip3/M_32_99NASH
+ set extn      = benchmark2005
+ set GC2file   = GRIDCRO2D_${extn}
+ set GD2file   = GRIDDOT2D_${extn}
+ set MC2file   = METCRO2D_${extn}
+ set MD3file   = METDOT3D_${extn}
+ set MC3file   = METCRO3D_${extn}
+ 
+# previous day's pdm_ping file for continuation
+#set PING_Ofile = PDM_d1bPING.d1b      # PDM_PING_o
+#
+#
+##############################################################
+#                  Set up for PDM run                        #
+##############################################################
+
+# for mepse file ...
+
+ setenv     STACK_MEPSE     $MEPSEpath/$MEPSEfile
+
+# for meteorological files ...
+
+ setenv     GRID_DOT_2D     $METpath/$GD2file
+ setenv     GRID_CRO_2D     $METpath/$GC2file
+ setenv     MET_CRO_2D      $METpath/$MC2file
+ setenv     MET_DOT_3D      $METpath/$MD3file
+ setenv     MET_CRO_3D      $METpath/$MC3file
+
+ set flist = ( $STACK_MEPSE\
+               $GRID_DOT_2D\
+               $GRID_CRO_2D\
+               $MET_CRO_2D\
+               $MET_DOT_3D\
+               $MET_CRO_3D )
+
+ foreach file ( $flist )
+    if (! (-e $file) ) then
+       echo " $file not found "
+       exit 1
+       endif
+    end
+
+# for pdm_ping continuation file
+#setenv PDM_PING_O      $OUTDIR/$PING_Ofile
+
+# output files
+
+ setenv NFOUT1       $OUTDIR/$NFOUT1file
+ setenv NFOUT2       $OUTDIR/$NFOUT2file
+ setenv NFOUT3       $OUTDIR/$NFOUT3file
+ setenv PDM_PING_1  "$OUTDIR/$PINGfile -v"
+
+ set flist = ( $PDM_PING_1\
+               $NFOUT1\
+               $NFOUT2\
+               $NFOUT3 )
+ unalias rm
+ foreach file ( $flist )
+    if ( $file != '-v' ) then
+       if ( -e $file ) then
+          echo " $file already exists "
+          if ( $DISP == 'delete' ) then
+             echo " $file being deleted "
+             rm $file
+             else if ( $DISP == 'update' ) then
+             echo " $file being updated "
+             else
+             echo "*** RUN ABORTED ***"
+             exit 1
+             endif
+          endif
+       endif
+    end
+
+#> for the run control ...
+
+ setenv STDATE       $STDATE
+ setenv STTIME       $STTIME
+ setenv NHRS         $NSTEPS
+ setenv EXECUTION_ID $EXEC
+
+#> - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+ env
+
+ ls -l $BASE/$EXEC; size $BASE/$EXEC
+
+ time $BASE/$EXEC
+
+ date
+ exit

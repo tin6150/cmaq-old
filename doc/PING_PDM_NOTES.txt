@@ -1,0 +1,229 @@
+                        PING_PDM_NOTES - 14 Sep 2005
+
+
+ 1)  THE PLUME DYNAMICS MODEL (PDM) PROCESSOR PROGRAM
+
+     The Plume Dynamics Model (PDM) is a processor program that must be 
+     applied when the plume-in-grid (PinG) module will be exercised in a 
+     CMAQ chemical transport model (CTM) simulation. The PDM processor 
+     program requires a stack parameter file (STACK_GROUPS) created by a 
+     SMOKE emissions processor (ELEVPOINT) and MCIP meteorological data 
+     files.  The output data file generated from a PDM application is 
+     needed as an input file to drive the CTM/PinG model. Therefore, PDM 
+     application runs are performed in advance of the CTM/PinG model 
+     simulation.  The key PDM output file (PDM_PING_1) contains several 
+     subgrid scale plume parameters used in the PinG module including; 
+     plume height, horizontal and vertical plume dimensions, grid cell 
+     indices, and a plume flag for each hourly plume release from each 
+     major point source to be treated by the PinG module. When the PinG 
+     module option is not selected (i.e., PING_NOOP) to be part of the CTM 
+     executable program,the PDM processor is not exercised.  The technical 
+     methods used in the PDM algorithms have been described in Chapter 9 of 
+     the CMAQ science document.
+
+     The PDM processor code was previously released with the 2004 version 
+     of the CMAQ modeling system. Numerous updates to PDM were listed in 
+     the 2004 release notes.
+     
+     Notable Features in this 2005 version of the PDM Release Code:
+ 
+       1)  Vertical dynamic memory allocation has also been implemented to 
+           complement the horizontal dynamic memory allocation in the 
+           previous release.  Thus, the PDM executable is applicable for 
+           any domain and vertical layer structure. Therefore, horizontal 
+           grid information must be provided in the run script with a 
+           specific GRID_NAME contained in the GRIDDESC file and a 
+           LAYER_FILE must be defined in the run script in the same manner 
+           as the CTM/PinG model run script.
+
+      2)   A correction of wind component (u,v) subscripts in the METIN
+           subroutine was made.       
+ 
+      3)   Revisions were made in plume flag (IPLMFLG) test criteria
+           to signal plume handover.  Both plume width and a time test are
+           the notable criteria to trigger dumping of plume concentrations
+           to the grid.  
+
+     Notable Operational Features and Limitations
+
+       The PDM FORTRAN code is designed to be run on a single processor 
+       platform PDM and CTM/PinG methods are applicable to nominal model 
+       grid sizes of 12 km and larger, however, grid sizes greater than 
+       about 40 km are also not recommended.
+
+       The PDM simulation period is set for a 24 hours period (1 day). A 
+       run script can be designed to execute sequentially for an extended 
+       series of individual days.
+
+       Active plume sections at the end of a simulation day are continued 
+       into the start of the next day run by changing the IOLDFIL 
+       environment variable flag in the run script from 0 for the first day 
+       to 1 for processing all subsequent days.  In addition, PDM_PING_O 
+       must be defined in the run script when running another day with the 
+       previous day's PDM output filename.
+
+       The maximum number of point sources to be modeled must be less than 
+       100.
+
+       The plume release rate (NRRATE) must be set to 1 release per hour.
+
+       The number of environment variables in the run script has been 
+       greatly reduced to essential variables.  Default values for several 
+       variables are currently set internally in PDM's subroutine GENRLIN. 
+       The complete list of environment variables with preset values are 
+       provided in the example run script.
+
+ 2)  CMAQ PLUME-IN-GRID (PinG) MODELING APPROACH
+
+     The plume-in-grid (PinG) treatment is an optional component of the 
+     CMAQ chemical transport model (CTM).  The PinG module was previously 
+     released with the 2004 CMAQ modeling system. The CMAQ PinG approach 
+     was specifically designed to provide an improved subgrid scale 
+     treatment of the dynamic and chemical processes governing 
+     concentrations in pollutant plumes emitted from isolated, major point 
+     source stacks. The PinG approach is appropriate for use in model 
+     applications with relatively, coarse grid cell sizes (i.e., ~12-40 
+     km), which are generally specified for large regional to continental 
+     modeling domains. In order to build the PinG module into a CTM 
+     executable program, the ping module (i.e., ping_smvgear) must be set 
+     for ModPinG in the model build script instead of the default "no PinG" 
+     module (i.e., ping_noop ) as given below.
+
+        #set ModPing   = ( module ping_noop          $Revision; )
+         set ModPing   = ( module ping_smvgear       $Revision; )
+
+     The CTM/PinG module increases CPU processing time of model 
+     simulations, however, the computational increased time is dependent on 
+     the number of PinG sources and the overall dimensions of the modeling 
+     domain.
+
+     Additional preprocessing steps must be undertaken prior to apply the 
+     CTM/PinG model.  In particular, during emissions processing with the 
+     SMOKE system, a stack parameter file (i.e. stack_groups) and a point 
+     source emissions file must be generated for the selected major point 
+     sources to be treated by the PinG module.  In addition, the plume 
+     dynamics model (PDM) processor program must be applied with the 
+     stack_groups file to generate a plume parameter file (PDM_PING_1) 
+     which is used to drive the PinG module in the CTM/PinG program. 
+     Information about the PDM program and applying it are provided in 
+     separate release notes specific to the PDM processor.
+
+     Notable Updated Features And Capabilities Of The 2005 CMAQ PING Module
+
+       1)  Aerosols processes installed in the 2004 PiNG code have been 
+           updated with the same methods applied in the CTM grid model to 
+           treat aerosol formation and deposition from PinG sources.
+
+       2)  The dimension of the PinG plume concentration array has been 
+           revised to accommodate total number of gas, aerosol, non-
+           reactive, and tracer species.
+
+       3)  The CTM/PinG program may be executed on a single processor or on 
+           a parallel computing architecture, such as on multiple 
+           processors.
+
+       4)  A dry deposition file is generated with plume pollutant dry 
+           deposition in a 2-D gridded output file analogous to the CTM dry 
+           deposition file.
+
+       5)  Revised methods have been implemented to specify initial and
+           boundary concentrations, and certain meteorological variables for
+           each plume.
+
+       6)  A revised plume handover method has been incorporated with plume 
+           section volume dumping into an equivalent grid column when 
+           appropriate plume size is reached.
+
+       7)  The sparse matrix Gear solver (smvgear) algorithm is the only
+           chemical solver available with the PinG module.
+
+       8)  The default number of plume pillar cells has been set to 8 to 
+           resolve the horizontal plume width with 4 plume cells on each 
+           side of the centerline and subgrid plume concentrations are 
+           written to the CTM_PING_1 output file, as according to the time 
+           interval (PINGOUTSTEP = 12 minutes) specified in PLUME_PARM.F 
+           The time interval for PinG concentration output must agree with 
+           the PDM time step interval.
+
+     KEY RUN SCRIPT INFORMATION WHEN RUNNING CTM WITH THE PING TREATMENT
+
+       To perform CTM/PING simulations, additional input and output files 
+       related to the PinG module must be specified.  The specific input 
+       files needed for the PinG module include:  a major point source 
+       emissions data file (MEPSE_1) of specific PinG source which was 
+       generated during SMOKE processing, and a PDM output data file.
+
+       Example lines for a CTM/PinG Unix run script are given by the 
+       following.
+
+         The output files generated by the PinG module include a plume 
+         concentration file containing species concentrations in all active 
+         subgrid plume cells, a plume dry deposition file, and an optional 
+         plume diagnostic aerosol file.
+
+         #> ping aerosol diagnostic file [ T | Y | F | N ]
+          setenv PING_AERDIAG N
+
+         ...
+
+          set PG1file   = $EXEC"PING".$APPL                    # CTM_PING_1
+          set PGDfile   = $EXEC"PINGDRYDEP".$APPL              # CTM_PING_DDEP_1
+          set PGWfile   = $EXEC"PINGAERODIAM".$APPL            # CTM_PING_DIAM_1
+
+         An key plume environment variable flag (INIT_PING) must also be 
+         specified to signal to the PinG module whether a previous day PinG 
+         concentration file is to be input or not.  The INIT_PING variable 
+         in the run script must be set to "T" in order to begin the first 
+         day with no active plumes.  For all subsequent simulation days, 
+         INIT_PING must be set to "F" in order to allow the continuation of 
+         plumes active at the end of the previous day's simulation.  Plume 
+         concentrations are initialized with the active plume 
+         concentrations from the end of the previous day's CTM_PING plume 
+         concentration file which is specified in the runs script below.
+
+         #> PinG init ( does not require previous CTM_PING file ) [ T | Y | F | N ]
+          setenv INIT_PING T   #  Begin "fresh"  ie. No continuation or restart
+         #setenv INIT_PING F   #  Continuation from day to day
+
+         ...
+
+         #> Example PinG point source emission file.
+          set MEPSEpath = $M3DATA/emis/tut02
+          set MEPSEfile = mepse1_19990702.ioapi
+
+         #> Example plume dynamics file for PinG
+          set PDMpath   = $M3DATA
+          set PDMfile   = PDM_e2aPING.e2a
+
+         #> Example of previous day PinG concentration file
+          set PINGpath  = $OUTDIR
+          set PINGfile  = CCTM_d1bPING.d1b
+
+      A post-processor program to merge a CTM_CONC_1 and CTM_PING_1 
+      concentration file is also available.  This program is located in 
+      $M3MODELS/TOOLS/merge_ping_ctm.  The merge_ping_ctm program weights 
+      the subgrid plume concentrations with the CTM grid concentration 
+      field and generates a merged concentration file containing the 
+      contributions of the subgrid plume concentrations in a new output 
+      file of CTM grid concentrations for layer 1.
+
+      For visual analyses of the plume concentration file, the PAVE 
+      graphics visualization package can be used to examine plume 
+      concentrations. The CTM_PING_1 concentration file is in a gridded 
+      I/O-API (NetCDF) format, however, the grid does not represent the 
+      physical domain.  Rather, columns represent plume releases and the 
+      rows are plume cross-sectional cells ("pillars").  The first row is 
+      the left plume boundary value, and rows n+2, n+3, n+4 are the right, 
+      plume bottom and top boundary values, respectively, where n is the 
+      number of pillars, typically set to 8.  The layer dimension of the 
+      format is set to one.
+
+      A post-processor that reformats the CTM_PING_1 concentration file is 
+      available, which generates a file where the columns represent 
+      releases of a single MEPSE, the rows represent the pillars, and the 
+      layers represent individual MEPSE sources.  This reformatted file is 
+      easier to view in PAVE, since the original file typically exhibits a 
+      large number of columns. For example, with 25 releases of 47 MEPSEs, 
+      there would be 1175 columns - difficult to view in PAVE.  The 
+      reformated file would have 25 columns, 12 rows and 47 layers.  The 
+      program is available in $M3MODEL/TOOLS/reformat_ping.

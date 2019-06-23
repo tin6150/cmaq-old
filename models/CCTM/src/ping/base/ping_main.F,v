@@ -1,0 +1,692 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/base/ping_main.F,v 1.13 2005/02/14 14:57:59 yoj Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C=========================================================================
+C This file, ping_main.F contains:
+C    SUBROUTINE PING
+C    SUBROUTINE PING_GETSTEP
+C=========================================================================
+
+      SUBROUTINE PING ( JDATE, JTIME, TSTEP )
+
+C***********************************************************************
+ 
+C Plume-in-Grid treatment for MODELS-3/CMAQ-CTM.
+C      PinG v1.06
+ 
+C=========================================================================
+C Changes in version 1.05
+ 
+C 1) the main change is that the sequence of calls are in the same order as 
+C    in MODELS3 (i.e., first transport, and then the chemistry)
+ 
+C 2) Now the PING_UPDATE routine is called within the PinG loop, after the PinG
+C    time step has been calculated.
+ 
+C 3) HANDOVER is being performed after the PinG internal loop (at TSTEP 
+C    time step)
+ 
+C 4) In subroutine PING_GRDREM, the effective height for dry deposition was 
+C    changed to Hp (plume heigth).  In the previous version it was the lesser 
+C    of the mixing heigth and the plume heigth (i.e., MIN(HM,HP)).
+ 
+C 5) In subroutine PING_GRDREM, the removal and emission processes cease for 
+C    the plumes where the boundary layer height is dropping.  PDM_FLAG 
+C    indicates such a condition, and based on that flag the deposition 
+C    will cease (PDM_FLAG=3 indicates normal case, PDM_FLAG=4 indicates 
+C    Zi dramatically dropping during the day, PDM_FLAG=5 indicates that Zi
+C    is dramatically dropping during the afternoon (night) so the lower part
+C    of the plume should be dumped.
+ 
+C 6) In subroutine PING_GETSTEP, a smoothing factor (SFACTOR) has been applied.
+C    Where  0 < SFACTOR <= 1  .  SFACTOR is supplied by the user, and it can
+C    reduce the calculated PinG time step (DTMIN).  That is:
+C    DTMIN = DTMIN*SFACTOR
+C    Reducing the time step is necessary in certain situations to eliminate 
+C    the ringing effects caused by plume rapid expansion and numerical
+C    instability.  For most cases, however, SFACTOR=1.
+ 
+C 7) PDM output contains several new variables.  These variables are: 
+C      DDIR for directional shear.  This is the maximum difference (in degree)
+C           between horizontal wind directions within the plume depth.
+C      DSPD for speed shear.  This is the maximum difference in wind speed
+C           (in m/s) within the plume depth.
+C      INITIAL_WIND for average initial wind speed (in m/s).
+C    The variable PLUME_FLAG (PDMFLAG in PinG) has also been modified.
+C    Now it indicates the drop in the PBL, so that the deposition process 
+C    can be stopped in such a period.  It also indicates when the drop
+C    is occuring (day, or night).  So that for over night conditions
+C    the partial hand-over criterion can be examined.
+C    It also indicates the initialization time, which is at the point
+C    where the plume width has reached the critical width of 2 km.
+C    Flag numbering system has also been changed.
+ 
+C 8) The check for chemical maturity has been modified.  
+C    Now the average plume chemical age is the sum of chemical ages over all
+C    pillars divided by the number of pillars.
+C    That is: 
+C    (average age) = (sum of ages over all pillars) / (number of pillars)
+C                  = 1 - (average (NOx/NOy))
+C    (average (NOx/NOy)) = (sum of NOx/NOy over all pillars) / (n. of pillars)
+ 
+C    For the background, the average age over all vertical levels is calculated.
+C    Critical Age = f * BAGE
+C    Where f is supplied by the user (now set at .9), and BAGE is the average
+C    background chemical age.
+C    The Plume is said to be chemically matured (CMATURE=.TRUE.) if:
+C    PAGE is Greater or Equal to critical age, where PAGE is the average plume
+C    chemical age.
+ 
+C 9) A precipitation criterion has been added to the hand-over conditions.
+C    Now the precipitation variable (WR) is being read from MET_CRO_2D file
+C    as variable PRECIPNOW.
+C    In subroutine HANDOVER, PRECIPNOW is being checked and the plume may
+C    be handed-over accordingly.
+C    Since the unit of rain is in CM, then variable PRECIPNOW is actually
+C    the amount of rain in one del-t.  Therefore, we devide PRECIPNOW by del-t
+C    to get cm/s of rain at each step, then this rate is compared to the
+C    critical rate.
+ 
+C10) The subroutine PING_INIT has been modified.
+   
+C=========================================================================
+C       VERSION 1.04 IS TOTALLY INCOMPATABLE WITH THE PREVIOUS VERSIONS
+C      ..........  The followings are the major changes in v1.04 ........
+ 
+C In this version all the I/O routines have been modified.
+C 1) The input to PinG (PDM output) has been changed.
+C    The PDM information is provided in IO/API format, all in one file.
+C 2) Since the PDM file is in IO/API format, the routines for keeping up
+C    with the time pointer and doing the interpolation are obsolete.
+C    A major rearrangement and recoding is being done in this version
+C    of the code.
+C 3) PinG now generates an output file.  The plume information is being
+C    reported on hourly basis.
+C 4) In this version the cell dimensions are supplied in M (and not km).
+C    Therefore, there is not a need to convert to M anymore.
+C    Subroutines affected: PING_INIT and HANDOVER.
+C 5) Subroutines SWAPRWCORDS and PINGINTERP have benn eliminated
+C 6) Number of plumes (NPLUMES), which is the usable size of the arrays,
+C    now is being calculated in subroutine READMAIN.
+ 
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- include gas chem, aerosol, non-react, and tracer advection species
+C        and map table to calculate total number of advection species
+C     -- use ifdef to distinguish implementation of CGRID between serial and
+C        parallel which requires a ghost cell region to accommodate the
+C        situation where the LL and UR of a plume can lie in two adjacent
+C        grid cells
+C     -- save NPLUMTOT (a bug in the original code)
+C     -- call GLOBAL_ISUM to determine number of active plumes among
+C        all processors
+C     -- use environment variable ALL_PE_SYNC_IO_MODE to denote whether
+C        all PEs or not will participate in pario reads
+C     -- call PE_COMM4 to update ghost cell region
+C     -- use MY_* variables for local processor
+C   6/18/99 Jeff
+C     -- reorder calls to ping_update
+C  11/30/99 Jeff Young & Jim Godowich
+C     -- add restart/continuation capability
+C   1/05/2000 Jeff
+C     -- f90 memory mgmt
+C   28 Nov 00 J.Young 
+C     -- PE_COMM4 -> Dave Wong's f90 stenex SE_COMM
+C        GLOBAL_ISUM -> Dave Wong's f90 stenex GLOBAL_SUM
+C   16 Dec 00 J.Young
+C     -- explicitly dimension CGRID for call to SE_COMM,
+C        which can't accept assumed size arrays
+C   24 Sep 01 J.Young
+C     -- dyn alloc - Use HGRD_DEFN
+C     -- remove ALL_PE_SYNC_IO_MODE
+C   02 Feb 05 J.Young:
+C     -- dyn alloc - establish both horizontal & vertical doamin
+C        specifications in one module (GRID_CONF)
+C-----------------------------------------------------------------------
+
+!     USE HGRD_DEFN   ! horizontal domain specifications
+      USE PCGRID_DEFN ! inherits GRID_CONF and CGRID_SPCS
+
+      USE SUBST_MODULES              ! stenex
+!     USE SUBST_GLOBAL_SUM_MODULE    ! stenex
+!     USE SUBST_COMM_MODULE          ! stenex
+
+      USE PLUME_STATE ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_ETA   ! inherits PLUME_PARM
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_GC_ADV    ! gas chem advection species and map table
+      INCLUDE SUBST_GC_DEPV   ! gas chem dep vel surrogate names and map table
+
+      INCLUDE SUBST_AE_SPC    ! aerosol species table
+      INCLUDE SUBST_AE_ADV    ! aerosol advection species and map table
+      INCLUDE SUBST_AE_DEPV   ! aerosol species deposition table
+
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table
+      INCLUDE SUBST_NR_ADV    ! non-react advection species and map table
+      INCLUDE SUBST_NR_DEPV   ! non-react dep vel surrogate names and map table
+
+      INCLUDE SUBST_TR_SPC    ! tracer species table
+      INCLUDE SUBST_TR_ADV    ! tracer advection species and map table
+      INCLUDE SUBST_TR_DEPV   ! tracer dep vel surrogate names and map table
+
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! I/O definitions and declarations
+
+      INCLUDE SUBST_PE_COMM   ! PE communication displacement and direction
+
+C...............      Shared Arguments      ................
+ 
+!     REAL :: CGRID( :,:,:,: ) ! concentrations
+
+      INTEGER JDATE        ! Current model date (Julian), YYYYDDD
+      INTEGER JTIME        ! Current model time, HHMMSS
+      INTEGER TSTEP( 2 )   ! time step vector (HHMMSS)
+                           ! TSTEP(1) = local output step
+                           ! TSTEP(2) = sciproc sync. step (chem)
+
+
+C................    Parameters   ............................
+ 
+C advection species
+      INTEGER, PARAMETER :: N_SPC_ADV = N_GC_ADV
+     &                                + N_AE_ADV
+     &                                + N_NR_ADV
+     &                                + N_TR_ADV
+     &                                + 1        ! for advecting RHO*SqRDMT
+
+C dep vel species
+      INTEGER, PARAMETER :: N_SPC_DEPV = N_GC_DEPV
+     &                                 + N_AE_DEPV
+     &                                 + N_NR_DEPV
+     &                                 + N_TR_DEPV
+
+C...............      Local Variables            ................
+ 
+      CHARACTER( 8 ), SAVE :: COMMSTR
+ 
+      INTEGER, SAVE :: NPLUMTOT       ! total number of plume sections
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD
+     &                             + N_AE_SPC
+     &                             + N_NR_SPC
+     &                             + N_TR_SPC
+ 
+C Plume concentration array
+ 
+      REAL, ALLOCATABLE, SAVE :: CPLUME( :,:,: )
+
+C Ping dry dep array
+
+      REAL, ALLOCATABLE, SAVE :: DDEP( :,:,: )
+
+      INTEGER :: ALLOCSTAT            ! Memory allocation status
+ 
+      INTEGER :: NPLUMES              ! Number of plumes (total released)
+      INTEGER :: NPACTIVE             ! Number of plumes (active plumes)
+ 
+      CHARACTER( 200 ) :: MSG         ! Temporary message holder
+
+      CHARACTER( 16 ) :: PNAME = 'PING_MAIN'
+
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+
+      INTEGER I
+ 
+C Local time variables
+ 
+      INTEGER PDATE, PTIME            ! ping date, time
+      INTEGER PINGSTEP                ! valid ping delt time
+      INTEGER PSTEP( 2 )              ! special chemistry tstep vector
+      LOGICAL LASTSTEP                ! end of ping time interval
+      INTEGER MDATE, MTIME            ! ping dry dep write date, time
+
+      INTEGER, SAVE :: LOGDEV         ! FORTRAN unit number for log file
+   
+C Function names
+ 
+      INTEGER, EXTERNAL :: TIME2SEC   ! Converts HHMMSS to SAM
+      INTEGER, EXTERNAL :: SECSDIFF   ! Returns the number of secnds 
+                                      ! in a time interval, starting
+                                      ! at ADATE:ATIME and ending
+                                      ! at ZDATE:ZTIME
+      INTERFACE
+         SUBROUTINE PING_UPDATE ( CPLUME, NPLUMES, NPACTIVE, JDATE, JTIME )
+            IMPLICIT NONE
+            REAL, INTENT( INOUT )  :: CPLUME( :,:,: )
+            INTEGER, INTENT( OUT ) :: NPLUMES, NPACTIVE
+            INTEGER, INTENT( IN )  :: JDATE, JTIME
+         END SUBROUTINE PING_UPDATE
+         SUBROUTINE PING_DSPRSN ( CPLUME, NPACTIVE, JDATE, JTIME, PSTEP )
+            IMPLICIT NONE
+            REAL, INTENT( INOUT )  :: CPLUME( :,:,: )
+            INTEGER, INTENT( IN )  :: NPACTIVE
+            INTEGER, INTENT( IN )  :: JDATE, JTIME
+            INTEGER, INTENT( IN )  :: PSTEP
+         END SUBROUTINE PING_DSPRSN
+         SUBROUTINE PING_GRDREM ( CPLUME, DDEP, NPACTIVE, JDATE, JTIME, PSTEP )
+            IMPLICIT NONE
+            REAL, INTENT( INOUT )  :: CPLUME( :,:,: ), DDEP( :,:,: )
+            INTEGER, INTENT( IN )  :: NPACTIVE
+            INTEGER, INTENT( IN )  :: JDATE, JTIME
+            INTEGER, INTENT( IN )  :: PSTEP( 2 )
+         END SUBROUTINE PING_GRDREM
+         SUBROUTINE PING_CHEM ( CPLUME, NPACTIVE, JDATE, JTIME, PSTEP )
+            IMPLICIT NONE
+            REAL, INTENT( INOUT )  :: CPLUME( :,:,: )
+            INTEGER, INTENT( IN )  :: NPACTIVE
+            INTEGER, INTENT( IN )  :: JDATE, JTIME
+            INTEGER, INTENT( IN )  :: PSTEP( 2 )
+         END SUBROUTINE PING_CHEM
+         SUBROUTINE PING_AERO ( CPLUME, NPLUMTOT, NPACTIVE, JDATE, JTIME,PSTEP )
+            IMPLICIT NONE
+            REAL, INTENT( INOUT )  :: CPLUME( :,:,: )
+	    INTEGER, INTENT( IN )  :: NPLUMTOT
+            INTEGER, INTENT( IN )  :: NPACTIVE
+            INTEGER, INTENT( IN )  :: JDATE, JTIME
+            INTEGER, INTENT( IN )  :: PSTEP( 2 )
+         END SUBROUTINE PING_AERO
+         SUBROUTINE PING_HANDOVER ( CPLUME, JDATE, JTIME )
+            IMPLICIT NONE
+            REAL, INTENT( IN )    :: CPLUME( :,:,: )
+            INTEGER, INTENT( IN ) :: JDATE, JTIME
+         END SUBROUTINE PING_HANDOVER
+         SUBROUTINE PING_OUT ( CPLUME, NPACTIVE, JDATE, JTIME )
+            IMPLICIT NONE
+            REAL, INTENT( IN )    :: CPLUME( :,:,: )
+            INTEGER, INTENT( IN ) :: NPACTIVE
+            INTEGER, INTENT( IN ) :: JDATE, JTIME
+         END SUBROUTINE PING_OUT
+         SUBROUTINE PING_DRYDEP ( DDEP, JDATE, JTIME )
+            IMPLICIT NONE
+            REAL, INTENT( IN )    :: DDEP( :,:,: )
+            INTEGER, INTENT( IN ) :: JDATE, JTIME
+         END SUBROUTINE PING_DRYDEP
+         SUBROUTINE PING_CKSUMMER ( PNAME, CPLUME, JDATE, JTIME )
+            IMPLICIT NONE
+            CHARACTER( * ), INTENT( IN ) :: PNAME
+            REAL, INTENT( IN )    :: CPLUME( :,:,: )
+            INTEGER, INTENT( IN ) :: JDATE, JTIME
+         END SUBROUTINE PING_CKSUMMER
+      END INTERFACE
+
+C-----------------------------------------------------------------------
+
+      IF ( FIRSTIME ) THEN
+
+         FIRSTIME = .FALSE.
+         LOGDEV = INIT3 ()
+
+         CALL PING_IO  ( JDATE, JTIME )
+         CALL PING_ETA ()
+
+C Check for PinG chemistry flag
+
+         IF ( .NOT. PING_CH_FLG) THEN
+             MSG = 'Chemistry will not be performed in PinG'
+             CALL M3WARN( PNAME, JDATE, JTIME, MSG )
+             RETURN
+             END IF
+
+C Get the number of MEPSES and the total number of plume sections (number of
+C MEPSES * number of releases) in this scenario for later use in dynamic
+C allocation of arrays.
+
+         CALL GET_NMEPSES ( )
+
+         NPLUMTOT = N_MEPSES * N_RLEASES
+
+!        write( logdev,* )  ' Ping_main - N_MEPSES, NPLUMTOT: ',
+!    &                                    N_MEPSES, NPLUMTOT
+
+C Allocate memory for CPLUME - keep for entire run
+
+         ALLOCATE ( CPLUME( ALLSPC,NPILLARS,NPLUMTOT ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = 'CPLUME Memory allocation failed'
+            CALL M3EXIT( PNAME, JDATE, JTIME, MSG, XSTAT1 )
+            END IF
+
+C CPLUME array inititalization
+
+         CPLUME = 0.0
+
+C Allocate and initialize dry deposition array
+
+!        ALLOCATE ( DDEP( MY_NCOLS,MY_NROWS,N_SPC_DEPV ), STAT = ALLOCSTAT )
+         ALLOCATE ( DDEP( N_SPC_DEPV,MY_NCOLS,MY_NROWS ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = 'Failure allocating DDEP'
+            CALL M3EXIT( PNAME, JDATE, JTIME, MSG, XSTAT1 )
+            END IF
+
+         DDEP = 0.0
+
+         WRITE( COMMSTR,'(4I2)' )  1, 0, 2, 0
+
+         END IF
+C End of first time block
+C.........................
+
+!     write( logdev,* ) '@@@@ Main1 - cgrid(0,         0,         1,NO): ',
+!    &                              cgrid(0,         0,         1,3)
+!     write( logdev,* ) '@@@@ Main1 - cgrid(my_ncols+1,0,         1,NO): ',
+!    &                              cgrid(my_ncols+1,0,         1,3)
+!     write( logdev,* ) '@@@@ Main1 - cgrid(0,         my_nrows+1,1,NO): ',
+!    &                              cgrid(0,         my_nrows+1,1,3)
+!     write( logdev,* ) '@@@@ Main1 - cgrid(my_ncols+1,my_nrows+1,1,NO): ',
+!    &                              cgrid(my_ncols+1,my_nrows+1,1,3)
+
+!     write( logdev,* ) '@@@@ Main1 - cgrid(1,         1,         1,NO): ',
+!    &                              cgrid(1,         1,         1,3)
+!     write( logdev,* ) '@@@@ Main1 - cgrid(my_ncols,  1,         1,NO): ',
+!    &                              cgrid(my_ncols,  1,         1,3)
+!     write( logdev,* ) '@@@@ Main1 - cgrid(1,         my_nrows,  1,NO): ',
+!    &                              cgrid(1,         my_nrows,  1,3)
+!     write( logdev,* ) '@@@@ Main1 - cgrid(my_ncols,  my_nrows,  1,NO): ',
+!    &                              cgrid(my_ncols,  my_nrows,  1,3)
+
+
+!     CALL SUBST_COMM ( CGRID, DSPL_N1_E1_S1_W1, DRCN_ALL, COMMSTR )
+      CALL SUBST_COMM ( PCGRID, DSPL_N1_E1_S1_W1, DRCN_ALL, COMMSTR )
+
+
+!     write( logdev,* ) '@@@@ Main2 - cgrid(0,         0,         1,NO): ',
+!    &                              cgrid(0,         0,         1,3)
+!     write( logdev,* ) '@@@@ Main2 - cgrid(my_ncols+1,0,         1,NO): ',
+!    &                              cgrid(my_ncols+1,0,         1,3)
+!     write( logdev,* ) '@@@@ Main2 - cgrid(0,         my_nrows+1,1,NO): ',
+!    &                              cgrid(0,         my_nrows+1,1,3)
+!     write( logdev,* ) '@@@@ Main2 - cgrid(my_ncols+1,my_nrows+1,1,NO): ',
+!    &                              cgrid(my_ncols+1,my_nrows+1,1,3)
+
+!     write( logdev,* ) '@@@@ Main2 - cgrid(1,         1,         1,NO): ',
+!    &                              cgrid(1,         1,         1,3)
+!     write( logdev,* ) '@@@@ Main2 - cgrid(my_ncols,  1,         1,NO): ',
+!    &                              cgrid(my_ncols,  1,         1,3)
+!     write( logdev,* ) '@@@@ Main2 - cgrid(1,         my_nrows,  1,NO): ',
+!    &                              cgrid(1,         my_nrows,  1,3)
+!     write( logdev,* ) '@@@@ Main2 - cgrid(my_ncols,  my_nrows,  1,NO): ',
+!    &                              cgrid(my_ncols,  my_nrows,  1,3)
+
+C Set Date and Time variables for PinG
+
+      PDATE = JDATE
+      PTIME = JTIME
+      PSTEP( 1 ) = TSTEP( 1 )
+!     PSTEP( 3 ) = TSTEP( 3 )
+
+!     write( logdev,* ) '@@@@ Main1: pdate/ptime ', pdate, ptime
+
+C Loop until finished (take smaller time steps for plume if necessary)
+
+      LASTSTEP = .FALSE.
+      DO WHILE ( .NOT. LASTSTEP )
+ 
+C Update the Plume Concentration Array
+ 
+         CALL PING_UPDATE ( CPLUME, NPLUMES, NPACTIVE, PDATE, PTIME )
+         CALL PING_CKSUMMER ( 'PING_UPDATE', CPLUME, PDATE, PTIME )
+
+         write( logdev,* ) '@@@@ ping_main - NPACTIVE: ', npactive
+
+         IF ( SUBST_GLOBAL_SUM( NPACTIVE ) .LE. 0 ) THEN        
+            CALL NEXTIME ( PDATE, PTIME, TSTEP( 2 ) )
+            WRITE( LOGDEV,* ) '@@@@ NPACTIVE is 0: Date/time ', PDATE, PTIME
+            CALL PING_OUT ( CPLUME, NPACTIVE, PDATE, PTIME )
+            RETURN
+         END IF
+
+         WRITE( LOGDEV,91000 ) 'Ping Flags:'
+         WRITE( LOGDEV,92000 ) ( PFLAG( I ), I = 1, NPLUMES )
+         WRITE( LOGDEV,91000 ) 'PDM  Flags:'
+         WRITE( LOGDEV,92000 ) ( PDMFLAG( I ), I = 1, NPLUMES )
+
+C Find the appropriate time step for PinG simmulation
+ 
+         CALL PING_GETSTEP 
+     &   ( JDATE, JTIME, TSTEP( 2 ), PDATE, PTIME, PINGSTEP, NPACTIVE, LASTSTEP )
+
+         WRITE( LOGDEV,93000 ) PDATE, PTIME, PINGSTEP, NPLUMES, NPACTIVE
+
+C load chemistry timestep
+
+         PSTEP( 2 ) = PINGSTEP
+ 
+C Perform plume dispersion
+ 
+         IF ( PING_DS_FLG .AND. NPACTIVE .GT. 0 ) THEN
+            CALL PING_DSPRSN ( CPLUME, NPACTIVE, PDATE, PTIME, PINGSTEP )
+            CALL PING_CKSUMMER ( 'PING_DSPRSN', CPLUME, PDATE, PTIME )
+            END IF
+ 
+C Perform ground removal (surface emissions - deposition)
+ 
+         IF ( PING_GR_FLG .AND. NPACTIVE .GT. 0 ) THEN
+!           CALL PING_GRDREM ( CPLUME, NPACTIVE, PDATE, PTIME, PINGSTEP )
+            CALL PING_GRDREM ( CPLUME, DDEP, NPACTIVE, PDATE, PTIME, PSTEP )
+            CALL PING_CKSUMMER ( 'PING_GRDREM', CPLUME, PDATE, PTIME )
+            END IF
+ 
+C Perform plume gas phase chemistry
+ 
+         IF ( PING_CH_FLG ) THEN
+            CALL PING_CHEM ( CPLUME, NPACTIVE, PDATE, PTIME, PSTEP )
+            CALL PING_CKSUMMER ( 'PING_CHEM', CPLUME, PDATE, PTIME )
+            END IF
+
+C Do the aerosol modeling, or the aero-noop code.
+
+!        IF ( PING_AE_FLG ) THEN
+         IF ( N_AE_SPC .GT. 0 ) THEN
+            CALL PING_AERO ( CPLUME, NPLUMTOT, NPACTIVE, PDATE, PTIME, PSTEP ) 
+            CALL PING_CKSUMMER ( 'PING_AERO', CPLUME, PDATE, PTIME )
+!           write( logdev,* ) 'Finished AERO at pdate/ptime ', pdate, ptime
+            END IF
+
+         CALL NEXTIME ( PDATE, PTIME, PINGSTEP )
+
+!        write( logdev,* ) '@@@@ Main2: pdate/ptime ', pdate, ptime
+
+         END DO     ! End of DO_WHILE
+ 
+C Hand over the mature plumes
+  
+      IF ( PING_HO_FLG ) THEN
+         CALL PING_HANDOVER ( CPLUME, PDATE, PTIME )
+         CALL PING_CKSUMMER ( 'PING_HANDOVER', CPLUME, PDATE, PTIME )
+         END IF
+ 
+      write( logdev,* ) '@@@@ Main3: pdate/ptime ', pdate, ptime
+
+      CALL PING_OUT ( CPLUME, NPACTIVE, PDATE, PTIME )
+!     CALL PING_CKSUMMER ( 'PING_OUT', CPLUME, PDATE, PTIME )
+
+!     IF ( PING_AE_FLG ) CALL PING_DRYDEP ( DDEP, PDATE, PTIME )
+!     IF ( N_AE_SPC .GT. 0 ) CALL PING_DRYDEP ( DDEP, PDATE, PTIME )
+      CALL PING_DRYDEP ( DDEP, PDATE, PTIME )
+
+      RETURN
+
+!1000 FORMAT( / 10X, A11, 1X, "|", 2( 14X, "|" ) )' )
+91000 FORMAT( / 10X, A11, 1X, 3( '----|----------' ), '---' )
+92000 FORMAT(  10 (10X, 12( I5 ) / ) ) 
+93000 FORMAT(/ 10X, 'Date:Time (YYYYDDD:HHMMSS): ', I7, ':', I6.6
+     &       / 10X, 'Ping_Step         (HHMMSS): ', I6.6
+     &       / 10X, 'Total Number of Plume Sections:  ', I6
+     &       / 10X, 'Active Number of Plume Sections: ', I6 )
+
+
+      END SUBROUTINE PING
+C=========================================================================
+ 
+      SUBROUTINE PING_GETSTEP 
+     &      ( JDATE, JTIME, MSTEP, PDATE, PTIME, PINGSTEP, NPACTIVE, LASTSTEP )
+
+C    28 Nov 00 J.Young: GLOBAL_IMIN -> Dave Wong's f90 stenex GLOBAL_MIN
+
+      USE SUBST_MODULES              ! stenex
+!     USE SUBST_GLOBAL_MIN_MODULE    ! stenex
+
+      USE PLUME_DYN   ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_STATE ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_ETA   ! inherits PLUME_PARM
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+
+      include SUBST_IODECL    ! I/O definitions and declarations
+
+C...............      Shared Arguments      ................
+ 
+      INTEGER JDATE           ! Current CTM date (Julian), YYYYDDD
+      INTEGER JTIME           ! Current CTM time, HHMMSS
+      INTEGER MSTEP           ! CTM transport time step
+      INTEGER PDATE           ! Current PinG date (Julian), YYYYDDD
+      INTEGER PTIME           ! Current PinG time, HHMMSS
+      INTEGER PINGSTEP        ! PinG expansion time step
+      INTEGER NPACTIVE        ! Number of plumes (active plumes)
+      LOGICAL LASTSTEP        ! Last step indicator
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER I, J, L         ! Loop counters
+      INTEGER DTMIN           ! Allowable time step
+      INTEGER D1, D2, D3      ! Work scalar
+
+      REAL    LAMBDAW         ! LAMBBDAW =RWP/WP
+ 
+!     logical, save :: firstime = .true.
+!     integer, save :: logdev
+
+C...............      Global Variables      ................
+
+      INTEGER, EXTERNAL :: TIME2SEC      ! Converts HHMMSS to seconds
+      INTEGER, EXTERNAL :: SEC2TIME      ! Converts SAM to HHMMSS
+      INTEGER, EXTERNAL :: SECSDIFF      ! Returns the number of secnds 
+                                         ! in a time interval, starting
+                                         ! at ADATE:ATIME and ending
+                                         ! at ZDATE:ZTIME
+
+C---------------------------------------------------------------------------
+ 
+!     if ( firstime ) then
+!        firstime = .false.
+!        logdev = init3 ()
+!        end if
+
+      D2    = TIME2SEC ( MSTEP )
+      DTMIN = D2
+  
+C Loop over all the plumes and calculate the corresponding allowable time step
+ 
+      DO L = 1, NPACTIVE
+         I = PLUMEPTR( L )
+         LAMBDAW = RWP( I ) / WP( I )
+!        write( logdev,* ) '@@@@ Ping_GetStep - LambdaW:', lambdaw
+         IF ( LAMBDAW .GT. 0 ) THEN
+            DO J = 2, NLEFT
+               D1 = DETAL( J ) / ( ETAL( J ) * LAMBDAW )
+               IF ( DTMIN .GT. D1 ) DTMIN = D1
+               END DO
+
+            DO J = 2, NRIGHT
+               D1 = DETAR( J ) / ( ETAR( J ) * LAMBDAW )
+               IF ( DTMIN .GT. D1 ) DTMIN = D1
+               END DO
+            END IF
+         END DO
+ 
+C Now that DTMIN has been determined, reduce it by SFACTOR in order
+C to eliminate the ringing effects and numerical instability.
+C _GLOBAL_MIN is called because PINGSTEP controls the time-stepping for all
+C plumes (in all pe's) in main. i.e. the time-stepping must be synchronized.
+ 
+!     write( logdev,* ) '@@@@ Ping_GetStep - DTMIN:', dtmin
+
+      DTMIN = SUBST_GLOBAL_MIN( DTMIN ) * PINGSFCTR
+
+C Allowable time step has been calculated
+C Now convert it from SEC to HHMMSS
+ 
+      D1  = SECSDIFF ( JDATE, JTIME, PDATE, PTIME )
+      D3  = MAX ( D2-D1, 0 )
+      IF ( DTMIN .GT. D3 ) DTMIN = D3
+
+      IF ( D1+DTMIN .GE. D2 ) LASTSTEP = .TRUE.
+      PINGSTEP = SEC2TIME ( DTMIN )
+
+      RETURN
+      END SUBROUTINE PING_GETSTEP
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

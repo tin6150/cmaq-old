@@ -1,0 +1,270 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/base/ping_util.F,v 1.8 2005/02/14 15:25:25 yoj Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C=========================================================================
+C This file, ping_util.F contains:
+C    SUBROUTINE PING_MAP3TO1
+C    SUBROUTINE PING_MAP1TO3
+C    SUBROUTINE PING_UPPER
+C    FUNCTION INDEXSPCS
+C    FUNCTION PING_CLENGTH
+C=========================================================================
+ 
+C The following routine maps a gridded coordinate (ix,iy,iz) into a single
+C integer number IPOINT.
+ 
+      SUBROUTINE PING_MAP3TO1( IX, IY, IZ, IPOINT )
+
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- use GL_* variables when the global dimensions are needed
+C   25 Sep 01 J.Young: dyn alloc - Use HGRD_DEFN
+C-----------------------------------------------------------------------
+
+      USE HGRD_DEFN   ! horizontal domain specifications
+
+      IMPLICIT NONE
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+      INTEGER IX
+      INTEGER IY
+      INTEGER IZ
+      INTEGER IPOINT
+ 
+      IPOINT = IX + GL_NCOLS * ( IY - 1 ) + GL_NCOLS * GL_NROWS * ( IZ - 1 )
+ 
+      RETURN
+      END SUBROUTINE PING_MAP3TO1
+ 
+C=========================================================================
+ 
+C The following routine maps a single integer number IPOINT into a
+C gridded coordinate (ix,iy,iz).
+ 
+      SUBROUTINE PING_MAP1TO3( IX, IY, IZ, IPOINT )
+!     SUBROUTINE PING_MAP1TO3( IPOINT, IX, IY, IZ )  <-preferred
+ 
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- use GL_* variables when the global dimensions are needed
+C   25 Sep 01 J.Young: dyn alloc - Use HGRD_DEFN
+C-----------------------------------------------------------------------
+
+      USE HGRD_DEFN   ! horizontal domain specifications
+
+C Define variables
+ 
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+ 
+C...............      Arguments      ................
+ 
+      INTEGER IX
+      INTEGER IY
+      INTEGER IZ
+      INTEGER IPOINT
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER ITEMP
+      INTEGER KXKY
+ 
+C--------------------------------------------------------------------
+ 
+      KXKY  = GL_NCOLS * GL_NROWS
+      ITEMP = 1 + MOD( IPOINT - 1, KXKY )
+      IZ    = 1 + ( IPOINT - ITEMP ) / KXKY
+      IX    = 1 + MOD( ITEMP - 1, GL_NCOLS )
+      IY    = 1 + ( ITEMP - IX ) / GL_NCOLS
+ 
+      RETURN
+      END SUBROUTINE PING_MAP1TO3
+ 
+C-------------------------------------------------------------------------------
+ 
+C This subroutine changes the argument string to capital letters
+ 
+      SUBROUTINE PING_UPPER ( STRING )
+ 
+      IMPLICIT NONE
+ 
+      CHARACTER*(*) STRING
+ 
+      CHARACTER*26  SMALLSET, CAPSET
+      INTEGER       LENGTH
+      INTEGER       I, J
+      INTEGER       PING_CLENGTH
+ 
+      SMALLSET = 'abcdefghijklmnopqrstuvwxyz'
+      CAPSET   = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+ 
+      LENGTH = PING_CLENGTH( STRING )
+ 
+      DO I = 1, LENGTH
+         DO J = 1, 26
+            IF ( STRING( I:I ) .EQ. SMALLSET( J:J ) ) THEN
+               STRING( I:I ) = CAPSET( J:J )
+               GO TO 10
+               END IF
+            END DO
+10       CONTINUE
+         END DO
+                              
+      RETURN
+      END SUBROUTINE PING_UPPER
+ 
+C=========================================================================
+ 
+      INTEGER FUNCTION INDEXSPCS ( NAME, NAMEARRAY, N )
+ 
+      IMPLICIT NONE
+ 
+C...............      Arguments      ................
+ 
+      CHARACTER*(*)  NAME                ! Species name to be found
+      CHARACTER*(*)  NAMEARRAY( * )      ! Search array
+      INTEGER        N                   ! Array size
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER I                          ! Loop index
+      INTEGER L1,L2
+ 
+C Function definitions
+  
+      INTEGER PING_CLENGTH
+ 
+      INDEXSPCS = 0
+      L1 = PING_CLENGTH( NAME )
+      DO I = 1, N
+         L2 = PING_CLENGTH( NAMEARRAY( I ) )
+         IF ( L1 .EQ. L2 ) THEN
+            IF ( NAMEARRAY( I )( 1:L1 ) .EQ. NAME( 1:L1 ) ) THEN
+               INDEXSPCS = I
+               RETURN
+               END IF
+            END IF
+         END DO
+
+      RETURN
+      END FUNCTION INDEXSPCS
+
+C-------------------------------------------------------------------------------
+ 
+C Function PING_CLENGTH finds the length of and trims the character string
+C passed to the function to make it into a word (which could have embedded
+C whitespace).
+ 
+      INTEGER FUNCTION PING_CLENGTH ( STR )
+ 
+      IMPLICIT NONE
+ 
+      CHARACTER*(*) STR                ! Character String
+ 
+      CHARACTER*1 BLANK
+      INTEGER     I1, I2, I, J
+ 
+      BLANK = ' '
+      I1    = 1
+      I2    = LEN( STR )
+ 
+C Find the first non blank position
+ 
+      DO WHILE ( STR( I1:I1 ) .EQ. BLANK .AND. I2 .GT. 0 )
+         I1 = I1 + 1
+         END DO
+ 
+C Find the last non blank position
+ 
+      DO WHILE ( STR( I2:I2 ) .EQ. BLANK .AND. I2 .GT. 0 )
+         I2 = I2 - 1
+         END DO
+ 
+C Calculate the length of the word obtained from the character string
+ 
+      PING_CLENGTH = I2 - I1 + 1
+ 
+C Trim leading blanks
+ 
+      IF ( I1 .GT. 1 ) THEN
+         DO J = 1, PING_CLENGTH
+            STR( J:J ) = STR( I1:I1 )
+            I1 = I1 + 1
+            END DO
+
+         I = PING_CLENGTH
+
+         DO J = I+1, I2
+            STR( J:J ) = BLANK
+            END DO
+
+         END IF
+
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

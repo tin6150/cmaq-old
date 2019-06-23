@@ -1,0 +1,153 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/driver/pdm/readpdm.F,v 1.6 2005/08/29 20:31:13 jug Exp $
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+      SUBROUTINE READPDM( JDATE, JTIME, NMEPS, NREL, ICNT, IRT )
+
+C Function: Read PDM_PING_O date file and determine the number of active
+C           plume releases at the last hour of the previous run
+
+      USE HGRD_DEFN           ! horizontal domain specifications
+      USE VGRD_DEFN
+      
+      IMPLICIT NONE
+
+      INCLUDE SUBST_IOPARMS
+      INCLUDE SUBST_IOFDESC
+      INCLUDE SUBST_IODECL
+!     INCLUDE SUBST_HGRD_ID
+!     INCLUDE SUBST_VGRD_ID
+      INCLUDE 'PLUME.EXT'
+      INCLUDE 'FILES_PDM.EXT'
+
+      INTEGER JDATE, JTIME, NMEPS, NREL, ICNT, IRT( 25 )
+      
+      CHARACTER( 96 ) :: XMSG = ' '
+      CHARACTER( 16 ) :: PNAME = 'READPDM'
+      
+      INTEGER IDTSEC, NSORCE, NS
+      INTEGER NLAST, SDATE, STIME, NLOOP, IR
+      INTEGER ALLOCSTAT
+      
+!     POINTER ( PTR, IPLMFLG )
+      INTEGER, ALLOCATABLE :: IPLMFLG( :,: )
+      
+      CHARACTER( 16 ) :: VNAM = 'PLUME_FLAG'
+      CHARACTER( 16 ) :: PROG = 'READPDM'
+
+!     CALL ALLOMEM( PTR, NMEPS*NREL )
+C  USE ALLOCATE INSTEAD
+      ALLOCATE ( IPLMFLG( NMEPS,NREL ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating IPLMFLG'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+      WRITE( *,* ) 'AFTER ALLOCATE:', MS, NREL
+
+      IF ( .NOT. OPEN3( PDM_PING_O, FSREAD3, PROG ) ) THEN
+         XMSG = 'ERROR opening file PDM'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+      IF ( .NOT. DESC3( PDM_PING_O ) ) THEN
+         XMSG = 'ERROR getting description of file PDM'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+      
+      SDATE   = SDATE3D
+      STIME   = STIME3D
+      IDTSEC  = TSTEP3D
+
+      NSORCE  = NCOLS3D
+      NREL    = NROWS3D
+                
+      NLOOP = ( NREL - 1 ) * ( 6000 / IDTSEC )
+      NLAST = NLOOP + 1
+      WRITE( *,* ) NLOOP, NLAST
+      
+      WRITE( *,* ) '* JDATE & JTIME', JDATE, JTIME
+      
+      IF (.NOT. READ3( PDM_PING_O, VNAM, 1, JDATE, JTIME, IPLMFLG ) ) THEN
+         XMSG = 'ERROR reading file PDM'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+      
+C  ===============================================
+C  Loop over all plume sections of all MEPSES at the last time step
+      ICNT = 0
+      DO 480 IR = 1, NREL
+         DO NS = 1, NMEPS
+C  Find an 'active ' plume section for any release time
+            IF ( IPLMFLG( NS,IR ) .LE. 3 .AND. IPLMFLG( NS,IR ) .GE. 0 ) THEN
+               ICNT = ICNT + 1
+               IRT( ICNT ) = IR
+               WRITE( *,* ) NS, IR, ICNT, IRT( ICNT ), IPLMFLG( NS,IR )
+               GO TO 480   
+            END IF
+         END DO
+480   CONTINUE
+      
+      DEALLOCATE ( IPLMFLG )
+       
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

@@ -1,0 +1,522 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.47;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.47;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/chem/ebi_saprc99/hrinit.F,v 1.1.1.1 2004/01/16 18:45:23 sjr Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+
+
+      SUBROUTINE HRINIT
+C***********************************************************************
+C
+C  FUNCTION: To initialize species tolerances, arrays, and indices 
+C
+C  PRECONDITIONS: For SAPRC99 mechanisms only
+C
+C  RETURN VALUES: None
+C
+C  KEY SUBROUTINES/FUNCTIONS CALLED: None
+C
+C  REVISION HISTORY: Prototype created by Jerry Gipson, September, 2003
+C
+C***********************************************************************
+
+      USE HRDATA
+
+      IMPLICIT NONE
+
+C.....INCLUDES:
+      INCLUDE SUBST_GC_SPC    ! Gas chem species names and MWs
+      INCLUDE SUBST_GC_EMIS   ! Gas chem emissions name and mapping tables
+      INCLUDE SUBST_RXCMMN    ! Mechanism reaction common block
+
+C.....ARGUMENTS: NONE
+ 
+C.....PARAMETERS: NONE
+
+
+C.....EXTERNAL FUNCTIONS:
+      INTEGER  FINDEX         ! Finds location of a number in a list
+
+C.....SAVED VARIABLES: NONE
+
+ 
+C.....LOCAL VARIABLES: 
+      CHARACTER*16  PNAME     ! Program name
+      CHARACTER*132 MSG       ! Log message
+
+      INTEGER IND             ! Species index
+      INTEGER N               ! Loop index
+
+C***********************************************************************
+      DATA PNAME / 'HRINIT' / 
+
+
+      N_SPEC = N_GC_SPC
+      N_RXNS = NRXNS
+
+      ALLOCATE( RKI( NRXNS ) )
+      ALLOCATE( RXRAT( NRXNS ) )
+      ALLOCATE( RTOL( N_SPEC) )
+      ALLOCATE( YC(   N_SPEC) )
+      ALLOCATE( YC0(  N_SPEC) )
+      ALLOCATE( YCP(  N_SPEC) )
+      ALLOCATE( PROD( N_SPEC) )
+      ALLOCATE( LOSS( N_SPEC) )
+
+      NING1 = 4
+      NING2 = 4
+
+
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c  Set species indices and pointers for AEROSOL version
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      IF( L_AE_VRSN ) THEN
+
+         NO2      =   1
+         NO       =   2
+         O3P      =   3
+         O3       =   4
+         NO3      =   5
+         N2O5     =   6
+         HNO3     =   7
+         O1D2     =   8
+         HO       =   9
+         HONO     =  10
+         HO2      =  11
+         CO       =  12
+         HNO4     =  13
+         HO2H     =  14
+         SO2      =  15
+         SULF     =  16
+         SULAER   =  17
+         C_O2     =  18
+         HCHO     =  19
+         COOH     =  20
+         MEOH     =  21
+         RO2_R    =  22
+         ROOH     =  23
+         R2O2     =  24
+         RO2_N    =  25
+         RNO3     =  26
+         MEK      =  27
+         PROD2    =  28
+         CCO_O2   =  29
+         PAN      =  30
+         CCO_OOH  =  31
+         CCO_OH   =  32
+         RCO_O2   =  33
+         PAN2     =  34
+         CCHO     =  35
+         RCO_OOH  =  36
+         RCO_OH   =  37
+         BZCO_O2  =  38
+         PBZN     =  39
+         BZ_O     =  40
+         MA_RCO3  =  41
+         MA_PAN   =  42
+         TBU_O    =  43
+         ACET     =  44
+         NPHE     =  45
+         PHEN     =  46
+         BZNO2_O  =  47
+         HOCOO    =  48
+         HCOOH    =  49
+         RCHO     =  50
+         GLY      =  51
+         MGLY     =  52
+         BACL     =  53
+         CRES     =  54
+         CRESAER  =  55
+         BALD     =  56
+         METHACRO =  57
+         MVK      =  58
+         ISOPROD  =  59
+         DCB1     =  60
+         DCB2     =  61
+         DCB3     =  62
+         ETHENE   =  63
+         ISOPRENE =  64
+         TRP1     =  65
+         TRP1AER  =  66
+         ALK1     =  67
+         ALK2     =  68
+         ALK3     =  69
+         ALK4     =  70
+         ALK5     =  71
+         ALK5AER  =  72
+         ARO1     =  73
+         ARO1AER  =  74
+         ARO2     =  75
+         ARO2AER  =  76
+         OLE1     =  77
+         OLE2     =  78
+         OLE2AER  =  79
+
+         N_EBISP  = 66
+         ALLOCATE( EBISP( N_EBISP ) )
+
+         EBISP(  1 ) = HNO3            
+         EBISP(  2 ) = CO              
+         EBISP(  3 ) = HO2H            
+         EBISP(  4 ) = SO2             
+         EBISP(  5 ) = SULF            
+         EBISP(  6 ) = C_O2            
+         EBISP(  7 ) = HCHO            
+         EBISP(  8 ) = COOH            
+         EBISP(  9 ) = MEOH            
+         EBISP( 10 ) = RO2_R           
+         EBISP( 11 ) = ROOH            
+         EBISP( 12 ) = R2O2            
+         EBISP( 13 ) = RO2_N           
+         EBISP( 14 ) = RNO3            
+         EBISP( 15 ) = MEK             
+         EBISP( 16 ) = PROD2           
+         EBISP( 17 ) = CCO_OOH         
+         EBISP( 18 ) = CCO_OH          
+         EBISP( 19 ) = RCO_O2          
+         EBISP( 20 ) = PAN2            
+         EBISP( 21 ) = CCHO            
+         EBISP( 22 ) = RCO_OOH         
+         EBISP( 23 ) = RCO_OH          
+         EBISP( 24 ) = BZCO_O2         
+         EBISP( 25 ) = PBZN            
+         EBISP( 26 ) = BZ_O            
+         EBISP( 27 ) = MA_RCO3         
+         EBISP( 28 ) = MA_PAN          
+         EBISP( 29 ) = TBU_O           
+         EBISP( 30 ) = ACET            
+         EBISP( 31 ) = NPHE            
+         EBISP( 32 ) = PHEN            
+         EBISP( 33 ) = BZNO2_O         
+         EBISP( 34 ) = HOCOO           
+         EBISP( 35 ) = HCOOH           
+         EBISP( 36 ) = RCHO            
+         EBISP( 37 ) = GLY             
+         EBISP( 38 ) = MGLY            
+         EBISP( 39 ) = BACL            
+         EBISP( 40 ) = CRES            
+         EBISP( 41 ) = BALD            
+         EBISP( 42 ) = METHACRO        
+         EBISP( 43 ) = MVK             
+         EBISP( 44 ) = ISOPROD         
+         EBISP( 45 ) = DCB1            
+         EBISP( 46 ) = DCB2            
+         EBISP( 47 ) = DCB3            
+         EBISP( 48 ) = ETHENE          
+         EBISP( 49 ) = ISOPRENE        
+         EBISP( 50 ) = TRP1            
+         EBISP( 51 ) = ALK1            
+         EBISP( 52 ) = ALK2            
+         EBISP( 53 ) = ALK3            
+         EBISP( 54 ) = ALK4            
+         EBISP( 55 ) = ALK5            
+         EBISP( 56 ) = ARO1            
+         EBISP( 57 ) = ARO2            
+         EBISP( 58 ) = OLE1            
+         EBISP( 59 ) = OLE2            
+         EBISP( 60 ) = SULAER          
+         EBISP( 61 ) = ALK5AER         
+         EBISP( 62 ) = OLE2AER         
+         EBISP( 63 ) = ARO1AER         
+         EBISP( 64 ) = ARO2AER         
+         EBISP( 65 ) = CRESAER         
+         EBISP( 66 ) = TRP1AER         
+
+      ENDIF
+      
+    
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c  Set species indices and pointers for non-AEROSOL version
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      IF( .NOT. L_AE_VRSN ) THEN
+
+         NO2      =   1
+         NO       =   2
+         O3P      =   3
+         O3       =   4
+         NO3      =   5
+         N2O5     =   6
+         HNO3     =   7
+         O1D2     =   8
+         HO       =   9
+         HONO     =  10
+         HO2      =  11
+         CO       =  12
+         HNO4     =  13
+         HO2H     =  14
+         SO2      =  15
+         SULF     =  16
+         C_O2     =  17
+         HCHO     =  18
+         COOH     =  19
+         MEOH     =  20
+         RO2_R    =  21
+         ROOH     =  22
+         R2O2     =  23
+         RO2_N    =  24
+         RNO3     =  25
+         MEK      =  26
+         PROD2    =  27
+         CCO_O2   =  28
+         PAN      =  29
+         CCO_OOH  =  30
+         CCO_OH   =  31
+         RCO_O2   =  32
+         PAN2     =  33
+         CCHO     =  34
+         RCO_OOH  =  35
+         RCO_OH   =  36
+         BZCO_O2  =  37
+         PBZN     =  38
+         BZ_O     =  39
+         MA_RCO3  =  40
+         MA_PAN   =  41
+         TBU_O    =  42
+         ACET     =  43
+         NPHE     =  44
+         PHEN     =  45
+         BZNO2_O  =  46
+         HOCOO    =  47
+         HCOOH    =  48
+         RCHO     =  49
+         GLY      =  50
+         MGLY     =  51
+         BACL     =  52
+         CRES     =  53
+         BALD     =  54
+         METHACRO =  55
+         MVK      =  56
+         ISOPROD  =  57
+         DCB1     =  58
+         DCB2     =  59
+         DCB3     =  60
+         ETHENE   =  61
+         ISOPRENE =  62
+         TRP1     =  63
+         ALK1     =  64
+         ALK2     =  65
+         ALK3     =  66
+         ALK4     =  67
+         ALK5     =  68
+         ARO1     =  69
+         ARO2     =  70
+         OLE1     =  71
+         OLE2     =  72
+
+         N_EBISP  = 59
+         ALLOCATE( EBISP( N_EBISP ) )
+
+         EBISP(  1 ) = HNO3            
+         EBISP(  2 ) = CO              
+         EBISP(  3 ) = HO2H            
+         EBISP(  4 ) = SO2             
+         EBISP(  5 ) = SULF            
+         EBISP(  6 ) = C_O2            
+         EBISP(  7 ) = HCHO            
+         EBISP(  8 ) = COOH            
+         EBISP(  9 ) = MEOH            
+         EBISP( 10 ) = RO2_R           
+         EBISP( 11 ) = ROOH            
+         EBISP( 12 ) = R2O2            
+         EBISP( 13 ) = RO2_N           
+         EBISP( 14 ) = RNO3            
+         EBISP( 15 ) = MEK             
+         EBISP( 16 ) = PROD2           
+         EBISP( 17 ) = CCO_OOH         
+         EBISP( 18 ) = CCO_OH          
+         EBISP( 19 ) = RCO_O2          
+         EBISP( 20 ) = PAN2            
+         EBISP( 21 ) = CCHO            
+         EBISP( 22 ) = RCO_OOH         
+         EBISP( 23 ) = RCO_OH          
+         EBISP( 24 ) = BZCO_O2         
+         EBISP( 25 ) = PBZN            
+         EBISP( 26 ) = BZ_O            
+         EBISP( 27 ) = MA_RCO3         
+         EBISP( 28 ) = MA_PAN          
+         EBISP( 29 ) = TBU_O           
+         EBISP( 30 ) = ACET            
+         EBISP( 31 ) = NPHE            
+         EBISP( 32 ) = PHEN            
+         EBISP( 33 ) = BZNO2_O         
+         EBISP( 34 ) = HOCOO           
+         EBISP( 35 ) = HCOOH           
+         EBISP( 36 ) = RCHO            
+         EBISP( 37 ) = GLY             
+         EBISP( 38 ) = MGLY            
+         EBISP( 39 ) = BACL            
+         EBISP( 40 ) = CRES            
+         EBISP( 41 ) = BALD            
+         EBISP( 42 ) = METHACRO        
+         EBISP( 43 ) = MVK             
+         EBISP( 44 ) = ISOPROD         
+         EBISP( 45 ) = DCB1            
+         EBISP( 46 ) = DCB2            
+         EBISP( 47 ) = DCB3            
+         EBISP( 48 ) = ETHENE          
+         EBISP( 49 ) = ISOPRENE        
+         EBISP( 50 ) = TRP1            
+         EBISP( 51 ) = ALK1            
+         EBISP( 52 ) = ALK2            
+         EBISP( 53 ) = ALK3            
+         EBISP( 54 ) = ALK4            
+         EBISP( 55 ) = ALK5            
+         EBISP( 56 ) = ARO1            
+         EBISP( 57 ) = ARO2            
+         EBISP( 58 ) = OLE1            
+         EBISP( 59 ) = OLE2            
+
+      ENDIF 
+
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c  Set species indices pointers for non-AEROSOL version
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
+
+      RTOL( NO2      ) = 1.0D-03
+      RTOL( NO       ) = 1.0D-03
+      RTOL( O3P      ) = 1.0D+00
+      RTOL( O3       ) = 1.0D-03
+      RTOL( NO3      ) = 1.0D-03
+      RTOL( N2O5     ) = 1.0D-03
+      RTOL( HNO3     ) = 1.0D-03
+      RTOL( O1D2     ) = 1.0D+00
+      RTOL( HO       ) = 1.0D-03
+      RTOL( HONO     ) = 1.0D-03
+      RTOL( HO2      ) = 1.0D-03
+      RTOL( CO       ) = 1.0D-03
+      RTOL( HNO4     ) = 1.0D-03
+      RTOL( HO2H     ) = 1.0D-03
+      RTOL( SO2      ) = 1.0D-03
+      RTOL( SULF     ) = 1.0D+00
+      RTOL( C_O2     ) = 1.0D-03
+      RTOL( HCHO     ) = 1.0D-03
+      RTOL( COOH     ) = 1.0D-03
+      RTOL( MEOH     ) = 1.0D-03
+      RTOL( RO2_R    ) = 1.0D-03
+      RTOL( ROOH     ) = 1.0D-03
+      RTOL( R2O2     ) = 1.0D-03
+      RTOL( RO2_N    ) = 1.0D-03
+      RTOL( RNO3     ) = 1.0D-03
+      RTOL( MEK      ) = 1.0D-03
+      RTOL( PROD2    ) = 1.0D-03
+      RTOL( CCO_O2   ) = 1.0D-03
+      RTOL( PAN      ) = 1.0D-03
+      RTOL( CCO_OOH  ) = 1.0D-03
+      RTOL( CCO_OH   ) = 1.0D-03
+      RTOL( RCO_O2   ) = 1.0D-03
+      RTOL( PAN2     ) = 1.0D-03
+      RTOL( CCHO     ) = 1.0D-03
+      RTOL( RCO_OOH  ) = 1.0D-03
+      RTOL( RCO_OH   ) = 1.0D-03
+      RTOL( BZCO_O2  ) = 1.0D-03
+      RTOL( PBZN     ) = 1.0D-03
+      RTOL( BZ_O     ) = 1.0D+00
+      RTOL( MA_RCO3  ) = 1.0D-03
+      RTOL( MA_PAN   ) = 1.0D-03
+      RTOL( TBU_O    ) = 1.0D+00
+      RTOL( ACET     ) = 1.0D-03
+      RTOL( NPHE     ) = 1.0D-03
+      RTOL( PHEN     ) = 1.0D-03
+      RTOL( BZNO2_O  ) = 1.0D+00
+      RTOL( HOCOO    ) = 1.0D+00
+      RTOL( HCOOH    ) = 1.0D-03
+      RTOL( RCHO     ) = 1.0D-03
+      RTOL( GLY      ) = 1.0D-03
+      RTOL( MGLY     ) = 1.0D-03
+      RTOL( BACL     ) = 1.0D-03
+      RTOL( CRES     ) = 1.0D-03
+      RTOL( BALD     ) = 1.0D-03
+      RTOL( METHACRO ) = 1.0D-03
+      RTOL( MVK      ) = 1.0D-03
+      RTOL( ISOPROD  ) = 1.0D-03
+      RTOL( DCB1     ) = 1.0D-03
+      RTOL( DCB2     ) = 1.0D-03
+      RTOL( DCB3     ) = 1.0D-03
+      RTOL( ETHENE   ) = 1.0D-03
+      RTOL( ISOPRENE ) = 1.0D-03
+      RTOL( TRP1     ) = 1.0D-03
+      RTOL( ALK1     ) = 1.0D-03
+      RTOL( ALK2     ) = 1.0D-03
+      RTOL( ALK3     ) = 1.0D-03
+      RTOL( ALK4     ) = 1.0D-03
+      RTOL( ALK5     ) = 1.0D-03
+      RTOL( ARO1     ) = 1.0D-03
+      RTOL( ARO2     ) = 1.0D-03
+      RTOL( OLE1     ) = 1.0D-03
+      RTOL( OLE2     ) = 1.0D-03
+
+      IF( L_AE_VRSN ) THEN
+
+         RTOL( SULAER   ) = 1.0D+00
+         RTOL( CRESAER  ) = 1.0D+00
+         RTOL( TRP1AER  ) = 1.0D+00
+         RTOL( ALK5AER  ) = 1.0D+00
+         RTOL( ARO1AER  ) = 1.0D+00
+         RTOL( ARO2AER  ) = 1.0D+00
+         RTOL( OLE2AER  ) = 1.0D+00
+
+      ENDIF
+
+
+      RETURN
+
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

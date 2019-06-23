@@ -1,0 +1,331 @@
+                  ATMOSPHERIC MERCURY - 21 MARCH 2006
+
+
+ New treatments for gaseous chemistry, aqueous chemistry and deposition 
+ have been developed to simulate atmospheric mercury fate and transport. 
+ The gaseous chemistry mechanism is a modification of the CB-IV mechanism 
+ (Gery et. al., 1989; Gipson and Young, 1999) where four new reactions 
+ involving mercury have been added.  The new mechanism has the base name 
+ CB4HG_AE3_AQ. Four mercury species were added to the model:  elemental 
+ mercury gas (HG), divalent gaseous mercury (HGIIGAS), I-mode aerosol 
+ mercury (APHGI), and J- mode aerosol mercury (APHGJ).  At this time, only 
+ the EBI solver has been applied for the gaseous chemistry mechanism 
+ including mercury.
+ 
+ Simulation of mercury also requires a treatment of aqueous chemistry with 
+ a special version of the AQCHEM routine, a treatment of aerosol dynamics 
+ with a special version of the AE3 option, and simulation of chlorine using 
+ the capability added with CMAQ 4.5 (CMAS, 2005).
+
+ The cloud chemistry mechanism in AQCHEM has been modified to include six 
+ new chemical reactions and 14 sorption/de-sorption reactions involving 
+ mercury. Some of the aqueous chemical reactions of mercury are relatively 
+ fast compared to the non-mercury reactions previously in the model and the 
+ iterative solution criteria used to solve the aqueous chemical system were 
+ modified to maintain numerical stability and accuracy.  Solution of the 
+ aqueous chemical model with mercury added requires a significant increase 
+ in the number of calculations.  However, cloud chemistry was previously a 
+ small fraction of the total computational requirement and the increase in 
+ CPU time for the entire model calculation is normally 10 to 20% depending 
+ on the fraction of finite volumes where cloud water is present.
+
+ An earlier experimental implementation of mercury treatments in CMAQ is 
+ described in Bullock and Brehme (2002).  CMAQ 4.5.1 contains updates to 
+ this earlier version in a number of areas to improve the underlying 
+ science and to address comments from peer review.  The updates in mercury 
+ chemistry are as follows:  (1) the elemental mercury reaction with 
+ hydrogen peroxide assumes the formation of 100% divalent gaseous mercury 
+ rather than 100% aerosol mercury; (2) the elemental mercury reaction with 
+ ozone assumes the formation of 50% divalent gaseous mercury and 50% 
+ aerosol mercury rather than 100% aerosol mercury; (3) the elemental 
+ mercury reaction with hydroxyl radical assumes the formation of 50% 
+ divalent gaseous mercury and 50% aerosol mercury rather than 100% aerosol 
+ mercury; and (4) the rate constant for the HG + OH reaction was lowered 
+ slightly to 7.7 x 10**(-14) cm**(3) molecules**(-1) s**(-1) based on the 
+ lower range of the kinetic rate constant estimated by Pal and Ariya 
+ (2004).  Dry deposition of elemental mercury gas was also added, with 
+ deposition velocity values provided from MCIP using a heuristic approach 
+ involving estimates of surface reactivity, stomatal resistance, and 
+ mesophyll resistance factors, and accepted values for the molecular 
+ diffusivity of atomic mercury.  It should be noted that this dry 
+ deposition of elemental mercury can lead to unrealistic depletion of that 
+ species if natural mercury emissions and re-emission of anthropogenic 
+ mercury are not also accounted for.  CMAQ 4.5.1 mercury model development 
+ was conducted using biogenic mercury emission information derived from a 
+ special version of the Biogenic Emissions Inventory System (BEIS) 
+ described in Lin et al. (2005).  
+
+ NOTE:  CURRENTLY, THE CMAQ MERCURY MODEL ONLY OPERATES WITH THE
+        "aero3" (AE3) MODULE.  WE PLAN TO EXTEND THE MERCURY MODEL
+        TO INCLUDE THE "aero4" (AE4) MODULE IN THE NEXT RELEASE.
+ 
+ To run the mercury version of CMAQ, you will need to generate emissions 
+ files using SMOKE with the correct ancillary files (see Appendix A below 
+ for a description of the mercury emissions processing).  Initial and 
+ boundary condition files should be produced by the ICON and BCON 
+ processors with the same mechanism as the CCTM.  We have outlined below 
+ the procedure for building and running ICON and BCON using a modified set 
+ of "profile" data.
+
+ ICON:
+ 
+   You will need to compile ICON to use the "cb4hg_ae3_aq" mechanism.  The 
+   following is a "patch" style difference in the bldit.icon.pgf script:
+
+      42c42
+      <  set APPL  = e1a
+      ---
+      >  set APPL  = h1a
+      64,65c64
+      <  set ModMech   = ( module radm2_to_cb4      $Revision; )
+      < #set ModMech   = ( module radm2_to_saprc99  $Revision; )
+      ---
+      >  set ModMech   = ( module radm2_to_cb4hg    $Revision; )
+      70,73c69
+      < #set Mechanism = cb4_ae3_aq
+      <  set Mechanism = cb4_ae4_aq
+      < #set Mechanism = saprc99_ae3_aq
+      < #set Mechanism = saprc99_ae4_aq
+      ---
+      >  set Mechanism = cb4hg_ae3_aq
+
+
+   Likewise you will need to modify run.icon to access the appropriate 
+   profile data.  The following is a "patch" style difference in run.icon:
+
+      7c7
+      < # Usage: run.icon >&! icon_e2a.log &                                  #
+      ---
+      > # Usage: run.icon >&! icon_h2a.log &                                  #
+      22,23c22,23
+      <  set APPL     = cb4
+      <  set CFG      = e1a
+      ---
+      >  set APPL     = cb4hg
+      >  set CFG      = h1a
+      80c80
+      <     setenv IC_PROFILE      $M3DATA/raw/icon/ic_profile_v7.dat
+      ---
+      >     setenv IC_PROFILE      $M3DATA/raw/icon/ic_profile_v7h.dat
+      
+
+ BCON:
+
+   You will also need to compile BCON to use the "cb4hg_ae3_aq" mechanism. 
+   The following is a "patch" style difference in the bldit.bcon.pgf 
+   script:
+
+      42c42
+      <  set APPL  = e1a
+      ---
+      >  set APPL  = h1a
+      62,63c62
+      <  set ModMech   = ( module radm2_to_cb4      $Revision; )
+      < #set ModMech   = ( module radm2_to_saprc99  $Revision; )
+      ---
+      >  set ModMech   = ( module radm2_to_cb4hg    $Revision; )
+      68,71c67
+      < #set Mechanism = cb4_ae3_aq
+      <  set Mechanism = cb4_ae4_aq
+      < #set Mechanism = saprc99_ae3_aq
+      < #set Mechanism = saprc99_ae4_aq
+      ---
+      >  set Mechanism = cb4hg_ae3_aq
+
+
+   You will need to modify run.bcon to use the appropriate profile data. 
+   The following is a "patch" style difference in run.bcon:
+
+      7c7
+      < # Usage: run.bcon >&! bcon_e2a.log &                                  #
+      ---
+      > # Usage: run.bcon >&! bcon_h1a.log &                                  #
+      22,23c22,23
+      <  set APPL     = cb4
+      <  set CFG      = e1a
+      ---
+      >  set APPL     = cb4hg
+      >  set CFG      = h1a
+      83c83
+      <     setenv BC_PROFILE      $M3DATA/raw/bcon/bc_profile_v7.dat
+      ---
+      >     setenv BC_PROFILE      $M3DATA/raw/bcon/bc_profile_v7h.dat
+
+ CCTM:
+
+   In order to build the mercury version of the CCTM executable program, 
+   several modules and a different chemical mechanism must be specified in 
+   the model build script.  You can modify the bldit.cctm.linux script as 
+   follows and build the mercury version of the CCTM:
+
+      43c43
+      <  set APPL  = e2a
+      ---
+      >  set APPL  = h2a
+      94,95c94
+      <  set ModVdiff  = ( module eddy               $Revision; )
+      < #set ModVdiff  = ( module acm                $Revision; )
+      ---
+      >  set ModVdiff  = ( module eddy_hg            $Revision; )
+      106,107c105
+      <  set ModChem   = ( module ebi_cb4            $Revision; )
+      < #set ModChem   = ( module ebi_saprc99        $Revision; )
+      ---
+      >  set ModChem   = ( module ebi_cb4hg          $Revision; )
+      110,111c108
+      < #set ModAero   = ( module aero3              $Revision; )
+      <  set ModAero   = ( module aero4              $Revision; )
+      ---
+      >  set ModAero   = ( module aero3_hg           $Revision; )
+      114c111
+      <  set ModAdepv  = ( module aero_depv2         $Revision; )
+      ---
+      >  set ModAdepv  = ( module aero_depv2_hg      $Revision; )
+      117,118c114
+      < #set ModCloud  = ( module cloud_radm         $Revision; )
+      <  set ModCloud  = ( module cloud_acm          $Revision; )
+      ---
+      >  set ModCloud  = ( module cloud_acm_hg       $Revision; )
+      128,131c124
+      < #set Mechanism = cb4_ae3_aq
+      <  set Mechanism = cb4_ae4_aq
+      < #set Mechanism = saprc99_ae3_aq
+      < #set Mechanism = saprc99_ae4_aq
+      ---
+      >  set Mechanism = cb4hg_ae3_aq
+
+
+ Next, modify the run script as follows (you will need to generate your own 
+ emissions files):
+
+      7c7
+      < # Usage: run.cctm >&! cctm_e2a.log &                                  #
+      ---
+      > # Usage: run.cctm >&! cctm_h2a.log &                                  #
+      22,23c22,23
+      <  set APPL     = e2a
+      <  set CFG      = e2a
+      ---
+      >  set APPL     = h2a
+      >  set CFG      = h2a
+      105,109c105,109
+      <  set EMISpath  = $M3DATA/emis/tut02
+      <  set EMISfile  = e_32km_cb4.19990702.ncf
+      < #set EMISfile  = e_32km_cb4.19990703.ncf
+      < #set EMISfile  = e_08km_cb4.19990702.ncf
+      < #set EMISfile  = e_08km_cb4.19990703.ncf
+      ---
+      >  set EMISpath  = $M3DATA/emis/tut02hg
+      >  set EMISfile  = e_32km_cb4ae3hg.19990702.ncf
+      > #set EMISfile  = e_32km_cb4ae3hg.19990703.ncf
+      > #set EMISfile  = e_08km_cb4ae3hg.19990702.ncf
+      > #set EMISfile  = e_08km_cb4ae3hg.19990703.ncf
+      117c117
+      <  set GC_ICfile = ICON_cb4_M_32_99TUT02_profile
+      ---
+      >  set GC_ICfile = ICON_cb4hg_M_32_99TUT02_profile
+      120c120
+      <  set GC_BCfile = BCON_cb4_M_32_99TUT02_profile
+      ---
+      >  set GC_BCfile = BCON_cb4hg_M_32_99TUT02_profile
+
+
+ Note:  You can change the default scripts by using the Unix "patch" 
+        utility. Cut the indented section listed above into a file, say 
+        "mod." Then type, for example, "patch run.cctm mod."
+
+
+                                  References
+
+
+ Bullock, O. R. and K. A. Brehme (2002). Atmospheric mercury simulation 
+ using the CMAQ model: formulation description and analysis of wet 
+ deposition results. Atmos. Environ. 36, 2135-2146.
+
+ CMAS (2005). New features of the 2005 release.  Available on-line at 
+ http://www.cmascenter.org/help/model_docs/cmaq/4.5/Science_Updates.pdf
+
+ Gery, M. W., G. Z. Whitten, J. P. Killus and M. C. Dodge (1989). A 
+ photochemical kinetics mechanism for urban and regional scale computer 
+ modeling. J. Geophys. Res. 94, 12,925-12,956.
+
+ Gipson, G. L., and J. O. Young (1999). Science Algorithms in Models-3 
+ Community Multi-scale Air Quality Modeling System (CMAQ), Byun, D. W and 
+ J. K. S. Ching (eds). EPA-600/R-99/030, US EPA, Research Triangle Park, 8-
+ 1 to 8-99.
+
+ Lin, C.-J., S. E. Lindberg, T. C. Ho, C. Jang (2005). Development of a 
+ processor in BEIS3 for estimating vegetative mercury emissions in the 
+ continental United States. Atmos. Environ. 39, 7529-7540.
+
+ Pal, B. and P. A. Ariya (2004).  Gas-phase HO-initiated reactions of 
+ elemental mercury: kinetics, product studies, and atmospheric 
+ implications. Environ. Sci. Technol. 38, 5555-5566.
+
+
+
+ ------------------------------------------------------------------------
+
+           Appendix A.  Clean Air Mercury Rule (CAMR) Mercury 
+                Emissions Used as Input to CMAQv4.5.1
+
+ Ancillary Files Used with SMOKE for Processing the Mercury Inventories
+
+ During emissions modeling, the ancillary data are combined with the 
+ emissions inventory data to convert the inventories into the gridded, 
+ hourly resolution, and chemical species needed by CMAQ to simulate 
+ mercury.  The ancillary files that are different from the ones used for 
+ non-mercury modeling are:  (1) the inventory table, which is used to read 
+ in the pollutant codes from the NEI and convert to SMOKE inventory 
+ pollutants, (2) the chemical speciation data used to convert the raw 
+ mercury emissions into the species needed by the CMAQ model.
+
+ (1) Ancillary file for reading in the NEI Inventory
+
+ We developed the SMOKE input file called the “inventory table” to read in 
+ the various species of mercury reported in the 1999 NEI and convert them 
+ to either the model species needed by CMAQ or to an unspeciated mercury 
+ placeholder called “HGSUM” that was speciated through the SMOKE Spcmat 
+ program using speciation profiles. The fields shown in the table below 
+ provide the same information as was included in the inventory table. The 
+ “adjustment factor” in this table allows SMOKE to adjust the mass of those 
+ inventory compounds containing elements in addition to mercury, to account 
+ for only the mercury portion of the compound.
+
+ SMOKE NAME     NEI CAS   Adjustment Factor    Inventory Pollutant Name         Inventory Pollutant Code
+ ----------     --------  -----------------    ------------------------------   ----------------------------
+ PHGI           202       1                    Particulate Divalent Mercury     Particulate Divalent Mercury
+ HGIIGAS        201       1                    Gaseous Divalent Mercury         Gaseous Divalent Mercury
+ HG             200       1                    Elemental Gaseous Mercury        Elemental Gaseous Mercury
+ HGIIGAS        7487947   0.7388               Gaseous Divalent Mercury         Mercuric chloride
+ HGSUM          199       1                    Mercury Compounds, unspeciated   Mercury & Compounds
+ HGSUM          22967926  1                    Mercury Compounds, unspeciated   MERCURY (ORGANIC)
+ HGSUM          62384     0.5957               Mercury Compounds, unspeciated   MERCURY ACETATO PHEN
+ HGSUM          7439976   1                    Mercury Compounds, unspeciated   Mercury
+ HGSUM          12        1                    Mercury Compounds, unspeciated   Mercury & Compounds
+
+ (2) Ancillary Files for Chemical speciation
+
+ The mercury speciation factors are used by SMOKE to convert any 
+ unspeciated mercury (i.e., HGSUM mentioned above) into the CMAQ model 
+ species: particulate divalent mercury (PHGI), gaseous divalent mercury 
+ (HGIIGAS) and elemental mercury (HG).  Speciation profiles were assigned 
+ to the inventory sources using MACT codes and SCC codes.  We 
+ preferentially used MACT-based profile assignments over SCC-based profile 
+ assignments.  The global default speciation profile (applied for records 
+ that neither matched to MACT or SCC-based profiles) use 20% PHGI, 30% 
+ HGIIGAS, and 50% HG. In addition, we corrected the speciation profile data 
+ file provided with SMOKE version 2.1 to use a molecular weight of 200.59 
+ for HGIIGAS. The profile data used for MACT and SCC codes are those shown 
+ in Appendix B of the Clean Air Mercury Rule Techical Support Document for 
+ Emissions (CAMR, 2005).
+
+ Reference:
+
+ CAMR (2005).  Emissions inventory and emissions processing for the Clean 
+ Air Mercury Rule (CAMR). U.S. Environmental Protection Agency, Office of 
+ Air Quality Planning and Standards, Emissions Monitoring and Analysis 
+ Division, Research Triangle Park, NC, available on-line at 
+ http://www.epa.gov/ttn/atw/utility/emiss_inv_oar-2002-0056-6129.pdf
+
+

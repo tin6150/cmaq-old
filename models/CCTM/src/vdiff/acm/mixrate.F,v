@@ -1,0 +1,512 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.53;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.53;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@ 
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/vdiff/acm/mixrate.F,v 1.2 2003/09/02 13:27:34 yoj Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+      SUBROUTINE MIXRATE (MBAR, XPBL, LPBL, NOCONV, 
+     &                    RJACM, RRHOJ, JDATE, JTIME, TSTEP)
+C-----------------------------------------------------------------------
+C Function:
+C   Calculates vertical mixing rate and step-by-step CBL height for 
+C   the Asymmetrical Convective Model (ACM) 
+C   see Pleim and Chang 1992, Atm. Env 26A, 965-981
+ 
+C Preconditions:
+
+C Subroutines and Functions Called:
+C   INIT3, M3EXIT, SEC2TIME, TIME2SEC, INDEX1
+
+C Revision history:
+C   NO.   DATE     WHO    WHAT
+C         AUG 99    jp    Created MIXRATE from EDDYINTB
+C         NOV 01    jp    Updated for 02 release
+C-----------------------------------------------------------------------
+
+      USE HGRD_DEFN             ! horizontal domain specifications
+      USE SUBST_MODULES         ! stenex
+!     USE SUBST_UTIL_MODULE     ! stenex
+ 
+      IMPLICIT NONE
+ 
+C Includes:
+ 
+!     INCLUDE SUBST_HGRD_ID     ! horizontal dimensioning parameters
+      INCLUDE SUBST_VGRD_ID     ! vertical dimensioning parameters
+      INCLUDE SUBST_CONST       ! constants
+      INCLUDE SUBST_IOPARMS     ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC     ! file header data structuer
+      INCLUDE SUBST_IODECL      ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID    ! file name parameters
+      INCLUDE SUBST_COORD_ID    ! coord. and domain definitions (req IOPARMS)
+
+C Arguments:
+
+!     REAL         MBAR  ( NCOLS,NROWS)  ! ACM mixing rate (s**-1)
+!     REAL         XPBL  ( NCOLS,NROWS ) ! CBL height in model coords
+!     INTEGER      LPBL  ( NCOLS,NROWS ) ! model layer containing CBL top
+!     INTEGER      NOCONV( NCOLS,NROWS ) ! ACM flag - use ACM if = 1
+!     REAL         RJACM  ( NCOLS,NROWS,NLAYS ) ! reciprocal mid-layer Jacobian
+!     REAL         RRHOJ  ( NCOLS,NROWS,NLAYS ) ! reciprocal density X Jacobian
+      REAL     ::  MBAR  ( :,: )  ! ACM mixing rate (s**-1)
+      REAL     ::  XPBL  ( :,: ) ! CBL height in model coords
+      INTEGER  ::  LPBL  ( :,: ) ! model layer containing CBL top
+      INTEGER  ::  NOCONV( :,: ) ! ACM flag - use ACM if = 1
+      REAL     ::  RJACM  ( :,:,: ) ! reciprocal mid-layer Jacobian
+      REAL     ::  RRHOJ  ( :,:,: ) ! reciprocal density X Jacobian
+      INTEGER      JDATE        ! current model date , coded YYYYDDD
+      INTEGER      JTIME        ! current model time , coded HHMMSS
+      INTEGER      TSTEP        ! sciproc sync. step (chem)
+
+C Parameters:
+
+C ACM consts
+      REAL, PARAMETER  :: C1ACM = 0.2721655 ! sqrt(2/27)
+      REAL, PARAMETER  :: C2ACM = -0.33333
+      REAL, PARAMETER  :: RIC  = 0.25 ! Critical Richardson # for pbl calc
+C lower limit for absolute inverse Monin-Obukhov Length
+!     REAL, PARAMETER :: MINMOLI = 1.0E-04 ! 1/10,000
+
+C small number for temperature difference or for minimum MBAR --bdx for testing
+      REAL, PARAMETER :: EPS = 1.0E-08  
+
+C External Functions not previously declared in IODECL3.EXT:
+
+      INTEGER, EXTERNAL :: SEC2TIME, TIME2SEC, INDEX1
+
+!                                123456789012345678901234567890
+      CHARACTER( 30 ) :: MSG1 = ' Error interpolating variable '
+
+C File Variables:
+
+      REAL         HFX   ( NCOLS,NROWS )          ! sfc sen heat flux (W/m2)
+      REAL         PBL   ( NCOLS,NROWS )          ! pbl height (m)
+      REAL         USTAR ( NCOLS,NROWS )          ! friction velocity
+      REAL         MOLI  ( NCOLS,NROWS )          ! inverse Monin-Obukhov Len
+      REAL         WSTAR ( NCOLS,NROWS )          ! convective velocity scale
+      REAL         ZH    ( NCOLS,NROWS,NLAYS )    ! mid-layer elevation
+      REAL         ZF    ( NCOLS,NROWS,0:NLAYS )  ! full layer elevation
+      REAL         TA    ( NCOLS,NROWS,NLAYS )    ! temperature (K)
+      REAL         QV    ( NCOLS,NROWS,NLAYS )    ! water vapor mixing ratio
+      REAL         PRES  ( NCOLS,NROWS,NLAYS )    ! pressure
+	
+      REAL, ALLOCATABLE, SAVE :: MSFX2 ( :,: )    ! Squared map scale factors
+
+      REAL         UWIND( NCOLS+1,NROWS+1,NLAYS ) ! x-direction winds
+      REAL         VWIND( NCOLS+1,NROWS+1,NLAYS ) ! y-direction winds
+
+C Local variables:
+
+      LOGICAL,SAVE :: FIRSTIME = .TRUE.
+
+      CHARACTER( 120 ) :: XMSG = ' '
+      CHARACTER( 16 ) :: VNAME
+      CHARACTER( 16 ) :: UNITSCK
+      CHARACTER( 16 ) :: PNAME = 'MIXRATE' 
+
+      REAL, SAVE :: P0          ! 1000 mb reference pressure
+      REAL, SAVE :: CONVPA      ! Pressure conversion factor file units to Pa
+
+      INTEGER      ALLOCSTAT
+      INTEGER      MDATE, MTIME, STEP
+      INTEGER      C, R, L, V
+      INTEGER      C_MAX, R_MAX
+
+      REAL         TV                      ! virtual temperature (K)
+      REAL         WW2                     ! (wind speed)**2
+      REAL         RIB   (NLAYS)                  ! Bulk Richardson Number
+      REAL         THETAV( NCOLS,NROWS,NLAYS )    ! potential temp
+      REAL         DENS1                   ! Density in layer 1
+      REAL         WSS                     ! Sfc turb vel scale
+      REAL         CPAIR                   ! Cp for moist air
+      REAL         TST                     ! T*
+      REAL         TCONV                   ! Added T pert for sfc air T
+      REAL         TH1                     ! Thetav layer 1 w/ Tconv
+      REAL         DTMP                    ! Delta Thetav
+      REAL         TOG                     ! Layer avg thetav/g
+      INTEGER      LPBLH                 
+      REAL         FINT
+      INTEGER      LPBLHT
+      REAL         HFLXSL                  ! SL heat flux
+      REAL         HFMIX                   ! PBL heat flux
+      REAL         U1,V1,UL,VL
+
+      INTEGER      GXOFF, GYOFF            ! global origin offset from file
+C for INTERPX
+      INTEGER       :: STRTCOLGC2, ENDCOLGC2, STRTROWGC2, ENDROWGC2
+      INTEGER, SAVE :: STRTCOLMC2, ENDCOLMC2, STRTROWMC2, ENDROWMC2
+      INTEGER, SAVE :: STRTCOLMC3, ENDCOLMC3, STRTROWMC3, ENDROWMC3
+      INTEGER, SAVE :: STRTCOLMD3, ENDCOLMD3, STRTROWMD3, ENDROWMD3
+     
+      INTEGER, SAVE :: LOGDEV
+      REAL         MBMAX
+
+C-----------------------------------------------------------------------
+
+      IF ( FIRSTIME )  THEN
+
+         FIRSTIME  =  .FALSE.
+
+         LOGDEV = INIT3()
+
+C Open the met files
+
+         IF ( .NOT. OPEN3( MET_CRO_3D, FSREAD3, PNAME ) ) THEN
+            XMSG = 'Could not open '// MET_CRO_3D // ' file'
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+                          
+         IF ( .NOT. DESC3( MET_CRO_3D ) ) THEN
+            XMSG = 'Could not get ' // MET_CRO_3D // ' file description'
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT2 )
+            END IF         !  error abort if if desc3() failed
+
+         V = INDEX1( 'PRES', NVARS3D, VNAME3D )
+         IF (V .NE. 0) THEN
+            UNITSCK = UNITS3D( V)
+            ELSE
+            XMSG = 'Could not get variable PRES from ' // MET_CRO_3D
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT2 )
+            END IF
+
+         IF (UNITSCK .EQ. 'PASCAL' .OR. UNITSCK .EQ. 'pascal' .OR.
+     &       UNITSCK .EQ. 'Pascal' .OR. UNITSCK .EQ. 'PA'     .OR.
+     &       UNITSCK .EQ. 'pa'     .OR. UNITSCK .EQ. 'Pa') THEN
+            CONVPA = 1.0
+            P0 = 100000.0
+            ELSE IF (UNITSCK .EQ. 'MILLIBAR' .OR. UNITSCK .EQ. 'millibar' .OR.
+     &               UNITSCK .EQ. 'Millibar' .OR. UNITSCK .EQ. 'MB'       .OR.
+     &               UNITSCK .EQ. 'mb'       .OR. UNITSCK .EQ. 'Mb') THEN
+            CONVPA = 1.0E-02
+            P0 = 1000.0
+            ELSE IF (UNITSCK .EQ. 'CENTIBAR' .OR. UNITSCK .EQ. 'centibar' .OR.
+     &               UNITSCK .EQ. 'Centibar' .OR. UNITSCK .EQ. 'CB'       .OR.
+     &               UNITSCK .EQ. 'cb'       .OR. UNITSCK .EQ. 'Cb') THEN
+            CONVPA = 1.0E-03
+            P0 = 100.0
+            ELSE
+            XMSG = 'Units incorrect on ' // MET_CRO_3D
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT2 )
+            END IF
+
+         ALLOCATE ( MSFX2( NCOLS,NROWS ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating MSFX2'
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+
+         CALL SUBHFILE ( GRID_CRO_2D, GXOFF, GYOFF,
+     &                   STRTCOLGC2, ENDCOLGC2, STRTROWGC2, ENDROWGC2 )
+
+         VNAME = 'MSFX2'
+         IF ( .NOT. INTERPX( GRID_CRO_2D, VNAME, PNAME,
+!    &                       1,NCOLS, 1,NROWS, 1,1,
+     &                       STRTCOLGC2,ENDCOLGC2, STRTROWGC2,ENDROWGC2, 1,1,
+     &                       JDATE, JTIME, MSFX2 ) ) THEN
+            XMSG = MSG1 // VNAME // ' from ' // GRID_CRO_2D
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+
+         CALL SUBHFILE ( MET_CRO_2D, GXOFF, GYOFF,
+     &                   STRTCOLMC2, ENDCOLMC2, STRTROWMC2, ENDROWMC2 )
+         CALL SUBHFILE ( MET_CRO_3D, GXOFF, GYOFF,
+     &                   STRTCOLMC3, ENDCOLMC3, STRTROWMC3, ENDROWMC3 )
+         CALL SUBHFILE ( MET_DOT_3D, GXOFF, GYOFF,
+     &                   STRTCOLMD3, ENDCOLMD3, STRTROWMD3, ENDROWMD3 )
+
+         END IF          !  if firstime
+
+C Interpolate time dependent one-layer and layered input variables
+
+      MDATE  = JDATE
+      MTIME  = JTIME
+      STEP   = TIME2SEC( TSTEP )
+      CALL NEXTIME( MDATE, MTIME, SEC2TIME( STEP / 2 ) )
+
+      VNAME = 'UWIND'
+      IF ( .NOT. INTERPX( MET_DOT_3D, VNAME, PNAME,
+!    &                    1,NCOLS+1, 1,NROWS+1, 1,NLAYS,
+     &                    STRTCOLMD3,ENDCOLMD3, STRTROWMD3,ENDROWMD3, 1,NLAYS,
+     &                    MDATE, MTIME, UWIND ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_2D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'VWIND'
+      IF ( .NOT. INTERPX( MET_DOT_3D, VNAME, PNAME,
+!    &                    1,NCOLS+1, 1,NROWS+1, 1,NLAYS,
+     &                    STRTCOLMD3,ENDCOLMD3, STRTROWMD3,ENDROWMD3, 1,NLAYS,
+     &                    MDATE, MTIME, VWIND ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_2D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+C-- PBL IS RECOMPUTED FOR MBAR CALCULATION
+!     VNAME = 'PBL'
+!     IF ( .NOT. INTERP3( MET_CRO_2D, VNAME, PNAME, MDATE, MTIME,
+!    &                    NCOLS*NROWS, PBL ) ) THEN
+!        XMSG = MSG1 // VNAME // ' from ' // MET_CRO_2D
+!        CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+!        END IF
+
+      VNAME = 'USTAR'
+      IF ( .NOT. INTERPX( MET_CRO_2D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,1,
+     &                    STRTCOLMC2,ENDCOLMC2, STRTROWMC2,ENDROWMC2, 1,1,
+     &                    MDATE, MTIME, USTAR ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_2D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'MOLI'
+      IF ( .NOT. INTERPX( MET_CRO_2D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,1,
+     &                    STRTCOLMC2,ENDCOLMC2, STRTROWMC2,ENDROWMC2, 1,1,
+     &                    MDATE, MTIME, MOLI ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_2D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'WSTAR'
+      IF ( .NOT. INTERPX( MET_CRO_2D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,1,
+     &                    STRTCOLMC2,ENDCOLMC2, STRTROWMC2,ENDROWMC2, 1,1,
+     &                    MDATE, MTIME, WSTAR ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_2D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'HFX'
+      IF ( .NOT. INTERPX( MET_CRO_2D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,1,
+     &                    STRTCOLMC2,ENDCOLMC2, STRTROWMC2,ENDROWMC2, 1,1,
+     &                    MDATE, MTIME, HFX ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_2D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'TA'
+      IF ( .NOT. INTERPX( MET_CRO_3D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,NLAYS,
+     &                    STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                    MDATE, MTIME, TA ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_3D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'QV'
+      IF ( .NOT. INTERPX( MET_CRO_3D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,NLAYS,
+     &                    STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                    MDATE, MTIME, QV ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_3D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'PRES'
+      IF ( .NOT. INTERPX( MET_CRO_3D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,NLAYS,
+     &                    STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                    MDATE, MTIME, PRES ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_3D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VNAME = 'ZF'
+      IF ( .NOT. INTERPX( MET_CRO_3D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,NLAYS,
+     &                    STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                    MDATE, MTIME, ZF ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_3D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+C Move 3rd dimension slabbed data from INTERP3 into proper order
+C ( Using ZF both as a read buffer and an argument variable.)
+ 
+      DO L = NLAYS, 1, -1
+         DO R = 1, MY_NROWS
+            DO C = 1, MY_NCOLS
+               ZF( C,R,L ) = ZF( C,R,L-1 )
+               END DO
+            END DO
+         END DO
+      DO R = 1, MY_NROWS
+         DO C = 1, MY_NCOLS
+            ZF( C,R,0 ) = 0.0
+            END DO
+         END DO
+
+      VNAME = 'ZH'
+      IF ( .NOT. INTERPX( MET_CRO_3D, VNAME, PNAME,
+!    &                    1,NCOLS, 1,NROWS, 1,NLAYS,
+     &                    STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                    MDATE, MTIME, ZH ) ) THEN
+         XMSG = MSG1 // VNAME // ' from ' // MET_CRO_3D
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+
+      DO L = 1, NLAYS
+         DO R = 1, MY_NROWS
+            DO C = 1, MY_NCOLS
+
+               TV      = TA( C,R,L ) * ( 1.0 + 0.608 * QV( C,R,L ) )
+               THETAV( C,R,L ) = TV * ( P0 / PRES( C,R,L ) ) ** 0.286
+
+               END DO
+            END DO
+         END DO
+
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+C  COMPUTE PBL WHERE RICHARDSON NUMBER = RIC (0.25) HOLTSLAG ET AL 1990
+      DO R = 1, MY_NROWS
+        DO C = 1, MY_NCOLS
+          IF(MOLI(C,R) .LT. 0.0) THEN
+            DENS1 = RJACM(C,R,1)/RRHOJ(C,R,1)
+            WSS = (USTAR(C,R)**3 + 0.6 * WSTAR(C,R)**3)**0.33333
+            CPAIR = 1004.67 * (1.0 + 0.84 * QV(C,R,1))  ! J/(K KG)
+            TST = - HFX(C,R) / (DENS1 * USTAR(C,R) * CPAIR)
+            TCONV = -8.5 * USTAR(C,R) * TST / WSS
+            TH1 = THETAV(C,R,1) + TCONV
+           ELSE
+            TH1 = THETAV(C,R,1)
+          ENDIF
+ 
+          TOG = THETAV(C,R,1)/ GRAV
+          RIB(1) = 0.0
+          U1 = 0.5 * ( UWIND(C+1,R  ,1  ) + UWIND(C,  R  ,1  ) )
+          V1 = 0.5 * ( VWIND(C,  R+1,1) + VWIND(C,  R,  1  ) ) 
+          DO 241 L = 2, NLAYS
+            DTMP   = THETAV(C,R,L) - TH1
+!           TOG = 0.5 * (THETAV(C,R,L) + TH1) / GRAV
+            UL = 0.5 * ( UWIND(C+1,R  ,L  ) + UWIND(C,  R  ,L  ) )
+            VL = 0.5 * ( VWIND(C,  R+1,L) + VWIND(C,  R,  L  ) ) 
+            WW2 = MSFX2( C,R )      ! wind speed squared
+     &          * (( UL - U1 ) ** 2 + ( VL -V1 ) ** 2 )
+            RIB(L) = (ZH( C,R,L ) - ZH( C,R,1 )) * DTMP / (TOG * WW2)
+            IF (RIB(L) .GE. RIC) GO TO 242
+241       CONTINUE
+242       CONTINUE
+          LPBLH = L
+C---INTERPOLATE BETWEEN LEVELS -- jp 7/93
+            FINT = (RIC - RIB(LPBLH-1)) / (RIB(LPBLH) -
+     &                 RIB(LPBLH-1))
+            IF (FINT .GT. 0.5) THEN
+              LPBLHT = LPBLH
+              FINT = FINT - 0.5
+             ELSE
+              LPBLHT = LPBLH-1
+              FINT = FINT + 0.5
+            ENDIF
+            PBL(C,R) = FINT * (ZF(C,R,LPBLHT) - ZF(C,R,LPBLHT-1)) +
+     &                 ZF(C,R,LPBLHT-1)
+            LPBL(C,R) = LPBLHT
+            XPBL(C,R) = FINT * (X3FACE_GD( LPBLHT ) 
+     &                       - X3FACE_GD( LPBLHT-1 ))
+     &                       + X3FACE_GD( LPBLHT-1 )    
+        END DO
+      END DO
+ 
+      MBMAX =0.0
+      C_MAX = 1
+      R_MAX = 1
+      DO R = 1,MY_NROWS
+        DO C = 1,MY_NCOLS
+           MBAR(C,R) = EPS
+        END DO
+      END DO
+C -- COMPUTE ACM MIXING RATE - MBAR
+      DO R = 1, MY_NROWS
+        DO C = 1, MY_NCOLS
+            NOCONV(C,R) = 0
+!           IF (THETAV(C,R,1) .GT. THETAV(C,R,2)) THEN
+            IF ( (THETAV(C,R,1)-THETAV(C,R,2)).GT.EPS ) THEN
+              IF (PBL(C,R)*MOLI(C,R) .LT. -3.0 .AND. LPBL(C,R).GT.3) THEN
+                NOCONV(C,R) = 1
+C... compute HFLXSL (HEAT FLUX BETWEEN K=1 AND K=2),
+C    MBAR (MASS FRACTIONAL MIXING RATE BTWN K=1 AND OTHER LEVELS IN CBL)
+C-- SURFACE LAYER HEAT FLUX - BLACKADAR 1979 EQN 10
+                 HFLXSL = C1ACM * SQRT(GRAV / THETAV(C,R,1)) *
+     &                    ((THETAV(C,R,1) - THETAV(C,R,2)) /
+     &                    (ZF(C,R,1) ** C2ACM -
+     &                    (2.0 * ZH(C,R,2)) ** C2ACM)) ** 1.5
+C-- MBAR = MASS FRACTION MIXING RATE (1/S)
+C-- MBAR COMP BASED ON MODIFIED MIXING SCHEME - SMALLER THAN BLACKADAR
+                HFMIX = (XPBL(C,R) - X3FACE_GD(1)) * (THETAV(C,R,1) -
+     &                  THETAV(C,R,2))
+                MBAR(C,R) = HFLXSL *  RJACM(C,R,1) /
+     &                      HFMIX
+                IF(MBAR(C,R).GT.MBMAX) THEN
+                       MBMAX = MBAR(C,R)
+                       C_MAX = C
+                       R_MAX = R
+                END IF
+              ENDIF
+            ENDIF
+        ENDDO
+      ENDDO
+!     PRINT *, ' MAX MBAR =', MBMAX,' at C, R =',C_MAX,R_MAX,
+!    &         '  pbl,lpbl,xpbl=',
+!    &           pbl(C_MAX,R_MAX),lpbl(C_MAX,R_MAX),xpbl(C_MAX,R_MAX)
+
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

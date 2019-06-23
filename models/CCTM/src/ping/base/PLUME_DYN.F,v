@@ -1,0 +1,468 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.51;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.51;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/base/PLUME_DYN.F,v 1.3 2002/04/05 18:23:21 yoj Exp $
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+      MODULE PLUME_DYN
+C 22 Sep 01 J.Young: dyn alloc - Use HGRD_DEFN
+C 26 Nov 01 J.Young: change test from MY_REGION to PLUMEPTR
+C 03 Dec 01 David Wong: added SAVE statemnt to dynamic allocate variables
+
+      USE PLUME_LOC   ! inherits PING_GLOBDIM
+
+      IMPLICIT NONE
+
+C Plume rates read for current time ...
+
+C Rate of change of plume width
+      REAL, ALLOCATABLE, SAVE :: RWP( : )
+C Rate of change of plume height
+      REAL, ALLOCATABLE, SAVE :: RHP( : )
+C Plume initial velocity
+      REAL, ALLOCATABLE, SAVE :: UPLUME( : )
+
+C Plume geometry interpolated for current time ...
+
+C Plume  width
+      REAL, ALLOCATABLE, SAVE :: WP( : )
+C Plume  height
+      REAL, ALLOCATABLE, SAVE :: HP( : )
+C Angle of the plume
+      REAL, ALLOCATABLE, SAVE :: ANGLE( : )
+C X coor. for the center of the plume
+      REAL, ALLOCATABLE, SAVE :: XC( : )
+C Y coor. for the center of the plume
+      REAL, ALLOCATABLE, SAVE :: YC( : )
+C Z coor. for the center of the plume
+      REAL, ALLOCATABLE, SAVE :: ZC( : )
+C Plume bottom height (above surface)
+      REAL, ALLOCATABLE, SAVE :: ZBOT( : )
+C Plume top height (above surface)
+      REAL, ALLOCATABLE, SAVE :: ZTOP( : )
+C KY value
+      REAL, ALLOCATABLE, SAVE :: BKY( : )
+
+!     COMMON / PINGR2 / WP, HP,     RWP, RHP,
+!    &                  ANGLE,
+!    &                  XC, YC,     ZBOT, ZTOP,
+!    &                  BKY, UPLUME
+
+C Multiplication factor -> constant a, where: Wp = a*sig_y
+
+      REAL, PARAMETER :: PINGAFCTR = 3.545
+
+      CONTAINS
+
+         SUBROUTINE PLUME_RATES ( DATE, TIME, NRLEASES )
+
+         INTEGER, INTENT( IN ) :: DATE
+         INTEGER, INTENT( IN ) :: TIME
+         INTEGER, INTENT( IN ) :: NRLEASES
+
+!        INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+         INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+         INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+         INCLUDE SUBST_FILES_ID  ! file name parameters
+
+         CHARACTER( 200 ) :: MSG
+         CHARACTER( 16 )  :: PNAME = 'PLUME_RATES'
+         CHARACTER( 16 )  :: VNAME
+
+         REAL, ALLOCATABLE :: RVAR( :,:,: )
+
+         INTEGER NPLUMTOT, ALLOCSTAT
+         INTEGER J, K, IP, JP
+         LOGICAL OK
+         INTEGER, SAVE :: LOGDEV
+         LOGICAL, SAVE :: FIRSTIME = .TRUE.
+
+         IF ( FIRSTIME ) THEN
+            FIRSTIME = .FALSE.
+            LOGDEV = INIT3 ()
+            
+            CALL GET_NMEPSES ( )
+
+            NPLUMTOT = N_MEPSES * N_RLEASES
+
+            ALLOCATE ( RWP( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** RWP Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( RWP, -999.0 )
+
+            ALLOCATE ( RHP( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** RHP Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( RHP, -999.0 )
+
+            ALLOCATE ( UPLUME( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** UPLUME Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( UPLUME, -999.0 )
+
+            END IF   ! FIRSTIME
+
+!        write( logdev,* ) '@@@@ Plume_Rates:       DATE,       TIME ',
+!    &                     date, time
+
+         ALLOCATE ( RVAR( NPTSPDM,N_RLEASES,3 ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** RVAR Memory allocation failed'
+            CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+            END IF
+
+C Read the rate of change for WP, HP, and PBL
+
+Cjmg  Change variable name
+         VNAME = 'WIDTHDT'
+         OK = READ3( PDM_PING_1, VNAME, ALLAYS3, DATE, TIME, RVAR( 1,1,1 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+Cjmg  Change variable name
+         VNAME = 'DEPTHDT'
+         OK = READ3( PDM_PING_1, VNAME, ALLAYS3, DATE, TIME, RVAR( 1,1,2 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+Cjmg Change variable name
+!        VNAME = 'DPBLDT'
+!        OK = READ3( PDM_PING_1, VNAME, ALLAYS3, DATE, TIME, RVAR( 1,1,? ) )
+!        IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+C Read the directional shear (max. change in direction, degree),
+C speed shear (change in speed, m/s), and the initial wind speed (m/s)
+
+!        VNAME = 'DDIR'
+!        OK = READ3( PDM_PING_1, VNAME, ALLAYS3, DATE, TIME, RVAR( 1,1,? ) )
+!        IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+!        VNAME = 'DSPD'
+!        OK = READ3( PDM_PING_1, VNAME, ALLAYS3, DATE, TIME, RVAR( 1,1,? ) )
+!        IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+         VNAME = 'INITIAL_WIND'
+         OK = READ3( PDM_PING_1, VNAME, ALLAYS3, DATE, TIME, RVAR( 1,1,3 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+!        if ( nptspdm .eq.  5 ) then
+!           write( logdev,* ) '@@@@ Plume_Rates: RVAR: ',
+!    &                        rvar(  2,1,1 ), ' ',
+!    &                        rvar(  2,1,2 ), ' ',
+!    &                        rvar(  2,1,3 )
+!           end if
+
+!        if ( nptspdm .eq. 26 ) then
+!           write( logdev,* ) '@@@@ Plume_Rates: RVAR: ',
+!    &                        rvar( 14,1,1 ), ' ',
+!    &                        rvar( 14,1,2 ), ' ',
+!    &                        rvar( 14,1,3 )
+!           end if
+
+C Set the non time-interpolated variables
+
+C K is the release number, J is the source number and I is the plume number
+
+         IP = 0
+         DO K = 1, NRLEASES
+            DO J = 1, N_MEPSES
+               IP = IP + 1
+               JP = SUB_SOURCE( J )
+
+               IF ( MY_REGION( IP ) ) THEN
+
+                  RWP( IP )     = RVAR( JP,K,1 )
+                  RHP( IP )     = RVAR( JP,K,2 )
+!                 RHM( IP )     = RVAR( JP,K,? )
+!                 DDIR( IP )    = RVAR( JP,K,? )
+!                 DSPD( IP )    = RVAR( JP,K,? )
+                  UPLUME( IP )  = RVAR( JP,K,3 )
+
+                  END IF
+
+               END DO
+            END DO
+
+         DEALLOCATE ( RVAR )
+
+         RETURN
+
+         END SUBROUTINE PLUME_RATES
+
+         SUBROUTINE PLUME_GEOM ( DATE, TIME, NRLEASES )
+
+         INTEGER, INTENT( IN ) :: DATE
+         INTEGER, INTENT( IN ) :: TIME
+         INTEGER, INTENT( IN ) :: NRLEASES
+
+!        INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+         INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+         INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+         INCLUDE SUBST_FILES_ID  ! file name parameters
+
+         CHARACTER( 200 ) :: MSG
+         CHARACTER( 16 )  :: PNAME = 'PLUME_GEOM'
+         CHARACTER( 16 )  :: VNAME
+
+         REAL, ALLOCATABLE :: RVAR( :,:,: )
+
+         INTEGER NPLUMTOT, ALLOCSTAT, ISIZE
+         INTEGER J, K, IP, JP
+         LOGICAL OK
+         INTEGER, SAVE :: LOGDEV
+         LOGICAL, SAVE :: FIRSTIME = .TRUE.
+
+         IF ( FIRSTIME ) THEN
+            FIRSTIME = .FALSE.
+            LOGDEV = INIT3 ()
+            
+            CALL GET_NMEPSES ( )
+
+            NPLUMTOT = N_MEPSES * N_RLEASES
+
+            ALLOCATE ( WP( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** WP Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( WP, -999.0 )
+
+            ALLOCATE ( HP( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** HP Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( HP, -999.0 )
+
+            ALLOCATE ( ANGLE( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** ANGLE Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( ANGLE, -999.0 )
+
+            ALLOCATE ( XC( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** XC Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( XC, -999.0 )
+
+            ALLOCATE ( YC( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** YC Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( YC, -999.0 )
+
+            ALLOCATE ( ZC( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** ZC Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( ZC, -999.0 )
+
+            ALLOCATE ( ZBOT( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** ZBOT Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( ZBOT, -999.0 )
+
+            ALLOCATE ( ZTOP( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** ZTOP Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( ZTOP, -999.0 )
+
+            ALLOCATE ( BKY( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** BKY Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( BKY, -999.0 )
+
+!        write( logdev,* ) '@@@@ Plume_Geom: SUB_SOURCE: ', 
+!    &                     sub_source( 1 ), ' ',
+!    &                     sub_source( 2 ), ' ',
+!    &                     sub_source( 3 ), ' ',
+!    &                     sub_source( 4 ), ' ',
+!    &                     sub_source( 5 ), ' ',
+!    &                     sub_source( 6 ), ' ',
+!    &                     sub_source( 7 ), ' ',
+!    &                     sub_source( 8 ), ' ',
+!    &                     sub_source( 9 )
+
+            END IF   ! FIRSTIME
+
+!        write( logdev,* ) '@@@@ Plume_Geom:        DATE,       TIME ',
+!    &                     date, time
+
+         ALLOCATE ( RVAR( NPTSPDM,N_RLEASES,6 ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** RVAR Memory allocation failed'
+            CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+            END IF
+
+C Calculate the buffer size for interpolation
+
+         ISIZE = NPTSPDM * N_RLEASES
+
+C Read and interpolate the variables from PDM_PING_1
+
+         VNAME = 'XC_PLUME'
+         OK = INTERP3( PDM_PING_1, VNAME, PNAME,
+     &                 DATE, TIME, ISIZE, RVAR( 1,1,1 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+         VNAME = 'YC_PLUME'
+         OK = INTERP3( PDM_PING_1, VNAME, PNAME,
+     &                 DATE, TIME, ISIZE, RVAR( 1,1,2 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+         VNAME = 'ZC_PLUME'
+         OK = INTERP3( PDM_PING_1, VNAME, PNAME,
+     &                 DATE, TIME, ISIZE, RVAR( 1,1,3 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+         VNAME = 'WIDTH'
+         OK = INTERP3( PDM_PING_1, VNAME, PNAME,
+     &                 DATE, TIME, ISIZE, RVAR( 1,1,4 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+         VNAME = 'DEPTH'
+         OK = INTERP3( PDM_PING_1, VNAME, PNAME,
+     &                 DATE, TIME, ISIZE, RVAR( 1,1,5 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+!        VNAME = 'PBL'
+!        OK = INTERP3( PDM_PING_1, VNAME, PNAME,
+!    &                 DATE, TIME, ISIZE, RVAR( 1,1,? ) )
+!        IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+         VNAME = 'ANGLE'
+         OK = INTERP3( PDM_PING_1, VNAME, PNAME,
+     &                 DATE, TIME, ISIZE, RVAR( 1,1,6 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, DATE, TIME, VNAME, .TRUE. )
+
+!        if ( nptspdm .eq.  5 ) then
+!           write( logdev,* ) '@@@@ Plume_Geom: RVAR: ',
+!    &                        rvar(  2,1,1 ), ' ',
+!    &                        rvar(  2,1,2 ), ' ',
+!    &                        rvar(  2,1,3 ), ' ',
+!    &                        rvar(  2,1,4 ), ' ',
+!    &                        rvar(  2,1,5 ), ' ',
+!    &                        rvar(  2,1,6 )
+!           end if
+
+!        if ( nptspdm .eq. 26 ) then
+!           write( logdev,* ) '@@@@ Plume_Geom: RVAR: ',
+!    &                        rvar( 14,1,1 ), ' ',
+!    &                        rvar( 14,1,2 ), ' ',
+!    &                        rvar( 14,1,3 ), ' ',
+!    &                        rvar( 14,1,4 ), ' ',
+!    &                        rvar( 14,1,5 ), ' ',
+!    &                        rvar( 14,1,6 )
+!           end if
+
+C Set time-interpolated variables
+
+C K is the release number, J is the source number and I is the plume number
+
+         IP = 0
+         DO K = 1, NRLEASES
+            DO J = 1, N_MEPSES
+               IP = IP + 1
+               JP = SUB_SOURCE( J )
+
+               IF ( MY_REGION( IP ) ) THEN
+
+                  XC ( IP ) = RVAR( JP,K,1 )
+                  YC ( IP ) = RVAR( JP,K,2 )
+                  ZC ( IP ) = RVAR( JP,K,3 )
+                  WP ( IP ) = RVAR( JP,K,4 )
+                  HP ( IP ) = RVAR( JP,K,5 )
+!                 HM ( IP ) = RVAR( JP,K,? )
+                  ANGLE( IP ) = RVAR( JP,K,6 )
+C Calculate plume top, and bottom heights
+                  ZBOT ( IP ) = MAX ( ZC( IP ) - 0.5 * HP( IP ) , 0.0 )
+                  ZTOP ( IP ) = ZBOT( IP ) + HP( IP )
+C Calculate BKY: Ky/W**2 = Lambda-y/a**2 = (RWp/W)/a**2, where a is AFCTR
+                  BKY( IP ) = WP( IP ) * RWP( IP ) / ( PINGAFCTR * PINGAFCTR )
+
+                  END IF
+
+               END DO
+            END DO
+
+         DEALLOCATE ( RVAR )
+
+         RETURN
+
+         END SUBROUTINE PLUME_GEOM
+
+      END MODULE PLUME_DYN
+ 
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

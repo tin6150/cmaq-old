@@ -1,0 +1,144 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/hdisp/hdisp/diffdir.F,v 1.7 2005/08/29 20:32:13 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C**********************************************************
+      SUBROUTINE DIFFDIR( U, V, DDIR, IHI, ILOW )
+
+C  Calculate the difference of wind directions over the plume
+C  from top to bottom to provide the shear term for sigmaY
+ 
+C  Called by : HSPRD
+
+      USE VGRD_DEFN
+ 
+      IMPLICIT NONE
+
+!      INCLUDE SUBST_VGRD_ID
+      INCLUDE SUBST_CONST
+
+      REAL    U( NLAYS ), V( NLAYS ), DDIR
+      INTEGER IHI, ILOW
+
+      REAL    ANG( 30 ), DIR( 600 )
+      REAL    ANGK, TEMP, ABSTAN
+      INTEGER K, N, KE, KB, NUM, KK, ILO
+
+C---- angles refer to east dir.
+C     ANG( K ) . 0 when wind is south-westerly (+x direction)
+      N = 0
+      ILO = MAX( 1, ILOW )
+      IF ( ILO .GE. IHI ) ILO = IHI - 1
+
+      DO K = ILO, IHI
+         ABSTAN = ABS( V( K ) / U( K ) )
+         IF      ( U( K ) .GT. 0.0 .AND. V( K ) .GT. 0.0 ) THEN   ! 1st
+            ANGK = ATAN( ABSTAN )
+         ELSE IF ( U( K ) .LT. 0.0 .AND. V( K ) .GT. 0.0 ) THEN   ! 2nd
+            ANGK = PI - ATAN( ABSTAN )
+         ELSE IF ( U( K ) .LT. 0.0 .AND. V( K ) .LT. 0.0 ) THEN   ! 3rd
+            ANGK = PI + ATAN( ABSTAN )
+         ELSE IF ( U( K ) .GT. 0.0 .AND. V( K ) .LT. 0.0 ) THEN   ! 4th
+            ANGK = 2.0 * PI - ATAN( ABSTAN )
+         ELSE IF ( U( K ) .EQ. 0.0 .AND. V( K ) .GT. 0.0 ) THEN
+            ANGK = 0.5 * PI
+         ELSE IF ( U( K ) .EQ. 0.0 .AND. V( K ) .LT. 0.0 ) THEN
+            ANGK = 1.5 * PI
+         ELSE IF ( U( K ) .GT. 0.0 .AND. V( K ) .EQ. 0.0 ) THEN
+            ANGK = 0.0
+         ELSE
+            ANGK = PI
+         END IF
+         N = N + 1
+         ANG( N ) = ANGK
+      END DO
+C******************Method *************************
+
+C---- Use the biggest wind direction difference
+C---- Calculate the difference of any 2 wind directions
+      KB = 2
+      KE = IHI - ILO + 1
+      NUM = 0
+      DO K = KB, KE
+         DO KK = 1, K - 1
+            NUM = NUM + 1
+            DIR( NUM ) = ABS( ANG( KK ) - ANG( K ) )
+            IF ( DIR( NUM ) .GT. PI ) DIR( NUM ) = 2.0 * PI - DIR( NUM )
+         END DO
+      END DO
+
+C---- Choose the largest one...
+      DO K = 1, NUM - 1
+         IF ( DIR( K ) .GT. DIR( K+1 ) ) THEN
+            TEMP = DIR( K+1 )
+            DIR( K+1 ) = DIR( K )
+            DIR( K ) = TEMP
+            END IF
+      END DO
+
+      DDIR = DIR( NUM )
+
+      IF ( DDIR .GT. PI ) DDIR = 2.0 * PI - DDIR
+
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

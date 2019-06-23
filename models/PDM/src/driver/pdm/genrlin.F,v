@@ -1,0 +1,394 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/driver/pdm/genrlin.F,v 1.12 2005/08/26 14:56:29 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C*********************************************************************
+      SUBROUTINE GENRLIN ( JDATE, JTIME, IDTSEC, NHRS, IHRM, DX, DY,
+     &           NSORCE, FACTC, DDIRC, DSPDC, INITC, NREL, NOA, IRT )
+
+C*********************************************************************                                                            
+C** Function:  Input simulation run parameters and open files.
+C
+C........................................................................
+C. Output:                                                              .
+C. IDTSEC : processor time step increment               [s]             .
+C. JDATE : start date of the model run(Julian date     [yyyyddd]       .
+C. JTIME : the starting time of the model                 [hhmmss]        .
+C. MAXTIM : max. number of time steps IN HOURS for simulation           .
+C. IHRM   : time interval for use in interpolation (def. is 003000 )    .
+C........................................................................
+      IMPLICIT NONE
+
+      INCLUDE SUBST_IOPARMS
+      INCLUDE SUBST_IOFDESC
+      INCLUDE SUBST_IODECL
+      INCLUDE 'PLUME.EXT'
+      INCLUDE 'FILES_PDM.EXT'
+
+      INTEGER JDATE, JTIME, IDTSEC, NHRS, IHRM
+      REAL DX, DY
+      INTEGER NSORCE
+      REAL    FACTC, DDIRC, DSPDC, INITC
+      INTEGER NREL, NOA, IRT( 25 )
+
+      INTEGER IERR, ICHUST, ICHUSY
+      INTEGER ISHEAR, IMETHD, IDPLUM, IPARTFLG
+      INTEGER I, MMS, NMEPS, IOLDFIL
+      LOGICAL STATUS, IPRFLG
+      
+      REAL,    EXTERNAL :: ENVREAL
+      INTEGER, EXTERNAL :: ENVINT, SEC2TIME
+      LOGICAL, EXTERNAL :: ENVYN
+
+      INTEGER LOGDEV
+      
+      COMMON /OPTN/ IPRFLG
+      COMMON /MTH/ IMETHD, IDPLUM, IPARTFLG, IOLDFIL
+      COMMON /SIG/ ICHUST, ICHUSY, ISHEAR
+
+C output diagnostic file name env vars
+      CHARACTER( 16 ) :: NFOUT1 = 'NFOUT1'
+      CHARACTER( 16 ) :: NFOUT2 = 'NFOUT2'
+      CHARACTER( 16 ) :: NFOUT3 = 'NFOUT3'
+
+C output diagnostic file names
+      CHARACTER( 256 ) :: FL_NAME_1
+      CHARACTER( 256 ) :: FL_NAME_2
+      CHARACTER( 256 ) :: FL_NAME_3
+
+      CHARACTER( 16 ) :: PNAME = 'GENRLIN'
+      CHARACTER( 16 ) :: OUTDATA( NVARPDM )
+      DATA OUTDATA / 'PLUME_ID','XC_PLUME','YC_PLUME','ZC_PLUME',
+     &               'WIDTH'   ,'DEPTH'   ,'PBL'     ,'ANGLE',
+     &               'WIDTHDT', 'DEPTHDT', 'DPBLDT' ,'DDIR',
+     &               'DSPD'    ,'ID_LL',
+     &               'ID_RU'   ,'PLUME_FLAG','INITIAL_WIND',
+     &               'RELSTEP' ,'TSCALE', 'DDIST' /
+
+C-----------------------------------------------------------------------
+
+      LOGDEV = INIT3()
+
+C**Get run parameters for simulation.
+C Read in the control variables via the environment
+
+      JDATE = ENVINT( 'STDATE', 'The starting date of simulation',
+     &                 95209, IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0,' Error reading JDATE', .TRUE. )
+
+      JTIME = ENVINT( 'STTIME', 'The starting time of simulation',
+     &                 000000, IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0,' Error reading JTIME', .TRUE. )
+
+      NHRS = ENVINT( 'NHRS', 'The duration of simulation',
+     &                24 , IERR )
+      IF ( NHRS .GT. MAXTIM )
+     &   CALL M3ERR ( PNAME, 0, 0, ' NHRS > MAXTIM', .TRUE. )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, ' Error reading NHRS', .TRUE. )
+
+      ICHUST = ENVINT( 'ICHUST', 'Method flg for Lagrangian time (TL)',
+     &                 1 , IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, 'Error reading ICHUST', .TRUE. )
+       
+      ICHUSY = ENVINT( 'ICHUSY', 'Method flg for Sigma Y scheme',
+     &                 2, IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, 'Error reading ICHUSY', .TRUE. )
+
+      ISHEAR = ENVINT( 'ISHEAR', 'Include (1)/Omit (0) shear in Sigma Y',
+     &                 1 , IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, 'Error reading ISHEAR ', .TRUE. )
+
+      IMETHD = ENVINT( 'IMETHD', 'Method flg for PBL interpolation', 
+     &                 1 , IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, 'Error reading IMETHD', .TRUE. )
+
+      IDPLUM = ENVINT( 'IDPLUM', 'Method for plume thickness',
+     &                 0 , IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, 'Error reading IDPLUM', .TRUE. )
+              
+      IPARTFLG = ENVINT( 'IPARTFLG', 'Plume partition in each layer',
+     &                   0 , IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, 'Error reading IPARTFLG', .TRUE. )
+
+      INITC  = ENVREAL( 'INITC', 'Criteria for initial plume width',
+     &                  1000., IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, 'Error reading INITC', .TRUE. )
+
+      DDIRC  = ENVREAL( 'DDIRC', 'Criteria for wind direction shear',
+     &                  1.8, IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, 'Error reading DDIRC', .TRUE. )
+
+      DSPDC  = ENVREAL( 'DSPDC', 'Criteria for wind speed shear',
+     &                  0.7, IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, 'Error reading DSPDC', .TRUE. )
+
+      FACTC  = ENVREAL( 'FACTC', 'Factor of criteria for plume width',
+     &                  1.0, IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, 'Error reading FACTC', .TRUE. )
+
+      IOLDFIL = ENVINT( 'IOLDFIL', 'Yes (1)/No (0) Previous day file',
+     &                  0 , IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, 'Error reading IOLDFIL ', .TRUE. )
+       
+      IPRFLG = ENVYN( 'IPRFLG', 'Option - To create misc output files',
+     &                .FALSE. , IERR )
+      IF ( IERR .GT. 0 )
+     &   CALL M3ERR ( PNAME, 0, 0, 'Error reading IPRFLG', .TRUE. )
+
+      IHRM = SEC2TIME( 1800 / NSTEP )
+      IDTSEC = 3600 / NSTEP
+
+!     IHRM = SEC2TIME (450)   
+!     IDTSEC = 900
+
+      write( logdev,* ) ' Input Specifications Requested for this Simulation'
+      write( logdev,* ) ' --------------------------------------------------'
+      write( logdev,* ) ' Starting date (YYYYJJJ) for simulation: ', JDATE
+      write( logdev,* ) ' Starting time (HHMMSS)  for simulation: ', JTIME
+      write( logdev,* ) ' Duration (hours) of this simulation: ', MAXTIM
+      write( logdev,* ) ' Sampling time interval of plumes : ', IDTSEC
+      write( logdev,* ) ' Time interval for interp. of met. data : ', IHRM
+      write( logdev,* ) ' Selected methods for ICHUST, ICHUSY, ISHEAR, IMETHD, IDPLUM:'
+      write( logdev,* )                        ICHUST, ICHUSY, ISHEAR, IMETHD, IDPLUM
+      write( logdev,* ) ' Selected values for FACTC, DDIRC, DSPDC, INITC:'
+      write( logdev,* )                       FACTC, DDIRC, DSPDC, INITC
+
+C Open other diagnostic print files.
+      IF ( IPRFLG ) THEN
+         CALL ENVSTR( NFOUT1, 'diagnostic file', ' ', FL_NAME_1, STATUS )
+         OPEN ( 25, FILE = FL_NAME_1, FORM = 'FORMATTED', STATUS = 'NEW' )
+         CALL ENVSTR( NFOUT2, 'diagnostic file', ' ', FL_NAME_2, STATUS )
+         OPEN ( 8,  FILE = FL_NAME_2, FORM = 'FORMATTED', STATUS = 'NEW' )
+      END IF
+
+C Open the standard printout file.       
+      CALL ENVSTR( NFOUT3, 'diagnostic file', ' ', FL_NAME_3, STATUS )
+      OPEN ( 11, FILE = FL_NAME_3, FORM = 'FORMATTED', STATUS = 'NEW' )
+      write( logdev,* ) 'OPENED the diagnostic print 11 file'
+
+C Open IOAPI MET data input files.
+
+C ********************* Read file headers **********************
+C *t-indep. ;  GRID_CRO_2D  GRID_DOT_2D
+C *t-depend : MET_BDY_3D  MET_CRO_2D  MET_CRO_3D  MET_DOT_3D
+C **************************************************************
+
+      IF ( .NOT. OPEN3 ( MET_DOT_3D, FSREAD3, PNAME ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'ERROR opening file ' // MET_DOT_3D // ' file', .TRUE. )
+      END IF
+      IF ( .NOT. OPEN3 ( MET_CRO_3D, FSREAD3, PNAME ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'ERROR opening file ' // MET_CRO_3D // ' file', .TRUE. )
+      END IF
+      IF ( .NOT. OPEN3 ( MET_CRO_2D, FSREAD3, PNAME ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'ERROR opening file ' // MET_CRO_2D // ' file', .TRUE. )
+      END  IF
+      IF ( .NOT. OPEN3 ( GRID_DOT_2D, FSREAD3, PNAME ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'ERROR opening file ' // GRID_DOT_2D // ' file', .TRUE. )
+      END IF
+      IF ( .NOT. OPEN3 ( GRID_CRO_2D, FSREAD3, PNAME ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'ERROR opening file ' // GRID_CRO_2D // ' file', .TRUE. )
+      END IF
+
+C  Open the netCDF STACK file
+      IF ( .NOT. OPEN3( STACK_MEPSE, FSREAD3, PNAME ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not open ' // STACK_MEPSE // ' file', .TRUE. )
+      END IF
+
+C  Read FDESC3.EXT from STACK_MEPSE to set up grid info
+
+      IF (.NOT. DESC3( STACK_MEPSE ) ) THEN
+         CALL M3ERR( PNAME, SDATE3D, STIME3D,
+     &   'Could not get description of  ' // STACK_MEPSE // ' file', .TRUE. )
+      END IF
+
+C  The number of MEPSEs is in NROWS3D
+      MMS = NROWS3D     
+      NSORCE = MMS
+      
+C  Open an previous day (old) PDM file if a continuation.
+      IF ( IOLDFIL .EQ. 1 ) THEN       
+         CALL PDMOPEN( NMEPS, NREL )
+
+         write( logdev,* ) 'IN GENRLIN: MMS, NMEPS', MMS, NMEPS
+         IF ( MMS .NE. NMEPS )
+     &      CALL M3ERR( PNAME, SDATE3D, STIME3D, 'MMS not = NMEPS', .TRUE. )
+              
+         CALL READPDM ( JDATE, JTIME, NMEPS, NREL, NOA, IRT )
+      ELSE
+         NREL = 1         ! default of 1 needed for array dimensions
+         NOA = 0
+         NMEPS = 0
+         write( logdev,* ) 'NO PDMFILE: MMS, NMEPS', MMS, NMEPS
+      END IF
+      
+C  read FDESC3.EXT from MET_CRO_3D to set up grid info for PDM file
+
+      IF (.NOT. DESC3 ( MET_CRO_3D ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &      'Could not read DESC of ' // MET_CRO_3D // ' file', .TRUE.)
+      END IF
+
+      write( logdev,* ) ' JDATE ', JDATE, ' JTIME ', JTIME  
+
+C  Define certain parameters for the IOAPI output file header
+
+      DX = XCELL3D
+      DY = YCELL3D
+
+      FTYPE3D = GRDDED3
+      NVARS3D = NVARPDM
+      SDATE3D = JDATE
+      STIME3D = JTIME
+      NCOLS3D = MMS
+
+C  Store old 'active' releases - 1 for 00 release, plus current releases.
+      IF ( IOLDFIL .EQ. 1 ) THEN       
+!        NROWS3D = MT + NOA - 1
+         NROWS3D = ( NHRS * NRRATE + 1 ) + NOA - 1 
+      ELSE
+!        NROWS3D = MT
+         NROWS3D = NHRS * NRRATE + 1
+      END IF
+C  Current valued allowed for NRRATE = 1.
+      IF ( NRRATE .NE. 1 ) THEN
+         WRITE( LOGDEV,* ) ' NRRATE:', NRRATE
+         CALL M3ERR( PNAME, JDATE, JTIME, 'NNRATE not 1', .TRUE. ) 
+      END IF
+      
+      NLAYS3D = 1
+      NTHIK3D = 1
+
+      write( logdev,* ) ' FTYPE,NVARS,NCOLS,NROWS,NLAYS,TSTEP',
+     &                    FTYPE3D, NVARS3D, NCOLS3D, NROWS3D, NLAYS3D, TSTEP3D
+
+      write( logdev,* ) 'GDTYP3D ', GDTYP3D, ' GDNAM3D ', GDNAM3D
+      write( logdev,* ) 'P_ALP3D ', P_ALP3D, ' P_GAM3D ', P_GAM3D
+      write( logdev,* ) 'XCELL3D ', XCELL3D, ' YCELL3D ', YCELL3D
+
+C  ----- PDM HEADER -----
+
+C  Main PDM info output
+
+      TSTEP3D = SEC2TIME( IDTSEC )
+
+      DO I = 1, NVARS3D
+         VNAME3D( I ) = OUTDATA(I)
+         VTYPE3D( I ) = M3REAL
+         VDESC3D( I ) = 'PDM OUTPUT'
+      END DO
+
+      VTYPE3D(  1 ) = M3INT
+      VTYPE3D( 14 ) = M3INT
+      VTYPE3D( 15 ) = M3INT
+      VTYPE3D( 16 ) = M3INT
+
+      UNITS3D(  1 ) = '#'
+      UNITS3D(  2 ) = 'm,X of plume CNT'
+      UNITS3D(  3 ) = 'm,Y of plume CNT'
+      UNITS3D(  4 ) = 'm,Z of plume CNT'
+      UNITS3D(  5 ) = 'm,width of plume'
+      UNITS3D(  6 ) = 'm,depth of plume'
+      UNITS3D(  7 ) = 'm, PBL'
+      UNITS3D(  8 ) = 'ARC,ANGLE P/TRAJ'
+      UNITS3D(  9 ) = 'm/s,P/W grow. R.'
+      UNITS3D( 10 ) = 'm/s,P/D grow. R.'
+      UNITS3D( 11 ) = 'm/s,PBL grow. R.'
+      UNITS3D( 12 ) = 'ARC,WD shear'
+      UNITS3D( 13 ) = 'm/s,WS shear'
+      UNITS3D( 14 ) = 'grid #- L-L cell'
+      UNITS3D( 15 ) = 'grid #- U-R cell'
+      UNITS3D( 16 ) = 'plume flag #'
+      UNITS3D( 17 ) = 'initial WS'
+      UNITS3D( 18 ) = 'timestep counter'
+      UNITS3D( 19 ) = 'time scale (s)'
+      UNITS3D( 20 ) = 'travel dist.(km)'
+
+C *** Open PDM output file ***
+
+      IF ( .NOT. OPEN3( PDM_PING_1, FSNEW3, 'FAKE_GRIDDED' ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &  'Could not create ' // PDM_PING_1 // ' file', .TRUE.)
+      END IF
+
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

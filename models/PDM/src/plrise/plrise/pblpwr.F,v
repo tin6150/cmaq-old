@@ -1,0 +1,598 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/plrise/plrise/pblpwr.F,v 1.7 2005/08/29 20:33:54 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C***********************************************************************
+      SUBROUTINE PBLPWR ( UL, TL, QL, PL, ZL, ZF, NZCELL, HGT,
+     &                    PBL, AMOL, ZRUF, TSFC, PSFC,
+     &                    UHGT, THGT, QHGT, PHGT, RHGT, JFLAG )
+
+C***********************************************************************
+C Interpolate U, T, Q, P, RH at given height 
+C
+C This version uses PBL similarity proposed by BYUN (1991)
+C to get around the limit of using surface layer similarity.
+C  --- by Daewon Byun, Feb. 24, 1991
+ 
+C***********************************************************************
+ 
+C Inputs --
+C        UL       R   Layered wind speed (m/s)
+C        TL       R   Layered temperature ( K )
+C        QL       R   Layered specific humidity (g/g)
+C        PL       R   Layer pressure (mb)
+C        ZL       R   Layer height (m)
+C        ZF       R   Layer face height (m)
+C        NZCELL   I   Number of layers
+C        HGT      R   Interpolation height (m)
+C        PBL      R   Boundary layer height (m)
+C        AMOL     R   Monin-Obukhov length
+C        ZRUF     R   Roughness length (m)
+C        TSFC     R   Surface air temperature ( K )
+C        PSFC     R   Surface pressure (mb)
+ 
+C Output:
+C        UHGT     R   Interpolated wind speed (m/s)
+C        THGT     R   Interpolated temperature ( K )
+C        QHGT     R   Interpolated specific humidity
+C        PHGT     R   Interpolated pressure
+C        RHGT     R   Interpolated RH
+C        JFLAG    I   Error flag
+ 
+C Local Variables --
+C        DTPBLN   R   Function for normalized PBL profiles
+C        FAT      R   Function for coefficients for PBL profiles
+C        FAU      R   Function for coefficients for PBL profiles
+C        FGAMU    R   Function for stable and unstable case
+C        FHH      R   Function for the estimation of powers
+C        FHM      R   Function for the estimation of powers
+C        FPHIH    R   Function for stable and unstable case
+C        FPHIM    R   Function for stable and unstable case
+C        FPS      R   Function for surface power
+C        FPSIH    R   Function for stable and unstable case
+C        FPSIM    R   Function for stable and unstable case
+C        FRS      R   Function for surface power
+C        FVPTMP   R   Function for virtual potential temperature
+C        FX       R   Function for stable and unstable case
+C        FY       R   Function for stable and unstable case
+C        UPBLN    R   Function for normalized PBL profiles
+C        AKAPA    R   stratification aloft
+C        ALOGNS   R   ??
+C        AMU      R   AMU  = PBL/AMOL
+C        ANS      R   ANS = (ETAS-ETAO)/(1.-ETAO)
+C        AT       R   AT   = FAT(AMU,ETAO,AKAPA,R)
+C        AU       R   AU   = FAU(AMU,ETAO,P,XA,XO)
+C        BETAM    R   ??
+C        CORA     R   Used for interpolation
+C        CORB     R   Used for interpolation
+C        DELTAH   R   ??
+C        DELTAM   R   ??
+C        DZSUM    R   ??
+C        EHGT     R   Used in computing relative humidity
+C        ES       R   Used in estimating surface vapor pressure
+C        ESHGT    R   Used in estimating surface vapor pressure
+C        ETA      R   ETA = ZL( K )/PBL
+C        ETAO     R   ETAO = ZRUF/PBL
+C        ETAS     R   ??
+C        FHH1     R   ??
+C        FHM1     R   ??
+C        G1P      R   Used in Newton-Raphson method
+C        G1R      R   Used in Newton-Raphson method
+C        GAMMAH   R   ??
+C        GAMMAM   R   ??
+C        GP       R   Used in Newton-Raphson method
+C        GR       R   Used in Newton-Raphson method
+C        IT       I   ??
+C        ITMAX    I   ??
+C        ITP      I   ??
+C        ITR      I   ??
+C        KHGT     I   Layer index for HGT
+C        KPBL     I   Layer index for PBL
+C        P        R   ??
+C        P1       R   ??
+C        PNEW     R   Used in Newton-Raphson method
+C        PRO      R   ??
+C        PS       R   ??
+C        Q        R   ??
+C        QDZSUM   R   ??
+C        QMIN     R   ??
+C        QPBL     R   ??
+C        QSFC     R   ??
+C        QSHGT    R   Used in estimating surface vapor pressure
+C        QSTAR    R   ??
+C        QSTHAT   R   ??
+C        R        R   ??
+C        R1       R   ??
+C        RNEW     R   Used in Newton-Raphson method
+C        RS       R   ??
+C        SMALL    R   ??
+C        T        R   ??
+C        TES      R   Used in estimating surface vapor pressure
+C        THDZSUM  R   ??
+C        THSTAR   R   ??
+C        THSTHAT  R   ??
+C        THVHGT   R   ??
+C        THVPBL   R   ??
+C        UMIN     R   ??
+C        UPBL     R   ??
+C        USDZSUM  R   ??
+C        USTAR    R   ??
+C        USTHAT   R   ??
+C        USTMIN   R   ??
+C        VKAR     R   ??
+C        VPTSFC   R   Virtual potential temperature
+C        X        R   ??
+C        XA       R   ??
+C        XO       R   ??
+C        XS       R   ??
+C        Y        R   ??
+C        YA       R   ??
+C        YO       R   ??
+C        YS       R   ??
+C        ZETA     R   ??
+C        DQL      R   ??
+C        DTHTVL   R   ??
+C        DZF      R   ??
+C        THTVL    R   ??
+
+C Error conditions
+C         -1   Convergence failed for power P in PBLPWR
+C         -2   Convergence failed for power R in PBLPWR
+
+C***********************************************************************
+      USE VGRD_DEFN
+
+      IMPLICIT NONE
+
+!     INCLUDE SUBST_VGRD_ID
+      INCLUDE SUBST_IOPARMS
+      INCLUDE SUBST_IOFDESC
+      INCLUDE SUBST_CONST
+ 
+      REAL    UL( NZCELL ), TL( NZCELL ), QL( NZCELL ), PL( NZCELL ),
+     &        ZL( NZCELL ), ZF( 0:NZCELL )
+      INTEGER NZCELL
+      REAL    HGT, PBL, AMOL, ZRUF, TSFC, PSFC, UHGT, THGT, QHGT, PHGT, RHGT
+      INTEGER JFLAG
+
+      CHARACTER( 96 ) :: XMSG = ' '
+      CHARACTER( 16 ) :: PNAME = 'PBLPWR'
+
+      INTEGER IT, ITMAX, ITP, ITR, K, KHGT, KPBL
+ 
+      REAL    DTPBLN, FAT, FAU, FGAMU, FHH, FHM, FPHIH, FPHIM, FPS,
+     &        FPSIH, FPSIM, FRS, FVPTMP, FX, FY, UPBLN,
+     &        AKAPA, ALOGNS, AMU, ANS, AT, AU,
+     &        BETAH, BETAM, CORA, CORB, DELTAH, DELTAM,
+     &        DZSUM, EHGT, ES, ESHGT, ETA, ETAO, ETAS, FHH1, FHM1,
+     &        G1P, G1R, GAMMAH, GAMMAM, GP, GR, P, P1,
+     &        PNEW, PRO, PS, Q, QDZSUM, QMIN,
+     &        QPBL, QSFC, QSHGT, QSTAR, QSTHAT, R, R1, 
+     &        RNEW, RS, SMALL, T, TES, THDZSUM,
+     &        THSTHAT, THVHGT, THVPBL, UMIN, UPBL, USDZSUM,
+     &        USTAR, USTHAT, USTMIN, VKAR, VPTSFC, X, XA, XO, XS, Y,
+     &        YA, YO, YS, ZETA, THSTAR, CVMGP
+ 
+      REAL DZF( NLAYS ), THTVL( NLAYS ), DTHTVL( NLAYS ), DQL( NLAYS )
+ 
+C Data for constants - Surface Layer Similarity Theory
+ 
+!*Old
+      DATA BETAM / 4.7 /, BETAH / 6.3513514 /, PRO / 0.74 /  
+!*New Hogstrom (1988)
+!     DATA BETAM / 6.0 /, BETAH / 8.2105263 /, PRO / 0.95 /, ALAMDAO  / 0.3 / 
+!*Old
+      DATA GAMMAM / 15.0 /, GAMMAH / 9.0 /, VKAR / 0.4 /  
+!*New Hogstrom (1988)
+!     DATA GAMMAM / 19.3 /, GAMMAH / 11.6 /, VKAR / 0.4 /, RICR / 0.15 /
+      DATA ETAS  / 0.1 /, DELTAM / 0.01 /, DELTAH / 0.01 /, ITMAX / 20 /
+      DATA SMALL / 0.0001 /, UMIN / 0.1 /, USTMIN / 0.05 /, QMIN / 0.001 /
+
+      SAVE BETAM, BETAH, PRO, GAMMAM, GAMMAH, VKAR, ETAS, DELTAM,
+     &     DELTAH, ITMAX, SMALL, UMIN, USTMIN, QMIN
+
+C************************
+C* Function DEFINITION  *
+C************************
+C Function virtual potential temperature
+      FVPTMP( T,P,Q ) = T * ( 1.0 + 0.61 * Q ) * ( 1000.0 / P ) ** 0.286
+ 
+C Functions for stable and unstable cases
+ 
+      FX( ZETA ) = CVMGP( 0.0,
+     &                    ABS( 1.0 - GAMMAM * ZETA ) ** 0.25,
+     &                    ZETA )
+
+      FY( ZETA ) = CVMGP( 0.0,
+     &                    ABS( 1.0 - GAMMAH * ZETA ) ** 0.5,
+     &                    ZETA )
+ 
+      FPHIM( ZETA ) = CVMGP( 1.0 + BETAM * ZETA,
+     &                       ABS( 1.0 - GAMMAM * ZETA ) ** ( -0.25 ),
+     &                       ZETA )
+
+      FPHIH( ZETA ) = CVMGP( PRO * ( 1.0 + BETAH * ZETA ),
+     &                       ABS( 1.0 - GAMMAH * ZETA ) ** ( -0.5 ),
+     &                       ZETA )
+ 
+      FPSIM( ZETA,X ) = CVMGP( -BETAM * ZETA,
+     &                         2.0 * LOG( X + 1.0 ) + LOG( 1.0 + X * X ) - 2.0 * ATAN( X ),
+     &                         ZETA )
+
+      FPSIH( ZETA,Y ) = CVMGP( -BETAH * ZETA,
+     &                         2.0 * LOG( Y + 1.0 ),
+     &                         ZETA )
+ 
+      FGAMU( ZETA,X ) = CVMGP( -0.5 * BETAM * ZETA * ZETA,
+     &                         - ( 4.0 * X ** 3 / 3.0 - X ** 4 + ( X ** 4 - 1.0 )
+     &                             * ( LOG( 1.0 + X * X ) + 2.0 * LOG( 1.0 + X )
+     &                               - 2.0 * ATAN( X ) )
+     &                           ) / GAMMAM,
+     &                         ZETA )
+ 
+C Functions for surface power
+ 
+      FPS( AMU,ETAS,ETAO,XS,XO ) = FPHIM ( ETAS * AMU )
+     &                           / ( LOG( ETAS / ETAO )
+     &                           - FPSIM( ETAS * AMU, XS )
+     &                           + FPSIM( ETAO * AMU, XO ) )
+
+      FRS( AMU,ETAS,ETAO,YS,YO ) = FPHIH( ETAS * AMU )
+     &                           / ( PRO * ( LOG( ETAS / ETAO )
+     &                           - FPSIH( ETAS * AMU, YS )
+     &                           + FPSIH( ETAO * AMU, YO ) ) )
+ 
+C Functions for coefficients for PBL profiles
+ 
+      FAU( AMU,ETAO,P,XA,XO ) = - ( ( P + 1.0 ) / ( P * ( 1.0 - ETAO ) ** P ) )
+     &                        * ( ETAO * LOG( ETAO ) / ( 1.0 - ETAO ) + 1.0 - FPSIM( AMU, XA )
+     &                        + ( FGAMU( AMU,XA ) - FGAMU( AMU * ETAO, XO ) )
+     &                        / ( AMU * ( 1.0 - ETAO ) ) )
+
+      FAT( AMU,ETAO,AKAPA,R ) = ( 1.0 / ( R * ( 1.0 - ETAO ) ** ( R-1 ) ) )
+     &                        * ( VKAR * AKAPA / PRO - FPHIH( AMU ) / PRO - 1.0 )
+ 
+C Functions for the estimation of powers
+ 
+      FHM( AMU,ETAS,ETAO,XA,XS,XO )    = ABS( LOG( ETAS/ ETAO )
+     &                                 - FPSIM( AMU * ETAS, XS )
+     &                                 + FPSIM( AMU * ETAO, XO ) )
+     &                                 / ABS( ETAO * LOG( ETAO ) / ( 1.0 - ETAO )
+     &                                 + 1.0 - FPSIM( AMU, XA )
+     &                                 + ( FGAMU( AMU,XA )
+     &                                 - FGAMU( AMU * ETAO, XO ) ) / ( AMU * ( 1.0 -ETAO ) ) )
+
+      FHH( AMU,ETAS,ETAO,YS,YO,AKAPA ) = ABS( LOG( ETAS / ETAO )
+     &                                 - FPSIH( AMU * ETAS,YS )
+     &                                 + FPSIH( AMU * ETAO, YO ) )
+     &                                 / ( ABS( VKAR * AKAPA / PRO
+     &                                 - FPHIH( AMU ) / PRO - 1.0  ) * ( 1.0 - ETAO ) )
+ 
+C Functions for normalized PBL profiles
+ 
+      UPBLN( AMU,ETA,ETAO,P,AU,X,XO ) =
+     &                 FPSIM( AMU * ETAO, XO ) + LOG( ETA / ETAO )
+     &               - FPSIM( AMU * ETA, X ) + AU * ( ETA - ETAO ) ** P
+
+      DTPBLN( AMU,ETA,ETAO,R,AT,Y,YO ) =
+     &                 FPSIH( AMU * ETAO, YO ) + LOG( ETA / ETAO )
+     &               - FPSIH( AMU * ETA, Y ) + AT * ( ETA - ETAO ) ** R
+
+C***********************************************************************
+ 
+C Compute surface virtual potential temperature, specified humidity
+ 
+!     ES  = 6.1078 * EXP( 5384.21 * ( 1.0 / 273.15 - 1.0 / TL( 1 ) ) )
+C replaced MIN(TL(1),TSFC) to estimate surface vapor pressure
+C DWB 7/24/89
+      TES = MIN( TSFC, TL( 1 ) )
+      ES  = 6.1078 * EXP( 5384.21 * ( 1.0 / 273.15 - 1.0 / TES ) )
+
+      QSFC   = 0.622 * ES / ( PSFC- ES )
+      VPTSFC = FVPTMP( TSFC, PSFC, QSFC )
+ 
+C Compute virtual potential temperature (THTVL) for whole layers
+ 
+      DO K = 1, NZCELL
+         THTVL( K )  = FVPTMP( TL( K ), PL( K ), QL( K ) )
+         DTHTVL( K ) = THTVL( K ) - VPTSFC
+         DQL( K )    = QL( K ) - QSFC
+      END DO
+
+C Determine layer index for PBL
+ 
+      DO K = 1, NZCELL
+         IF ( PBL .LT. ZL( K ) ) THEN
+            KPBL = K
+            GO TO 210
+         END IF
+      END DO
+      KPBL = NZCELL
+210   CONTINUE
+ 
+C Determine layer index for HGT
+ 
+      DO K = 1, NZCELL
+         IF ( HGT .LT. ZL( K ) ) THEN
+            KHGT = K
+            GO TO 260
+         END IF
+      END DO
+      KHGT = NZCELL
+260   CONTINUE
+ 
+C Compute DZD: delta_Z between 2 levels 
+ 
+      DO K = 1, NZCELL
+         DZF( K ) = ZF( K ) - ZF( K-1 )
+      END DO
+ 
+C Find powers P and R
+ 
+C for variable value of P ( P,R not dependent on AMU)
+      AKAPA = 0.0        ! Assume stratification aloft is not important
+      ETAS  = 0.1
+      ETAO  = ZRUF / PBL
+      AMU   = PBL / AMOL
+      XO    = FX( ETAO * AMU )
+      XS    = FX( ETAS * AMU )
+      XA    = FX( 1.0  * AMU )
+      YO    = FY( ETAO * AMU )
+      YS    = FY( ETAS * AMU )
+      YA    = FY( 1.0  * AMU )
+      ANS   = ( ETAS - ETAO ) / ( 1. - ETAO )
+      ALOGNS = LOG( ANS )
+ 
+      IF ( ABS( AMOL ) .GT. 1000.0 ) THEN ! treat as neutral
+         P1 = 1.43
+         R1 = P1
+      ELSE                        ! Diabatic condition
+         PS = FPS( AMU, ETAS, ETAO, XS, XO )
+         RS = FRS( AMU, ETAS, ETAO, YS, YO )
+ 
+C Estimate P and R using the asymptotic magnitude comparisons
+C Use iteration for P starting with initial P = PS
+ 
+         P1 = PS
+         FHM1 = FHM( AMU, ETAS, ETAO, XA, XS, XO )
+         DO IT = 1, ITMAX
+C Newton-Raphson method
+ 
+            GP = LOG( ( P1 + 1.0 ) / P1 ) + P1 * ALOGNS - LOG( DELTAM * FHM1 )
+            G1P = ALOGNS - 1.0 / ( P1 * ( 1.0 + P1 ) )
+            PNEW = P1 - GP / G1P
+            IF ( ABS( ( PNEW - P1 ) / PNEW ) .LT. SMALL * 0.01 ) THEN
+               P1  = PNEW
+               ITP = IT
+               GO TO 521
+            ELSE
+               P1 = PNEW
+            END IF
+         END DO
+ 
+C Not converged within ITMAX
+         JFLAG = -1
+         WRITE( XMSG,1101 ) JFLAG
+         CALL M3ERR ( PNAME, 0, 0, XMSG, .TRUE. )
+
+521      CONTINUE
+ 
+C Use iteration for R starting with initial R = RS
+ 
+         R1 = RS
+         FHH1 = FHH( AMU, ETAS, ETAO, YS, YO, AKAPA )
+         DO IT = 1, ITMAX
+C Use Newton-Raphson method
+            GR = -LOG( R1 ) + R1 * ALOGNS - LOG( DELTAH * FHH1 )
+            G1R = -1.0 / R1 + ALOGNS
+            RNEW = R1 - GR / G1R
+            IF ( ABS( ( RNEW - R1 ) / RNEW ) .LT. SMALL * 0.01 ) THEN
+               R1  = RNEW
+               ITR = IT
+               GO TO 541
+            ELSE
+               R1 = RNEW
+            END IF
+         END DO
+ 
+C Not converged within ITMAX
+ 
+         JFLAG = -2
+         WRITE( XMSG,1201 ) JFLAG
+         CALL M3ERR ( PNAME, 0, 0, XMSG, .TRUE. )
+
+541      CONTINUE
+!        write( *,* ) ' R1 is determined  ',R1
+
+      END IF   ! not neutral
+ 
+      P = P1
+      R = R1
+C Diabatic P, R also determined
+ 
+      AU = FAU( AMU, ETAO, P, XA, XO )
+      AT = FAT( AMU, ETAO, AKAPA, R )
+ 
+C compute USTHAT, THSTHAT
+ 
+      IF ( KPBL .LE. 1 ) THEN
+
+         K = 1
+         ETA = ZL( K ) / PBL
+         X   = FX( ETA * AMU )
+         Y   = FY( ETA * AMU )
+         USTAR  = VKAR * UL( K ) / UPBLN( AMU, ETA, ETAO, P, AU, X, XO )
+         THSTAR = VKAR * DTHTVL( K ) / DTPBLN( AMU, ETA, ETAO, R, AT, Y, YO )
+         QSTAR  = VKAR * DQL( K ) / DTPBLN( AMU, ETA, ETAO, R, AT, Y, YO )
+ 
+         USTHAT = MAX( USTAR, USTMIN )
+         THSTHAT= THSTAR 
+         QSTHAT = QSTAR
+
+      ELSE
+
+         USDZSUM = 0.0
+         THDZSUM = 0.0
+         QDZSUM  = 0.0
+         DZSUM   = 0.0
+         DO K = 1, KPBL - 1
+            ETA = ZL( K ) / PBL
+            X   = FX( ETA * AMU )
+            Y   = FY( ETA * AMU )
+            USTAR  = VKAR * UL( K ) / UPBLN( AMU, ETA, ETAO, P, AU, X, XO )
+            THSTAR = VKAR * DTHTVL( K ) / DTPBLN( AMU, ETA, ETAO, R, AT, Y, YO )
+            QSTAR  = VKAR * DQL( K ) / DTPBLN( AMU, ETA, ETAO, R, AT, Y, YO )
+            USDZSUM = USDZSUM + DZF( K ) * USTAR
+            THDZSUM = THDZSUM + DZF( K ) * THSTAR
+            QDZSUM  = QDZSUM  + DZF( K ) * QSTAR
+            DZSUM   = DZSUM   + DZF( K )
+         END DO
+
+         USTHAT  = MAX( ( USDZSUM / DZSUM ), USTMIN )
+         THSTHAT = THDZSUM / DZSUM
+         QSTHAT  = QDZSUM / DZSUM
+
+      END IF
+ 
+C Now we have good estimation of USTHAT, THSTHAT, QSTHAT
+C depending on the relative position of PBL and HGT, estimate
+C Met. parameters using the profile function and linear interpolation
+ 
+      IF ( HGT .LE. PBL ) THEN
+
+C HGT is in PBL layer: use parameterized PBL profile
+ 
+         ETA = HGT / PBL
+         X   = FX( ETA * AMU )
+         Y   = FY( ETA * AMU )
+         UHGT = USTHAT * UPBLN( AMU, ETA, ETAO, P, AU, X, XO ) / VKAR
+         THVHGT = VPTSFC + THSTHAT * DTPBLN( AMU, ETA, ETAO, R, AT, Y, YO ) / VKAR
+         QHGT   = QSFC    + QSTHAT * DTPBLN( AMU, ETA, ETAO, R, AT, Y, YO ) / VKAR
+ 
+         UHGT  = MAX( UHGT, UMIN )
+         QHGT  = MAX( QHGT, QMIN )
+ 
+      ELSE IF ( PBL .LT. HGT .AND. HGT .LT. ZL( KPBL ) ) THEN
+ 
+C HGT is above the boundary layer but below ZL(KPBL):
+C use parameterized profile till ZSL and interpolate with
+C values at PBL and at ZL(KPBL)
+ 
+C Compute ETA, X, and Y at PBL
+ 
+         ETA = 1.0
+         X   = FX( ETA * AMU )
+         Y   = FY( ETA * AMU )
+         UPBL   = USTHAT * UPBLN( AMU, ETA, ETAO, P, AU, X, XO ) / VKAR
+         THVPBL = VPTSFC + THSTHAT * DTPBLN( AMU, ETA, ETAO, R, AT, Y, YO ) / VKAR
+         QPBL   = QSFC    + QSTHAT * DTPBLN( AMU, ETA, ETAO, R, AT, Y, YO ) / VKAR
+ 
+C Interpolate
+ 
+         CORA   = ( ZL( KPBL ) - HGT ) / ( ZL( KPBL ) -PBL )
+         CORB   = 1.0 - CORA
+ 
+         UHGT   = MAX( UL( KPBL ) * CORB + UPBL * CORA, UMIN )
+         THVHGT = THTVL( KPBL ) * CORB + THVPBL * CORA
+         QHGT   = MAX( QL( KPBL ) * CORB + QPBL * CORA, QMIN )
+ 
+      ELSE
+ 
+C HGT is located above the mixed layer:
+C use simple linear interpolation using adjacent levels
+ 
+         CORA   = ( ZL( KHGT ) - HGT ) / ( ZL( KHGT ) - ZL( KHGT - 1 ) ) 
+         CORB   = 1.0 - CORA
+
+         UHGT   = MAX( UL( KHGT ) * CORB + UL( KHGT-1 ) * CORA, UMIN )
+         THVHGT = THTVL( KHGT ) * CORB + THTVL( KHGT-1 ) * CORA
+         QHGT   = MAX( QL( KHGT ) * CORB + QL( KHGT-1 ) * CORA, QMIN )
+
+      END IF
+ 
+C***********************************************************************
+ 
+C Convert virtual potential temperature to normal temperature
+ 
+      PHGT  = PL( KHGT ) * EXP( ( ZL( KHGT ) - HGT ) / ( RDGAS / GRAV * THTVL( KHGT ) ) )
+      THGT  = ( THVHGT / ( 1.0 + 0.61 * QHGT ) ) * ( PHGT / 1000.0 ) ** 0.286
+ 
+C Compute relative humidity
+ 
+      ESHGT = 6.1078 * EXP( 5384.21 * ( 1.0 / 273.15 - 1.0 / THGT ) )
+      QSHGT = 0.622 * ESHGT / ( PHGT - ESHGT )
+      EHGT  = PHGT * QHGT / ( QHGT + 0.622 )
+      RHGT  = EHGT / ESHGT
+ 
+C Everything has been computed
+ 
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+ 
+C FORMATS
+ 
+1101  FORMAT( ' Convergence failed for power P in PBLPWR:',
+     &        ' Error return flag= ', I4 )
+
+1201  FORMAT( ' Convergence failed for power R in PBLPWR:',
+     &        ' Error return flag= ', I4 )
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

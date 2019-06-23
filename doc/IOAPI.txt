@@ -1,0 +1,107 @@
+                       IOAPI 3.0 - 17 Mar 2006
+
+
+ The I/O API Version 3.0 source code, documentation, and binary object 
+ libraries for certain platforms are available at:
+
+     http://www.baronams.com/products/ioapi/AVAIL.html
+
+ This web site shows how to build IOAPI libraries in detail.  The following 
+ is a summary:
+
+   1) Untar the downloaded file:
+
+         tar xvfz ioapi-3.0.tar.gz
+
+   2) Determine your machine architecture and the available Fortran and C
+      compilers:
+
+         The command "uname -a" provides machine architecture information.
+
+   3) Go to the ioapi subdirectory and determine the supported architecture
+      and compilers:
+
+         ls -al Makeinclude.*
+
+         The Makeinclude file extensions are named according to the type of 
+         architecture and compiler.
+
+         For instance, if your machine is a Linux box with Pentium 
+         processor and you are using an Portland Group Fortran compiler 
+         (pgf90), you should use Makeinclude.Linux2_x86pg. 
+
+   4) Set up the library directory:
+
+         setenv BIN <lib>
+
+         where <lib> is the file extension you determined in step #3. 
+         Using the previous example, you would type:
+
+         setenv BIN Linux2_x86pg
+
+   5) Select the no-couple Makefile:
+
+         cp Makefile.nocpl Makefile
+         
+         You may need to edit the Makefile to set the location for BASEDIR.
+
+   6) Build the library by typing:
+
+         make
+
+   Note: 1. If the compilers you chose are not found, check Makeinclude.<lib>
+            to see whether the compiler paths are set correctly.
+            
+         2. In our compilation, we used pgf90 and gcc.  We made the 
+            following changes to the Makeinclude.Linux2_x86pg file ("patch" 
+            style difference):
+
+            25c25,26
+            < CC   = pgcc
+            ---
+            > #CC   = pgcc
+            > CC   = /usr/bin/gcc
+            33c34,35
+            < OMPFLAGS  = -mp
+            ---
+            > #OMPFLAGS  = -mp
+            > OMPFLAGS  =
+            35,36c37,40
+            < COPTFLAGS = -O2 ${MFLAGS}
+            < FOPTFLAGS = -O2 ${MFLAGS}
+            ---
+            > #COPTFLAGS = -O2 ${MFLAGS}
+            > COPTFLAGS = -O2 -ffast-math -DIOAPI_NO_STDOUT
+            > #FOPTFLAGS = -O2 ${MFLAGS}
+            > FOPTFLAGS = -O2 -fast -DIOAPI_NO_STDOUT
+            38c42,43
+            < FSFLAGS   = --Msave
+            ---
+            > #FSFLAGS   = --Msave
+            > FSFLAGS   = -Bstatic
+
+            Note: You can change the file by using the Unix "patch" 
+            utility. Cut the indented section listed above and paste into a 
+            file, say "mod." Then type "patch <script> mod."
+
+            The -DIOAPI_NO_STDOUT in COPTFLAGS and FOPTFLAGS in the 
+            Makeinclude.<lib> file avoids verbose run-time output messages.
+
+         3. The library is created in the subdirectory <lib> (see step #4).
+         
+         4. For some CMAQ model applications (e.g. primary carbon source 
+            apportionment or the SAPRC99TX2P mechanisms), the I/O API default 
+            limit for the number of species in a file will need to be changed 
+            from 120. In order to exceed that limit, a number of steps are 
+            required.
+
+            Edit the value of MXVARS3 in the following files:
+
+               PARMS3.EXT
+               parms3.h
+               fixed_src/PARMS3.EXT
+
+            Then rebuild the ioapi library.
+
+            When running CCTM in parallel mode, the PARIO library must be 
+            updated whenever I/O API is modified.

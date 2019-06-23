@@ -1,0 +1,104 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2006.03.13.19.36.07;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.36.07;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/ variable definitions for standard evaluation extractions
+/
+/ RCS file, release, date & time of last delta, author, state, [and locker]
+/ $Header: /project/work/rep/TOOLS/src/combine/spec_def.conc,v 1.2 2005/08/16 19:40:46 showard Exp $
+/
+/#start   YYYYDDD  HHMMSS
+/#end     YYYYDDD  HHMMSS
+#layer         1
+/
+/new species    ,units     ,expression
+
+NO              ,ppbV      , 1000.0*NO[1]
+
+NO2             ,ppbV      , 1000.0*NO2[1] 
+
+O3              ,ppbV      , 1000.0*O3[1] 
+
+HNO3            ,ppbV      , 1000.0*HNO3[1] 
+
+HNO3_UGM3       ,ug/m3     , (1000.0*HNO3[1]) * (2.1756*DENS[2])
+
+VOC             ,ppbC      , 1000.0*PAR[1] + 2000.0*ETH[1] + 2000.0*OLE[1] + 7000.0*TOL[1] + 8000.0*XYL[1] + \
+                             1000.0*FORM[1] + 2000.0*ALD2[1] + 5000.0*ISOP[1]
+
+CO              ,ppbV      , 1000.0*CO[1]
+
+SO2             ,ppbV      , 1000.0*SO2[1] 
+
+SO2_UGM3        ,ug/m3     , (1000.0*SO2[1]) * (2.2118*DENS[2])
+
+NH3_UGM3        ,ug/m3     , (1000.0*NH3[1]) * (0.5880*DENS[2])
+
+ASO4T           ,ug/m3     , ASO4I[1] + ASO4J[1]
+
+ANO3T           ,ug/m3     , ANO3I[1] + ANO3J[1]
+
+ANH4T           ,ug/m3     , ANH4I[1] + ANH4J[1]
+
+PM_OC           ,ug/m3     , (0.6*AORGAI[1]) + (0.6*AORGAJ[1]) + (0.833*AORGPAI[1]) + (0.833*AORGPAJ[1]) + \
+                             (0.678*AORGBI[1]) + (0.678*AORGBJ[1])
+
+AORGAT          ,ug/m3     , AORGAI[1] + AORGAJ[1]
+
+AORGBT          ,ug/m3     , AORGBI[1] + AORGBJ[1]
+
+AORGPAT         ,ug/m3     , AORGPAI[1] + AORGPAJ[1] 
+
+AECT            ,ug/m3     , AECI[1] + AECJ[1]
+
+PM25            ,ug/m3     , ASO4I[1] + ASO4J[1] + ANO3I[1] + ANO3J[1] + ANH4I[1] + ANH4J[1] + AORGAI[1] + \
+                             AORGAJ[1] + 1.167*AORGPAI[1] + 1.167*AORGPAJ[1] + AORGBI[1] + AORGBJ[1] + \
+                             AECI[1] + AECJ[1] + A25J[1] 
+
+PM_OTH          ,ug/m3     , A25J[1]
+
+PM_CORS_TOT     ,ug/m3     , ASOIL[1] + ACORS[1] + ASEAS[1] 
+
+ACORS           ,ug/m3     , ACORS[1]
+
+ASOIL           ,ug/m3     , ASOIL[1]
+
+TNO3            ,ug/m3     , (1000.0*HNO3[1] * 2.1408*DENS[2]) + ANO3I[1] + ANO3J[1]
+
+NHX             ,ug/m3     , (1000.0*NH3[1] * 0.5880*DENS[2]) + ANH4I[1] + ANH4J[1]
+
+AIR_DENS        ,kg/m3     , DENS[2]
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

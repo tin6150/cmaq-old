@@ -1,0 +1,1522 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/base/ping_io.F,v 1.12 2005/02/14 14:57:59 yoj Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C=========================================================================
+C This file, ping_io.F contains:
+C    SUBROUTINE PING_IO
+C    SUBROUTINE PING_HEADER
+C    SUBROUTINE PING_OPDDEP
+C    SUBROUTINE PING_OUT
+C    SUBROUTINE PING_DRYDEP
+C    SUBROUTINE RDPLUME
+C=========================================================================
+ 
+      SUBROUTINE PING_IO ( JDATE, JTIME )
+
+C Revision History:
+C  12/01/2000 Jeff Young - enable update(append)
+C  24 Sep 01 J.Young: dyn alloc - Use HGRD_DEFN
+C--------------------------------------------------------------------
+ 
+      USE HGRD_DEFN           ! horizontal domain specifications
+      USE SUBST_MODULES       ! stenex
+!     USE SUBST_UTIL_MODULE   ! stenex
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+ 
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! I/O definitions and declarations
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+
+C...............      Shared Arguments      ................
+ 
+      INTEGER JDATE, JTIME      ! Date and time in YYYYDDD, and HHMMSS
+ 
+C...............      Local Variables            ................
+ 
+      LOGICAL P_INIT                 ! Ping init flag
+      CHARACTER( 16 ) :: INIT_PING = 'INIT_PING'    ! environment variable
+      INTEGER STATUS                 ! ENV... status
+      LOGICAL, EXTERNAL :: ENVYN
+
+      INTEGER LOGDEV
+      LOGICAL OK                ! Status indicator
+
+      CHARACTER( 16 ) :: PNAME = 'PING_IO'
+      CHARACTER( 200 ) :: MSG
+      CHARACTER( 256 ) :: EQNAME0, EQNAME1
+      INTEGER, EXTERNAL :: TRIMLEN
+      LOGICAL XFLAG
+      INTEGER IDX
+      INTEGER TSTEP
+
+C--------------------------------------------------------------------
+
+      LOGDEV = INIT3 ()
+ 
+C Open the input files used in PinG
+ 
+C Open the meteorological files
+ 
+      OK = OPEN3 ( MET_CRO_3D, FSREAD3, PNAME )
+      IF ( .NOT. OK ) THEN
+         MSG =  'Error opening ' // MET_CRO_3D
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         END IF
+
+      OK = OPEN3 ( MET_CRO_2D, FSREAD3, PNAME )
+      IF ( .NOT. OK ) THEN
+         MSG =  'Error opening ' // MET_CRO_2D
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         END IF
+
+      OK = OPEN3 ( MET_DOT_3D, FSREAD3, PNAME )
+      IF ( .NOT. OK ) THEN
+         MSG =  'Error opening ' // MET_DOT_3D
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         END IF
+
+      OK = OPEN3 ( MET_BDY_3D, FSREAD3, PNAME )
+      IF ( .NOT. OK ) THEN
+         MSG =  'Error opening ' // MET_BDY_3D
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         END IF
+
+      OK = OPEN3 ( GRID_CRO_2D, FSREAD3, PNAME )
+      IF ( .NOT. OK ) THEN
+         MSG =  'Error opening ' // GRID_CRO_2D
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         END IF
+ 
+C Open the emissions files
+ 
+C Gridded emissions
+      OK = OPEN3 ( EMIS_1, FSREAD3, PNAME )
+      IF ( .NOT. OK ) THEN
+         MSG =  'Error opening ' // EMIS_1
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         END IF
+
+C MEPSE emissions
+      OK = OPEN3 ( MEPSE_1, FSREAD3, PNAME )
+      IF ( .NOT. OK ) THEN
+         MSG =  'Error opening ' // MEPSE_1
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         END IF
+ 
+C Open the PDM files
+ 
+      OK = OPEN3 ( PDM_PING_1, FSREAD3, PNAME )
+      IF ( .NOT. OK ) THEN
+         MSG =  'Error opening ' // PDM_PING_1
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         END IF
+
+C Get output timestamp
+
+      OK = OPEN3 ( CTM_CONC_1, FSREAD3, PNAME )
+      IF ( .NOT. OK ) THEN
+         MSG =  'Error opening ' // CTM_CONC_1
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         END IF
+
+      OK = DESC3 ( CTM_CONC_1 )
+      IF ( .NOT. OK ) THEN
+         MSG = 'Cannot read description of '// CTM_CONC_1
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         END IF
+
+      TSTEP = TSTEP3D
+
+C check if initial, restart (append), or continuation (append new output)
+
+      P_INIT = ENVYN( INIT_PING, 'Init PinG Output', P_INIT, STATUS )
+         IF ( STATUS .NE. 0 ) WRITE( LOGDEV, '(5X, A)' ) 'Init PinG Output'
+         IF ( STATUS .EQ. 1 ) THEN
+            MSG = 'Environment variable improperly formatted'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+      CALL NAMEVAL ( CTM_PING_0, EQNAME0 )
+      IDX = MAX ( INDEX( EQNAME0, '-v' ) ,
+     &            INDEX( EQNAME0, '-V' ) )
+      IF ( IDX .GT. 0 ) EQNAME0( IDX:IDX+1 ) = '  '
+
+      INQUIRE ( FILE = EQNAME0, EXIST = XFLAG )
+      IF ( .NOT. P_INIT .AND. .NOT. XFLAG ) THEN
+         MSG =  'Error: previous ping file required ' // CTM_PING_0
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         ELSE IF ( P_INIT .AND. XFLAG ) THEN
+         WRITE( LOGDEV, '(/5X, A)' ) EQNAME0
+         MSG =  'Warning: previous ping file exists, but not required'
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .FALSE. )
+         END IF
+
+      CALL NAMEVAL ( CTM_PING_1, EQNAME1 )
+      IDX = MAX ( INDEX( EQNAME1, '-v' ) ,
+     &            INDEX( EQNAME1, '-V' ) )
+      IF ( IDX .GT. 0 ) EQNAME1( IDX:IDX+1 ) = '  '
+
+      write( logdev,* ) ' '
+      write( logdev,* ) ' ping_io: ', EQNAME0( 1:TRIMLEN( EQNAME0 ) )
+      write( logdev,* ) ' ping_io: ', EQNAME1( 1:TRIMLEN( EQNAME1 ) )
+
+      IF ( P_INIT .OR. EQNAME0 .NE. EQNAME1 ) THEN
+
+C Open the output file for PinG
+
+         IF ( MYPE .EQ. 0 ) THEN
+
+            CALL PING_HEADER ( JDATE, JTIME )
+
+            IF ( .NOT. CLOSE3 ( CTM_PING_1 ) ) THEN
+               MSG = 'Error Closing ' // CTM_PING_1
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+               END IF
+
+            CALL PING_OPDDEP ( JDATE, JTIME, TSTEP )
+
+            END IF
+
+         CALL SUBST_BARRIER
+
+         END IF
+
+      RETURN
+      END SUBROUTINE PING_IO
+
+C=========================================================================
+ 
+C Create the header and open the PinG concentration file
+ 
+      SUBROUTINE PING_HEADER ( JDATE, JTIME )
+ 
+C Revision History:
+c   10/20/99 Jeff Young
+C      -- revamp and add P_FLAG to Ping file
+C   25 Sep 01 J.Young: dyn alloc - derive most header variables
+C                      from CCTM CONC file (assumes CONC header exists)
+C--------------------------------------------------------------------
+ 
+      USE HGRD_DEFN   ! horizontal domain specifications
+
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+      USE PING_GLOBDIM
+
+      IMPLICIT NONE
+
+C Includes:      
+
+      INCLUDE SUBST_GC_CONC   ! gas chem conc file species and map table
+      INCLUDE SUBST_AE_CONC     ! aerosol conc file species and map table
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC      ! aerosol species table
+      INCLUDE SUBST_NR_SPC      ! non-reactive species table
+      INCLUDE SUBST_TR_SPC      ! tracer species table
+      INCLUDE SUBST_CONST     ! constants
+
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! I/O definitions and declarations
+
+C...............      Shared Arguments      ................
+  
+      INTEGER JDATE, JTIME    ! Date and time in YYYYDDD, and HHMMSS
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER      PDM_NCOLS3D      ! Set by PDM
+      INTEGER      PDM_NROWS3D      ! Set by PDM
+      INTEGER      PDM_NLAYS3D      ! Set by PDM
+      INTEGER      NPLUMTOT
+      INTEGER      CTM_NTHIK3D      ! Set by CTM
+      INTEGER      CTM_GDTYP3D      ! Set by CTM
+      REAL( 8 ) :: CTM_P_ALP3D      ! Set by CTM
+      REAL( 8 ) :: CTM_P_BET3D      ! Set by CTM
+      REAL( 8 ) :: CTM_P_GAM3D      ! Set by CTM
+      REAL( 8 ) :: CTM_XCENT3D      ! Set by CTM
+      REAL( 8 ) :: CTM_YCENT3D      ! Set by CTM
+      REAL( 8 ) :: CTM_XORIG3D      ! Set by CTM
+      REAL( 8 ) :: CTM_YORIG3D      ! Set by CTM
+      REAL( 8 ) :: CTM_XCELL3D      ! Set by CTM
+      REAL( 8 ) :: CTM_YCELL3D      ! Set by CTM
+      INTEGER      CTM_VGTYP3D      ! Set by CTM
+      REAL         CTM_VGTOP3D      ! Set by CTM
+      REAL         CTM_VGLVS3D( MXLAYS3 + 1 )  !  Set by CTM
+
+      CHARACTER( 16 ) :: CTM_GDNAM3D      ! Set by CTM
+
+      LOGICAL OK                    ! Status indicator
+      INTEGER I, M                  ! Loop indicators
+      INTEGER      L, SPC, V        ! loop counters
+      INTEGER      STRT, FINI       ! loop counters
+      INTEGER      INDX
+
+      INTEGER, PARAMETER :: ALLCONC = N_GC_CONC
+     &                              + N_AE_CONC
+     &                              + N_NR_SPC
+     &                              + N_TR_SPC
+
+      CHARACTER( 200 ) :: MSG       ! message buffer
+
+      CHARACTER( 16 ) :: PNAME = 'PING_HEADER'
+ 
+C Get total number of plume sections for this run
+C NOTE: call GET_NMEPSES here so as not to overwrite the FDESC3 common block
+
+      CALL GET_NMEPSES ( )   ! PING_GLOBDIM module
+      NPLUMTOT = N_MEPSES * N_RLEASES
+
+C DOMAIN INFO
+C Open CTM_CONC_1 (in case it has not been opened yet) and then get
+C the file description header.  This header contains the information 
+C about the gridded domain
+
+      OK = OPEN3 ( CTM_CONC_1, FSREAD3, PNAME )
+      IF ( .NOT. OK ) THEN
+         MSG = 'Error opening ' // CTM_CONC_1
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+         END IF
+ 
+      OK = DESC3 ( CTM_CONC_1 )
+      IF ( .NOT. OK ) THEN
+         MSG = 'Error getting header of ' // CTM_CONC_1
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+         END IF
+ 
+C Set appropriate parameters (mostly about the domain)
+ 
+      CTM_NTHIK3D = NTHIK3D
+      CTM_GDNAM3D = GDNAM3D
+      CTM_GDTYP3D = GDTYP3D
+      CTM_P_ALP3D = P_ALP3D
+      CTM_P_BET3D = P_BET3D
+      CTM_P_GAM3D = P_GAM3D
+
+      CTM_XCENT3D = XCENT3D
+      CTM_YCENT3D = YCENT3D
+      CTM_XORIG3D = XORIG3D
+      CTM_YORIG3D = YORIG3D
+      CTM_XCELL3D = XCELL3D
+      CTM_YCELL3D = YCELL3D
+
+      CTM_VGTYP3D = VGTYP3D
+      CTM_VGTOP3D = VGTOP3D
+      DO I = 1, MXLAYS3 + 1
+         CTM_VGLVS3D( I ) = VGLVS3D( I )
+         END DO
+
+C PDM INFO
+C Get PDM file discription (already opened in caller), and set the
+C appropriate variables, like TSTEP3D and NVARS3D
+ 
+      OK = OPEN3 ( PDM_PING_1, FSREAD3, PNAME )
+      IF ( .NOT. OK ) THEN
+         MSG = 'Error opening '// PDM_PING_1
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+         END IF
+
+      OK = DESC3 ( PDM_PING_1 )
+      IF ( .NOT. OK ) THEN
+         MSG = 'Error getting header of '// PDM_PING_1
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+         END IF
+
+!     PDM_NCOLS3D = NCOLS3D * NROWS3D  ! Total number of plumesections in run
+
+C Set model start date/time (from current data/time - argument list)
+
+      SDATE3D = JDATE
+      STIME3D = JTIME
+      TSTEP3D = PINGOUTSTEP        ! File time step  HHMMSS
+
+C.........................
+C PING INFO
+C Set local parameters defined for PinG
+
+      NROWS3D = NPILLARS + 4      ! Number of pillars+4
+      NLAYS3D = 1
+
+      NVARS3D = ALLCONC + 4       ! Number of variables. The extra
+                                  ! variables are for y-values (in km),
+                                  ! X_coor for corner of each pillar,
+                                  ! Y_coor for corner of each pillar,
+                                  ! Plume Flag (state)
+
+      FTYPE3D = GRDDED3           ! GRDDED3 = 1
+
+      UPNAM3D = 'FAKE_GRIDDED'    ! Mandatory!
+      EXECN3D = 'PING1'
+      FDESC3D( 1 ) = 'PinG output'
+      UPDSC3D( 1 ) = 'FIRST TIME '
+
+C Get the current wall-clock time as the creation date and time, 
+C and set the update date and time to be the same
+
+      CALL GETDTTIME ( CDATE3D, CTIME3D ) ! from CONC file
+      WDATE3D = CDATE3D
+      WTIME3D = CTIME3D
+
+C Define output variables
+ 
+!     DO I = 1, N_GC_CONC
+!        M = GC_CONC_MAP( I )
+!        VTYPE3D( I ) = M3REAL
+!        VNAME3D( I ) = GC_SPC( M )
+!        UNITS3D( I ) = 'ppmV'
+!        VDESC3D( I ) = 'Plume Concentration for ' // VNAME3D( I )
+!        END DO
+      V = 0
+      STRT = 1
+      FINI = N_GC_CONC
+      DO SPC = STRT, FINI
+         V = V + 1
+         INDX = GC_CONC_MAP( V )
+         VTYPE3D( SPC ) = M3REAL
+         VNAME3D( SPC ) = GC_SPC( INDX )
+         UNITS3D( SPC ) = 'ppmV'
+         VDESC3D( SPC ) = 'Plume conc for variable ' // VNAME3D( SPC )
+         END DO
+
+      V = 0
+      STRT = FINI + 1     ! STRT = N_GC_CONC + 1
+      FINI = N_GC_CONC + N_AE_CONC
+      DO SPC = STRT, FINI
+         V = V + 1
+         INDX = AE_CONC_MAP( V )
+         VTYPE3D( SPC ) = M3REAL
+         VNAME3D( SPC ) = AE_SPC( INDX )   ! from include file
+         IF ( VNAME3D( SPC )(1:3) .EQ. 'NUM' ) THEN
+            UNITS3D( SPC ) = 'number/m**3'
+            ELSE IF ( VNAME3D( SPC )(1:3) .EQ. 'SRF' ) THEN
+            UNITS3D( SPC ) = 'm**2/m**3'
+            ELSE
+            UNITS3D( SPC ) = 'micrograms/m**3'
+            END IF
+         VDESC3D( SPC ) = 'Plume aerosol for variable ' // VNAME3D( SPC )
+         END DO
+
+      V = 0
+      STRT = FINI + 1     ! STRT = N_GC_CONC + N_AE_CONC + 1
+      FINI = N_GC_CONC + N_AE_CONC + N_NR_SPC ! write all NR species
+      DO SPC = STRT, FINI
+         V = V + 1
+         VTYPE3D( SPC ) = M3REAL
+         VNAME3D( SPC ) = NR_SPC( V )   ! from include file
+         UNITS3D( SPC ) = 'ppmV'
+         VDESC3D( SPC ) = 'Plume non-reactive conc for ' // VNAME3D( SPC )
+         END DO
+
+      V = 0
+      STRT = FINI + 1     ! STRT = N_GC_CONC + N_AE_CONC + N_NR_SPC + 1
+      FINI = N_GC_CONC + N_AE_CONC + N_NR_SPC + N_TR_SPC ! write all
+      DO SPC = STRT, FINI                                ! TR species
+         V = V + 1
+         VTYPE3D( SPC ) = M3REAL
+         VNAME3D( SPC ) = TR_SPC( V )   ! from include file
+         UNITS3D( SPC ) = 'ppmV'
+         VDESC3D( SPC ) = 'Plume tracer conc for ' // VNAME3D( SPC )
+         END DO
+
+      I = ALLCONC + 1
+      VTYPE3D( I ) = M3REAL
+      VNAME3D( I ) = 'PLUME_Y        '
+      UNITS3D( I ) = 'Km'
+      VDESC3D( I ) = 'Y-value for Pillar Center-Point'
+
+      I = ALLCONC + 2
+      VTYPE3D( I ) = M3REAL
+      VNAME3D( I ) = 'X_COORD         '
+      UNITS3D( I ) = 'M'
+      VDESC3D( I ) = 'X_Coordinate for the Lower Left Corner of Pillar'
+
+      I = ALLCONC + 3
+      VTYPE3D( I ) = M3REAL
+      VNAME3D( I ) = 'Y_COORD         '
+      UNITS3D( I ) = 'M'
+      VDESC3D( I ) = 'Y_Coordinate for the Lower Left Corner of Pillar'
+
+      I = ALLCONC + 4
+      VTYPE3D( I ) = M3REAL
+      VNAME3D( I ) = 'P_FLAG'
+      UNITS3D( I ) = 'None'
+      VDESC3D( I ) = 'Plume State Flag'
+
+C Close conc file
+
+      IF ( .NOT. CLOSE3 ( CTM_CONC_1 ) ) THEN
+         MSG = 'Error Closing ' // CTM_CONC_1
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         END IF
+
+C..................
+C CREATE HEADER
+C Now set the remaining variables in the common block of DESC file 
+C according to CTM and PDM file headers.
+ 
+      P_ALP3D = CTM_P_ALP3D
+      P_BET3D = CTM_P_BET3D
+      P_GAM3D = CTM_P_GAM3D
+      XCENT3D = CTM_XCENT3D
+      YCENT3D = CTM_YCENT3D
+      XORIG3D = CTM_XORIG3D
+      YORIG3D = CTM_YORIG3D
+      XCELL3D = CTM_XCELL3D
+      YCELL3D = CTM_YCELL3D
+
+!     NCOLS3D = PDM_NCOLS3D
+      NCOLS3D = NPLUMTOT
+      NTHIK3D = CTM_NTHIK3D
+
+      GDTYP3D = CTM_GDTYP3D
+      VGTYP3D = CTM_VGTYP3D
+      VGTOP3D = CTM_VGTOP3D
+      DO I = 1, NLAYS3D + 1
+         VGLVS3D( I ) = CTM_VGLVS3D( I )
+         END DO
+
+      GDNAM3D = CTM_GDNAM3D
+
+C.................
+C CREATE THE FILE
+C Now open the PinG output file (and write the header with the specialized
+C UPNAM for PNAME)
+
+      OK = OPEN3( CTM_PING_1, FSNEW3, UPNAM3D )
+      IF ( .NOT. OK ) THEN
+         MSG = 'Cannot Open '// CTM_PING_1
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+         END IF
+
+      RETURN
+      END SUBROUTINE PING_HEADER
+
+C=======================================================================
+
+      SUBROUTINE PING_OPDDEP ( JDATE, JTIME, TSTEP )
+
+C   30 Mar 01 J.Young: dyn alloc - Use HGRD_DEFN
+C   03 Sep 01 David Wong: for new pario
+C   04 AUG 04 PING version of 2D dry deposition file
+C   02 Feb 05 J.Young: dyn alloc - establish both horizontal & vertical
+C                      domain specifications in one module (GRID_CONF)
+
+      USE GRID_CONF           ! horizontal & vertical domain specifications
+
+      IMPLICIT NONE
+ 
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+      INCLUDE SUBST_GC_DDEP   ! gas chem dry dep species and map table
+      INCLUDE SUBST_AE_DDEP   ! aerosol dry dep species and map table
+      INCLUDE SUBST_NR_DDEP   ! non-react dry dep species and map table
+      INCLUDE SUBST_TR_DDEP   ! tracer dry dep species and map table
+      INCLUDE SUBST_FILES_ID  ! file name parameters
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+!     INCLUDE SUBST_COORD_ID  ! coordinate and domain definitions (req IOPARMS)
+
+C Arguments:
+
+      INTEGER      JDATE      ! current model date, coded YYYYDDD
+      INTEGER      JTIME      ! current model time, coded HHMMSS
+      INTEGER      TSTEP      ! output time step
+
+      INTEGER      N_SPC_DDEP ! no. of dry dep species
+
+C Local variables:
+
+      CHARACTER( 16 ) :: PNAME = 'PING_OPDDEP'
+      CHARACTER( 96 ) :: XMSG = ' '
+
+      INTEGER      V, N, L     ! loop induction variables
+      INTEGER      STRT, FINI  ! loop induction variables
+
+C-----------------------------------------------------------------------
+
+C Try to open existing file for update
+
+      IF ( .NOT. OPEN3( CTM_PING_DDEP_1, FSRDWR3, PNAME ) ) THEN
+         XMSG = 'Could not open ' // CTM_PING_DDEP_1 // ' file for update - '
+     &        // 'try to open new'
+         CALL M3MESG( XMSG )
+
+C Set output file characteristics based on COORD.EXT and open the dry dep file
+
+         FTYPE3D = GRDDED3
+         SDATE3D = JDATE
+         STIME3D = JTIME
+         TSTEP3D = TSTEP
+         CALL NEXTIME( SDATE3D, STIME3D, TSTEP3D ) !  start the next hour
+
+!        NVARS3D = N_SPC_DDEP
+         NCOLS3D = GL_NCOLS
+         NROWS3D = GL_NROWS
+         NLAYS3D = 1
+         NTHIK3D = 1
+         GDTYP3D = GDTYP_GD
+         P_ALP3D = P_ALP_GD
+         P_BET3D = P_BET_GD 
+         P_GAM3D = P_GAM_GD
+         XORIG3D = XORIG_GD
+         YORIG3D = YORIG_GD
+         XCENT3D = XCENT_GD
+         YCENT3D = YCENT_GD
+         XCELL3D = XCELL_GD
+         YCELL3D = YCELL_GD
+         VGTYP3D = VGTYP_GD
+         VGTOP3D = VGTOP_GD
+!        VGTPUN3D = VGTPUN_GD ! currently, not defined
+         DO L = 1, NLAYS3D + 1
+            VGLVS3D( L ) = VGLVS_GD( L )
+            END DO
+!        GDNAM3D = GDNAME_GD
+         GDNAM3D = GRID_NAME  ! from HGRD_DEFN
+
+         N = 0
+         STRT = 1
+         FINI = N_GC_DDEP
+         DO V = STRT, FINI
+            N = N + 1
+            VTYPE3D( V ) = M3REAL
+            VNAME3D( V ) = GC_DDEP( N )
+            UNITS3D( V ) = 'kg/hectare'
+            VDESC3D( V ) = 'hourly ping dry deposition values'
+            END DO
+
+         N = 0
+         STRT = N_GC_DDEP + 1
+         FINI = N_GC_DDEP + N_AE_DDEP
+         DO V = STRT, FINI
+            N = N + 1
+            VTYPE3D( V ) = M3REAL
+            VNAME3D( V ) = AE_DDEP( N )
+            IF ( AE_DDEP( N )( 1:3 ) .EQ. 'NUM' ) THEN
+               UNITS3D( V ) = 'number/hectare'
+               ELSE IF ( AE_DDEP( N )( 1:3 ) .EQ. 'SRF' ) THEN
+               UNITS3D( V ) = 'm**2/hectare'
+               ELSE
+               UNITS3D( V ) = 'kg/hectare'
+               END IF
+            VDESC3D( V ) = 'hourly ping dry deposition values'
+            END DO
+
+         N = 0
+         STRT = N_GC_DDEP + N_AE_DDEP + 1
+         FINI = N_GC_DDEP + N_AE_DDEP + N_NR_DDEP
+         DO V = STRT, FINI
+            N = N + 1
+            VTYPE3D( V ) = M3REAL
+            VNAME3D( V ) = NR_DDEP( N )
+            UNITS3D( V ) = 'kg/hectare'
+            VDESC3D( V ) = 'hourly ping dry deposition values'
+            END DO
+
+         N = 0
+         STRT = N_GC_DDEP + N_AE_DDEP + N_NR_DDEP + 1
+         FINI = N_GC_DDEP + N_AE_DDEP + N_NR_DDEP + N_TR_DDEP
+         DO V = STRT, FINI
+            N = N + 1
+            VTYPE3D( V ) = M3REAL
+            VNAME3D( V ) = TR_DDEP( N )
+            UNITS3D( V ) = '----'
+            VDESC3D( V ) = 'hourly ping dry deposition values'
+            END DO
+
+         NVARS3D = FINI
+
+         FDESC3D( 1 ) = 'hourly 1-layer cross-point RADM dry deposition data'
+         DO L = 2, MXDESC3
+            FDESC3D( L ) = ' '
+            END DO
+
+C    Open dry deposition file
+
+         IF ( .NOT. OPEN3( CTM_PING_DDEP_1, FSNEW3, PNAME ) ) THEN
+            XMSG = 'Could not create '// CTM_PING_DDEP_1 // ' file'
+            CALL M3EXIT( PNAME, SDATE3D, STIME3D, XMSG, XSTAT1 )
+            END IF
+
+         IF ( .NOT. CLOSE3 ( CTM_PING_DDEP_1 ) ) THEN
+            XMSG = 'Error Closing ' // CTM_PING_DDEP_1
+            CALL M3ERR ( PNAME, JDATE, JTIME, XMSG, .TRUE. )
+            END IF
+
+         END IF
+
+      RETURN
+      END SUBROUTINE PING_OPDDEP
+
+C===================================================================
+
+!     SUBROUTINE PING_OUT ( CPLUME, NPACTIVE, JDATE, JTIME, NPLUMTOT )
+      SUBROUTINE PING_OUT ( CPLUME, NPACTIVE, JDATE, JTIME )
+
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- change NPLUMES to NPACTIVE which is the actual meaning
+C        in various subroutines' argument and inside subroutines
+C     -- call GLOBAL_ISUM to determine number of active plumes among all
+C        processors
+C     -- call GATHER3 to gather all output data
+C   11/20/99 Jeff Young
+C     -- f90 memory mgmt
+C   11/30/99 Jeff Young & Jim Godowich
+C     -- add restart/continuation capability
+C  12/01/2000 Jeff Young - enable update(append)
+C  12/15 2000 Jeff Young - GLOBAL_ISUM -> Dave Wong's f90 stenex GLOBAL_SUM
+C                          GATHER3, GATHER1 -> Dave Wong's f90 stenex GATHER
+C  25 Sep 01 J.Young: dyn alloc
+C  02 Feb 05 J.Young: dyn alloc - establish both horizontal & vertical
+C--------------------------------------------------------------------
+
+      USE GRID_CONF   ! horizontal & vertical domain specifications
+ 
+      USE SUBST_MODULES              ! stenex
+!     USE SUBST_GLOBAL_SUM_MODULE    ! stenex
+!     USE SUBST_GATHER_MODULE        ! stenex
+      USE CGRID_SPCS                 ! species number and offsets
+
+      USE PLUME_DYN   ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_STATE ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_BG    ! inherits PING_GLOBDIM
+      USE PLUME_ETA   ! inherits PLUME_PARM
+
+C Define variables
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC    ! aerosol species table
+      INCLUDE SUBST_GC_CONC   ! gas chem conc file species and map table
+      INCLUDE SUBST_AE_CONC     ! aerosol conc file species and map table
+      INCLUDE SUBST_NR_SPC      ! non-reactive species table
+      INCLUDE SUBST_TR_SPC      ! tracer species table
+!     INCLUDE SUBST_NR_CONC      ! non-reactive conc species table
+!     INCLUDE SUBST_TR_CONC      ! tracer conc species table
+
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+#include      SUBST_IODECL    # I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! I/O definitions and declarations
+
+C...............      Shared Arguments      ................
+
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD
+     &                             + N_AE_SPC
+     &                             + N_NR_SPC
+     &                             + N_TR_SPC
+
+      INTEGER, PARAMETER :: ALLCONC = N_GC_CONC
+     &                              + N_AE_CONC
+     &                              + N_NR_SPC
+     &                              + N_TR_SPC
+
+!     REAL :: CPLUME( N_GC_SPC,NPILLARS,* )
+      REAL :: CPLUME( :,:,: )
+
+      INTEGER NPACTIVE          ! Number of active plumes
+      INTEGER JDATE             ! Current date, YYYYDDD
+      INTEGER JTIME             ! Current time, HHMMSS
+
+C...............      Local Variables            ................
+
+      INTEGER I, J, K, L, M       ! Loop counters
+      INTEGER KNT
+
+      REAL :: PING_Y( NPILLARS+4 )
+      REAL :: X_COR( NPILLARS+4 )
+      REAL :: Y_COR( NPILLARS+4 )
+
+      REAL, ALLOCATABLE, SAVE    :: OUTARRAY( :,:,: )
+      INTEGER, ALLOCATABLE, SAVE :: TPFLAG( : )
+      INTEGER ALLOCSTAT
+      INTEGER NPLUMES
+
+      LOGICAL OK
+ 
+C Variables to be saved
+
+      INTEGER, SAVE :: NPLUMTOT
+      INTEGER, SAVE :: WDATE, WTIME     ! Date and time for the next output
+      INTEGER, SAVE :: TSTEP            ! File (output) time step
+
+      INTEGER, SAVE :: LOGDEV
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+
+      CHARACTER( 16 ) :: PNAME = 'PING_OUT'
+
+      CHARACTER( 200 ) :: MSG
+
+      LOGICAL, EXTERNAL :: CURRSTEP     ! Returns the date&time of the largest
+                                        ! time step in the sequence such that
+                                        ! WDATE:WTIME <= JDATE:JTIME
+      INTEGER, EXTERNAL :: SECSDIFF     ! Time difference in seconds
+      INTEGER, EXTERNAL :: TRIMLEN      ! string length, excl. trailing blanks
+
+C--------------------------------------------------------------------
+ 
+C Set the needed parameters the first time this subroutine is called
+ 
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+
+         LOGDEV = INIT3 ()
+ 
+C Open the existing ping conc file read/write
+
+         IF ( MYPE .EQ. 0 ) THEN
+!           OK = OPEN3 ( CTM_PING_1, FSRDWR3, PNAME )
+            OK = OPEN3 ( CTM_PING_1, FSRDWR3, 'FAKE_GRIDDED' )
+            ELSE
+            OK = OPEN3 ( CTM_PING_1, FSREAD3, 'FAKE_GRIDDED' )
+            END IF
+         IF ( .NOT. OK ) THEN
+            MSG = 'Error Opening ' // CTM_PING_1
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+C Get PinG file description
+
+         OK = DESC3 ( CTM_PING_1 )
+         IF ( .NOT. OK ) THEN
+            MSG = 'Error Getting Description of ' // CTM_PING_1
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+         NPLUMTOT = NCOLS3D
+         TSTEP = TSTEP3D
+
+!        write( logdev,* ) 'ping_out ...'
+!        write( logdev,* ) 'JDATE, JTIME, SDATE3D, STIME3D, TSTEP: ',
+!    &                      JDATE, JTIME, SDATE3D, STIME3D, TSTEP
+
+         OK = CURRSTEP ( JDATE, JTIME, SDATE3D, STIME3D, TSTEP, WDATE, WTIME )
+         IF ( .NOT. OK ) THEN
+            MSG = 'Error Finding Current Date&Time'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+         ALLOCATE ( OUTARRAY( NPLUMTOT,NPILLARS+4,ALLCONC+4 ),
+     &              STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** OUTARRAY Memory allocation failed'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+            END IF
+
+!        write( logdev,* ) ' Ping_out: OUTARRAY allocated'
+
+         ALLOCATE ( TPFLAG( NPLUMTOT ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** TPFLAG Memory allocation failed'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+            END IF
+
+         END IF
+C End of first time block
+C..........................
+ 
+C Check to see if it is time to write the output
+C If JDATE:JTIME is before WDATE:WTIME then return
+ 
+!     write( logdev,* ) ' Ping_out: WDATE, WTIME ', WDATE, WTIME
+
+      IF ( SECSDIFF( JDATE, JTIME, WDATE, WTIME ) .GT. 0 ) RETURN
+
+C Initialize/Reset OUTARRAY
+
+      OUTARRAY = 0.0
+ 
+C Write zeroes to the file if no active plumes
+
+      IF ( SUBST_GLOBAL_SUM( NPACTIVE ) .LE. 0 ) THEN
+
+         OK = WRITE3 ( CTM_PING_1, ALLVAR3, WDATE, WTIME, OUTARRAY )
+         IF ( .NOT. OK ) THEN
+            MSG = 'Cannot write to ' // CTM_PING_1
+            CALL M3ERR ( PNAME, WDATE, WTIME, MSG, .TRUE.)
+            END IF
+
+         WRITE( LOGDEV, '( /5X, 3( A, :, 1X ), I8, ":", I6.6 )' )
+     &         'Timestep (zeros) written to',
+     &          CTM_PING_1( 1:TRIMLEN( CTM_PING_1 ) ),
+     &         'for date and time', WDATE, WTIME
+
+C Increment the output time by a tstep
+
+         CALL NEXTIME ( WDATE, WTIME, TSTEP )
+
+         RETURN
+
+         END IF   ! NPACTIVE .LE. 0
+
+C Getting to this point means that it is time for output
+
+C Create the output arrays
+ 
+      DO K = 1, N_GC_CONC
+         M = GC_CONC_MAP( K )
+         DO J = 1, NPILLARS
+            DO L = 1, NPACTIVE
+               I = PLUMEPTR( L )
+               OUTARRAY( I,J+1,K ) = CPLUME( M,J,I )
+               END DO
+            END DO
+         END DO
+
+C Put the background concentrations into the output array
+ 
+      DO K = 1, N_GC_CONC
+         M = GC_CONC_MAP( K )
+         DO L = 1, NPACTIVE
+            I = PLUMEPTR( L )
+            OUTARRAY( I,1,K )          = CLBG( M,I )
+            OUTARRAY( I,NPILLARS+2,K ) = CRBG( M,I )
+            OUTARRAY( I,NPILLARS+3,K ) = CBBG( M,I )
+            OUTARRAY( I,NPILLARS+4,K ) = CTBG( M,I )
+            END DO
+         END DO
+
+C Do the aerosols
+
+!     write( logdev,* ) 'In ping_io:'
+      DO K = 1, N_AE_CONC
+         KNT = N_GC_CONC + K
+         M = AE_STRT - 1 + AE_CONC_MAP( K )
+         DO J = 1, NPILLARS
+            DO L = 1, NPACTIVE
+               I = PLUMEPTR( L )
+               OUTARRAY( I,J+1,KNT ) = CPLUME( M,J,I )
+!              write( logdev,* ) k, knt, m, i, j, outarray(i,j+1,knt )
+               END DO
+            END DO
+         END DO
+
+C Put the background concentrations into the output array
+ 
+      DO K = 1, N_AE_CONC
+         KNT = N_GC_CONC + K
+         M = AE_STRT - 1 + AE_CONC_MAP( K )
+         DO L = 1, NPACTIVE
+            I = PLUMEPTR( L )
+            OUTARRAY( I,1,KNT )          = CLBG( M,I )
+            OUTARRAY( I,NPILLARS+2,KNT ) = CRBG( M,I )
+            OUTARRAY( I,NPILLARS+3,KNT ) = CBBG( M,I )
+            OUTARRAY( I,NPILLARS+4,KNT ) = CTBG( M,I )
+            END DO
+         END DO
+
+C Do the non-reactives
+
+      DO K = 1, N_NR_SPC
+       KNT = N_GC_CONC + N_AE_CONC + K
+         M = NR_STRT - 1 + K
+         DO J = 1, NPILLARS
+            DO L = 1, NPACTIVE
+               I = PLUMEPTR( L )
+               OUTARRAY( I,J+1,KNT ) = CPLUME( M,J,I )
+               END DO
+            END DO
+         END DO
+ 
+C Put the background concentrations into the output array
+ 
+      DO K = 1, N_NR_SPC
+         KNT = N_GC_CONC + N_AE_CONC + K
+         M = NR_STRT - 1 + K
+         DO L = 1, NPACTIVE
+            I = PLUMEPTR( L )
+            OUTARRAY( I,1,KNT )          = CLBG( M,I )
+            OUTARRAY( I,NPILLARS+2,KNT ) = CRBG( M,I )
+            OUTARRAY( I,NPILLARS+3,KNT ) = CBBG( M,I )
+            OUTARRAY( I,NPILLARS+4,KNT ) = CTBG( M,I )
+            END DO
+         END DO
+
+C Do the tracer species
+
+      DO K = 1, N_TR_SPC
+         KNT = N_GC_CONC + N_AE_CONC + N_NR_SPC + K
+         M = TR_STRT - 1 + K
+         DO J = 1, NPILLARS
+            DO L = 1, NPACTIVE
+               I = PLUMEPTR( L )
+               OUTARRAY( I,J+1,KNT ) = CPLUME( M,J,I )
+               END DO
+            END DO
+         END DO
+ 
+C Put the background concentrations into the output array
+ 
+      DO K = 1, N_TR_SPC
+       KNT = N_GC_CONC + N_AE_CONC + N_TR_SPC + K
+         M = TR_STRT - 1 + K
+         DO L = 1, NPACTIVE
+            I = PLUMEPTR( L )
+            OUTARRAY( I,1,KNT )          = CLBG( M,I )
+            OUTARRAY( I,NPILLARS+2,KNT ) = CRBG( M,I )
+            OUTARRAY( I,NPILLARS+3,KNT ) = CBBG( M,I )
+            OUTARRAY( I,NPILLARS+4,KNT ) = CTBG( M,I )
+            END DO
+         END DO
+ 
+C Calculate and Write the center point y-values (change units from m to km)
+ 
+      DO L = 1, NPACTIVE
+         I = PLUMEPTR( L )
+ 
+C Compute y-values for plume I
+ 
+         DO J = 1, NLEFT+1
+            K = NLEFT+2 - J
+            PING_Y( J ) = -0.5 * WP( I ) * ( ETAL( K ) + ETAL( K+1 ) )
+            PING_Y( J ) = PING_Y( J ) * 1.0E-3  ! km
+            X_COR( J ) = XC( I ) - ( WP(I) * ETAL( K+1 ) ) * SIN(ANGLE( I ) )
+            Y_COR( J ) = YC( I ) + ( WP(I) * ETAL( K+1 ) ) * COS(ANGLE( I ) )
+            END DO
+
+         DO J = 1, NRIGHT+1
+            K = NLEFT+1 + J
+            PING_Y( K ) = 0.5 * WP( I ) * ( ETAR( J ) + ETAR( J+1 ) )
+            PING_Y( K ) = PING_Y( K ) * 1.0E-3  ! km
+            X_COR( K ) = XC( I ) + ( WP(I) * ETAR( J ) ) * SIN(ANGLE( I ) )
+            Y_COR( K ) = YC( I ) - ( WP(I) * ETAR( J ) ) * COS(ANGLE( I ) )
+            END DO
+
+         PING_Y( NPILLARS+3 ) = ZBOT( I )
+         PING_Y( NPILLARS+4 ) = ZTOP( I )
+
+         X_COR( NPILLARS+3 ) = XC(I)
+     &                       + ( WP(I) * ETAR( NRIGHT+2 ) ) * SIN(ANGLE( I ) )
+         Y_COR( NPILLARS+3 ) = YC(I)
+     &                       - ( WP(I) * ETAR( NRIGHT+2 ) ) * COS(ANGLE( I ) )
+
+         X_COR( NPILLARS+4 ) = ZBOT( I )
+         Y_COR( NPILLARS+4 ) = ZTOP( I )
+
+C Put the y-values into the OUTARRAY (for plume I)
+ 
+         K = ALLCONC+1
+         DO J = 1, NPILLARS+4
+            OUTARRAY( I,J,K ) = PING_Y( J )
+            END DO
+
+         K = ALLCONC+2
+         DO J = 1, NPILLARS+4
+            OUTARRAY( I,J,K ) = X_COR( J )
+            END DO
+
+         K = ALLCONC+3
+         DO J = 1, NPILLARS+4
+            OUTARRAY( I,J,K ) = Y_COR( J )
+            END DO
+
+C End of loop for plume I
+ 
+         END DO
+
+      CALL SUBST_GATHER ( OUTARRAY, PEC, PLUMEPTR, NPACTIVE, 1 )
+
+C Save current plume flags (status)
+
+      NPLUMES = SUBST_GLOBAL_SUM( MY_NPLUMES )
+
+      DO I = 1, NPLUMES
+         TPFLAG( I ) = PFLAG( I )
+         END DO
+
+      CALL SUBST_GATHER ( TPFLAG, PEC, MY_PLUMEPTR, MY_NPLUMES, 1 )
+
+      K = ALLCONC+4
+      DO J = 1, NPILLARS+4
+         DO I = 1, NPLUMES
+            OUTARRAY( I,J,K ) = FLOAT( TPFLAG( I ) )
+            END DO
+         END DO
+ 
+C Write the output
+ 
+      OK = WRITE3 ( CTM_PING_1, ALLVAR3, WDATE, WTIME, OUTARRAY )
+      IF ( .NOT. OK ) THEN
+         MSG = 'Cannot write to ' // CTM_PING_1
+         CALL M3ERR ( PNAME, WDATE, WTIME, MSG, .TRUE.)
+         END IF
+
+      WRITE( LOGDEV, '( /5X, 3( A, :, 1X ), I8, ":", I6.6 )' )
+     &      'Timestep written to', CTM_PING_1,
+     &      'for date and time', WDATE, WTIME
+
+C Set next write date/time
+ 
+      CALL NEXTIME ( WDATE, WTIME, TSTEP )
+
+      RETURN
+      END SUBROUTINE PING_OUT
+
+C===================================================================
+
+      SUBROUTINE PING_DRYDEP ( DDEP, JDATE, JTIME )
+
+C Revision History:
+C    13 Aug 04 J.Young: inital
+
+      USE HGRD_DEFN      ! horizontal domain specifications
+
+      IMPLICIT NONE
+
+      REAL :: DDEP( :,:,: )
+      INTEGER JDATE            ! Current model date (Julian), YYYYDDD
+      INTEGER JTIME            ! Current model time, HHMMSS
+
+      INCLUDE SUBST_GC_DEPV   ! gas chem dep vel surrogate names and map table
+      INCLUDE SUBST_GC_DDEP   ! gas chem dry dep species and map table
+      INCLUDE SUBST_GC_DIFF   ! gas chem diffusion species and map table
+
+      INCLUDE SUBST_AE_DEPV   ! aerosol species deposition table
+      INCLUDE SUBST_AE_DDEP   ! aerosol dry dep species and map table
+      INCLUDE SUBST_AE_DIFF   ! aerosol diffusion species and map table
+
+      INCLUDE SUBST_NR_DEPV   ! non-react dep vel surrogate names and map table
+      INCLUDE SUBST_NR_DDEP   ! non-react dry dep species and map table
+      INCLUDE SUBST_NR_DIFF   ! non-react diffusion species and map table
+
+      INCLUDE SUBST_TR_DEPV   ! tracer dep vel surrogate names and map table
+      INCLUDE SUBST_TR_DDEP   ! tracer dry dep species and map table
+      INCLUDE SUBST_TR_DIFF   ! tracer diffusion species and map table
+
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+#include      SUBST_IODECL    # I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! I/O definitions and declarations
+
+C dep vel species
+      INTEGER, PARAMETER :: N_SPC_DEPV = N_GC_DEPV
+     &                                 + N_AE_DEPV
+     &                                 + N_NR_DEPV
+     &                                 + N_TR_DEPV
+C dry dep species
+      INTEGER, PARAMETER :: N_SPC_DDEP = N_GC_DDEP
+     &                                 + N_AE_DDEP
+     &                                 + N_NR_DDEP
+     &                                 + N_TR_DDEP
+C diffusion species
+      INTEGER, PARAMETER :: N_SPC_DIFF = N_GC_DIFF
+     &                                 + N_AE_DIFF
+     &                                 + N_NR_DIFF
+     &                                 + N_TR_DIFF
+
+      INTEGER, SAVE :: DF2EM   ( N_SPC_DIFF+1 ) ! map from diff spc to emis spc
+      INTEGER, SAVE :: DF2DV   ( N_SPC_DIFF+1 ) ! map from diff spc to depv spc
+      INTEGER, SAVE :: DD2DV   ( N_SPC_DDEP+1 ) ! map from ddep spc to depv spc
+      INTEGER, SAVE :: DEPV_MAP( N_SPC_DEPV+1 ) ! global depv map to CGRID
+      INTEGER, SAVE :: DIFF_MAP( N_SPC_DIFF+1 ) ! global diff map to CGRID
+      CHARACTER( 16 ), SAVE :: DDEP_SPC( N_SPC_DDEP + 1 )
+      INTEGER, SAVE :: DV2DF   ( N_SPC_DEPV )   ! map from depv spc to diff spc
+
+      INTEGER, SAVE :: WDATE, WTIME     ! Date and time for the next output
+      INTEGER, SAVE :: TSTEP            ! File (output) time step
+
+      LOGICAL, EXTERNAL :: CURRSTEP     ! Returns the date&time of the largest
+                                        ! time step in the sequence such that
+                                        ! WDATE:WTIME <= JDATE:JTIME
+      INTEGER, EXTERNAL :: SECSDIFF     ! Time difference in seconds
+
+      LOGICAL OK
+
+      REAL          WRDD( NCOLS,NROWS )         ! ddep write buffer
+
+      INTEGER V, S, C, R              ! Loop counters
+      CHARACTER( 200 ) :: XMSG        ! message buffer
+      CHARACTER( 16 ) :: PNAME = 'PING_DRYDEP'
+
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+      INTEGER, SAVE :: LOGDEV
+
+C-----------------------------------------------------------------------
+
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+         LOGDEV = INIT3 ()
+
+C create global maps for vertical diffusion
+
+         CALL VDIFF_MAP ( DF2EM, DF2DV, DD2DV, DEPV_MAP, DIFF_MAP, DDEP_SPC,
+     &                    DV2DF )
+
+C Get PinG drydep file description
+
+         IF ( MYPE .EQ. 0 ) THEN
+            OK = OPEN3 ( CTM_PING_DDEP_1, FSRDWR3, PNAME )
+            ELSE
+            OK = OPEN3 ( CTM_PING_DDEP_1, FSREAD3, PNAME )
+            END IF
+
+         IF ( .NOT. OK ) THEN
+            XMSG = 'Error Opening ' // CTM_PING_DDEP_1
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+
+         OK = DESC3 ( CTM_PING_DDEP_1 )
+         IF ( .NOT. OK ) THEN
+            XMSG = 'Error Getting Description of ' // CTM_PING_DDEP_1
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+
+         TSTEP = TSTEP3D
+
+!        write( logdev,* ) 'ping_drydep ...'
+!        write( logdev,* ) 'JDATE, JTIME, SDATE3D, STIME3D, TSTEP: ',
+!    &                      JDATE, JTIME, SDATE3D, STIME3D, TSTEP
+
+         IF ( SECSDIFF( SDATE3D, STIME3D, JDATE, JTIME ) .GT. 0 ) THEN
+            OK = CURRSTEP ( JDATE, JTIME, SDATE3D, STIME3D, TSTEP,
+     &                      WDATE, WTIME )
+            IF ( .NOT. OK ) THEN
+               XMSG = 'Error Finding Current Date&Time'
+               CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+               END IF
+            ELSE
+            WDATE = SDATE3D; WTIME = STIME3D
+            END IF
+
+         END IF   ! Firstime
+
+!     write( logdev,* ) 'ping_drydep next ...'
+!     write( logdev,* ) 'JDATE, JTIME, WDATE, WTIME: ',
+!    &                   JDATE, JTIME, WDATE, WTIME
+
+C Check to see if it is time to write the output
+C If JDATE:JTIME is before WDATE:WTIME then return
+
+      IF ( SECSDIFF( JDATE, JTIME, WDATE, WTIME ) .GT. 0 ) RETURN
+
+      DO V = 1, N_SPC_DDEP
+         S = DD2DV( V )
+         DO R = 1, MY_NROWS
+            DO C = 1, MY_NCOLS
+               WRDD( C,R ) = DDEP( S,C,R )
+               END DO
+            END DO
+
+         IF ( .NOT. WRITE3( CTM_PING_DDEP_1, DDEP_SPC( V ),
+     &              WDATE, WTIME, WRDD ) ) THEN
+            XMSG = 'Could not write ' // CTM_PING_DDEP_1 // ' file'
+            CALL M3EXIT( PNAME, WDATE, WTIME, XMSG, XSTAT1 )
+            END IF
+
+         END DO
+
+      WRITE( LOGDEV, '( /5X, 3( A, :, 1X ), I8, ":", I6.6 )' )
+     &               'Timestep written to', CTM_PING_DDEP_1,
+     &               'for date and time', WDATE, WTIME
+
+C re-set dry deposition array to zero
+
+      DDEP = 0.0
+
+C Set next write date/time
+
+      CALL NEXTIME ( WDATE, WTIME, TSTEP )
+
+      RETURN
+      END SUBROUTINE PING_DRYDEP
+
+C=========================================================================
+
+      SUBROUTINE RDPLUME ( JDATE, JTIME, NRLEASES, NPACTIVE,
+     &                     RESTART, CPLUME )
+
+C Revision History:
+C   12/20/99 Jeff Young
+C     -- f90 memory mgmt
+C   15 Dec 00 J.Young: GLOBAL_ISUM -> Dave Wong's f90 stenex GLOBAL_SUM
+C                      GLOBAL_IMAX -> Dave Wong's f90 stenex GLOBAL_MAX
+C  25 Sep 01 J.Young: dyn alloc
+C--------------------------------------------------------------------
+ 
+      USE SUBST_MODULES              ! stenex
+!     USE SUBST_GLOBAL_SUM_MODULE    ! stenex
+!     USE SUBST_GLOBAL_MAX_MODULE    ! stenex
+
+      USE PLUME_STATE ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_BG    ! inherits PING_GLOBDIM
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+C Include Files:
+
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! I/O definitions and declarations
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC    ! aerosol species table (dim./name/molwt)
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table (dim./name/molwt)
+      INCLUDE SUBST_TR_SPC    ! traver species table (dim./name/molwt)
+      INCLUDE SUBST_GC_CONC   ! gas chem conc file species and map table
+      INCLUDE SUBST_AE_CONC   ! gas chem conc file species and map table
+
+      INTEGER JDATE, JTIME    ! Date and time in YYYYDDD, and HHMMSS
+      INTEGER NRLEASES        ! total number of plume releases
+      INTEGER NPACTIVE        ! number of active plume sections
+      INTEGER NAPGLOB         ! global (total) number of active plumes
+      INTEGER PTRGLOB1        ! lowest global index of PLUMEPTR active plumes
+      LOGICAL RESTART         ! restart [T] or continuation [F] flag
+!     REAL :: CPLUME( N_GC_SPC,NPILLARS,* )
+      REAL :: CPLUME( :,:,: )
+
+      INTEGER     ALLSPC      ! Number of species in CPLUME, like CGRID
+      PARAMETER ( ALLSPC = N_GC_SPCD + N_AE_SPC + N_NR_SPC + N_TR_SPC )
+
+      INTEGER I, J, K, KK, L, M, N
+      
+      INTEGER, PARAMETER :: FAKELAY = 1 ! fake layer definition for plume file
+
+      INTEGER, PARAMETER :: ALLCONC = N_GC_CONC
+     &                              + N_AE_CONC
+     &                              + N_NR_SPC
+     &                              + N_TR_SPC
+      REAL, ALLOCATABLE :: PCONC( :,:,: )
+      INTEGER ALLOCSTAT
+
+      CHARACTER( 200 ) :: MSG
+      CHARACTER( 16 ) :: PNAME = 'RDPLUME'        ! Subroutine name
+      LOGICAL OK                ! Status indicator
+
+      INTEGER LOGDEV
+
+C--------------------------------------------------------------------
+
+      LOGDEV = INIT3 ()
+
+C Allocate memory for PCONC
+
+      ALLOCATE ( PCONC( NRLEASES,NPILLARS+4,ALLCONC+4 ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         MSG = '*** PCONC Memory allocation failed'
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+         END IF
+
+C Read the plume conc at the start of this simulation
+
+      OK = READ3 ( CTM_PING_0, 'ALL', FAKELAY, JDATE, JTIME, PCONC )
+      IF ( .NOT. OK ) THEN
+         MSG = 'Error Reading ' // CTM_PING_0
+         CALL M3EXIT( PNAME, JDATE, JTIME, MSG, 2 )
+         END IF
+
+      DO I = 1, NPACTIVE
+         L = PLUMEPTR( I )
+         DO K = 1, ALLSPC
+            DO J = 1, NPILLARS
+               CPLUME( K,J,L ) = 0.0
+               END DO
+            END DO
+         END DO
+
+C Store concs into CPLUME array for active plume sections
+
+      WRITE( LOGDEV,* ) ' '
+      WRITE( LOGDEV,* ) '    >>> NPACTIVE: ', NPACTIVE
+      DO I = 1, NPACTIVE
+         WRITE( LOGDEV,* ) '    >>> I, PLUMEPTR(I): ', I, ' ',PLUMEPTR( I )
+         END DO
+
+      IF ( RESTART ) THEN
+         N = 0
+         ELSE
+C Find the total no. of active plumes
+         NAPGLOB = SUBST_GLOBAL_SUM( NPACTIVE )
+C Find the lowest index of the active plumes in PLUMEPTR
+         PTRGLOB1 = 0
+         DO I = 1, NAPGLOB
+            PTRGLOB1 = MAX( PTRGLOB1, SUBST_GLOBAL_MAX( PLUMEPTR( I ) ) )
+            END DO
+         PTRGLOB1 = PTRGLOB1 - NAPGLOB + 1
+C Find the offset into the CTM_PING_0 file for the continuation data
+         N = NRLEASES - N_MEPSES - NAPGLOB - PTRGLOB1 + 1
+         WRITE( LOGDEV,* ) '    >>> NAPGLOB:      ', NAPGLOB
+         WRITE( LOGDEV,* ) '    >>> PTRGLOB1:     ', PTRGLOB1
+         END IF
+
+      WRITE( LOGDEV,* ) '    >>> PCONC offset: ', N
+
+      DO I = 1, NPACTIVE
+         L = PLUMEPTR( I )
+
+         DO K = 1, N_GC_CONC
+            M = GC_CONC_MAP( K )
+            DO J = 1, NPILLARS
+               CPLUME( M,J,L ) = PCONC( L+N,J+1,K )
+               END DO
+            CLBG( M,L ) = PCONC( L+N,1,K )
+            CRBG( M,L ) = PCONC( L+N,NPILLARS+2,K )
+            CBBG( M,L ) = PCONC( L+N,NPILLARS+3,K )
+            CTBG( M,L ) = PCONC( L+N,NPILLARS+4,K )
+            END DO
+
+         DO K = 1, N_AE_CONC
+            M = N_GC_SPCD + AE_CONC_MAP( K )
+            KK = N_GC_CONC + K
+            DO J = 1, NPILLARS
+               CPLUME( M,J,L ) = PCONC( L+N,J+1,KK )
+               END DO
+            CLBG( M,L ) = PCONC( L+N,1,KK )
+            CRBG( M,L ) = PCONC( L+N,NPILLARS+2,KK )
+            CBBG( M,L ) = PCONC( L+N,NPILLARS+3,KK )
+            CTBG( M,L ) = PCONC( L+N,NPILLARS+4,KK )
+            END DO
+
+         DO K = 1, N_NR_SPC
+            M = N_GC_SPCD + N_AE_SPC + K
+            KK = N_GC_CONC + N_AE_CONC + K
+            DO J = 1, NPILLARS
+               CPLUME( M,J,L ) = PCONC( L+N,J+1,KK )
+               END DO
+            CLBG( M,L ) = PCONC( L+N,1,KK )
+            CRBG( M,L ) = PCONC( L+N,NPILLARS+2,KK )
+            CBBG( M,L ) = PCONC( L+N,NPILLARS+3,KK )
+            CTBG( M,L ) = PCONC( L+N,NPILLARS+4,KK )
+            END DO
+
+         DO K = 1, N_TR_SPC
+            M = N_GC_SPC + N_AE_SPC + N_NR_SPC + K
+            KK = N_GC_CONC + N_AE_CONC + N_NR_SPC + K
+            DO J = 1, NPILLARS
+               CPLUME( M,J,L ) = PCONC( L+N,J+1,KK )
+               END DO
+            CLBG( M,L ) = PCONC( L+N,1,KK )
+            CRBG( M,L ) = PCONC( L+N,NPILLARS+2,KK )
+            CBBG( M,L ) = PCONC( L+N,NPILLARS+3,KK )
+            CTBG( M,L ) = PCONC( L+N,NPILLARS+4,KK )
+            END DO
+
+!        K = N_GC_CONC+1
+!        DO J = 1, NPILLARS+4
+!           PING_Y( J ) = PCONC( I+N,J,K )
+!           END DO
+
+!        K = N_GC_CONC+2
+!        DO J = 1, NPILLARS+4
+!           X_COORD( J ) = PCONC( I+N,J,K )
+!           END DO
+
+!        K = N_GC_CONC+3
+!        DO J = 1, NPILLARS+4
+!           Y_COORD( J ) = PCONC( I+N,J,K )
+!           END DO
+
+         END DO
+
+      WRITE( LOGDEV,1001 ) NPACTIVE
+1001  FORMAT( / 2X, 'Initializing', I3, ' Plume Sections from Previous Run:' )
+
+      IF ( NPACTIVE .GT. 0 ) THEN
+
+         DO K = 1, N_GC_CONC
+            M = GC_CONC_MAP( K )
+            IF ( GC_CONC( K ) .EQ. 'O3' ) THEN
+               WRITE( LOGDEV,1003 ) M, GC_SPC( M )
+1003           FORMAT( 5X, 'For Species: ', I3, ' - ', A
+     &               / 3X, 'Plume Index', 2X, 'PDMflag', 2X, 'PINGflag')
+               DO I = 1, NPACTIVE
+                  L = PLUMEPTR( I )
+                  WRITE( LOGDEV,1005 ) L, PDMFLAG( L ), PFLAG( L )
+1005              FORMAT( 6X, I4, 5X, I4, 7X, I4, 10X, I4, 10X, A )
+                  END DO
+               WRITE( LOGDEV, 1007 )
+1007           FORMAT( / 4X, 'Pillar Concentrations (PPB) ...' )
+               DO I = 1, NPACTIVE
+                  L = PLUMEPTR( I )
+!                 WRITE( LOGDEV,1009 ) I, ( J, J = 1, NPILLARS )
+c009              FORMAT(  5X, 'Plume Index:', I5 / I5, 9( 1X, I7 ) )
+                  WRITE( LOGDEV,1011 )
+!    &                 ( CPLUME( M,J,L ) * 1000.0, J = 1, NPILLARS )
+     &                  L, ( CPLUME( M,J,L ) * 1000.0, J = 1, NPILLARS )
+!011              FORMAT( 10F8.3 )
+1011              FORMAT( I6, ':', 10F8.3 )
+                  END DO
+               GO TO 101
+               END IF
+            END DO
+
+         END IF
+
+101   CONTINUE
+
+!     write( logdev,* ) ' Previous PING conc file data retrieved'
+
+      DEALLOCATE ( PCONC )
+
+      RETURN
+      END SUBROUTINE RDPLUME
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

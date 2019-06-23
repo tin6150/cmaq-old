@@ -1,0 +1,216 @@
+                       CB05 Mechanism Notes 
+                           March 15, 2006
+
+
+ An updated Carbon Bond (CB05) mechanism has been developed for use with 
+ the CMAQv4.5.1.  The CB05 mechanism has been described in details by 
+ Yarwood et al. (2005).  The CB05 mechanism contains 156 reactions 
+ involving 52 species.  The CB05 mechanism has been implemented into the 
+ CMAQ model and an Euler Backward Solver (EBI) solver has been developed 
+ for the CB05 mechanism.  In-house tests were conducted using the CB05 and 
+ CB4 mechanisms for summer and winter of 2001 using the 36-km continental 
+ US domain.  Initial test results indicate that predicted ozone 
+ concentrations increases with the CB05 mechanism by about 8% compared to 
+ the CB4 mechanism in summer.  Predicted ozone concentrations increases 
+ only by about 1% in winter compared to the CB4 mechanism.  Detail 
+ comparisons of the CMAQ results with the CB05 and CB4 mechanisms have been 
+ described by Sarwar et al. (2006).   A tar-file (containing the beta-
+ version of the CB05 mechanism, the EBI solver, the ICON and BCON updates, 
+ and required input data files) is available at:
+
+      ftp://ftp.epa.gov/amd/asmd/CMAQv4.5.1/CB05_BETA.tar.gz
+
+ Please follow the steps outlined in the CMAQv4.5.1 "README" file before 
+ proceeding.  To install the "beta" CBO5 files into your existing 
+ CMAQv4.5.1 archive, cd to $M3HOME and gunzip and untar the "beta" CB05 tar 
+ file, CB05_BETA.tar.gz.  This will populate your existing CMAQv4.5.1 
+ archive with the CB05 code and include files.  In addition, the raw 
+ datafiles for the photolysis proprocessor JPROC will be installed into the 
+ "$M3HOME/data/raw/phot" directory.
+
+ SMOKE
+
+   The Sparse Matrix Operator Kernel Emissions (SMOKE) System is needed to 
+   generate model-ready CB05 emissions.  The SMOKE system can generate 
+   model- ready CB05 emissions using the gspro file that has been developed 
+   for the CB05 mechanism.  The gspro file was included in the 
+   CB05_BETA.tar.gz file, and is installed in the $M3HOME/data/raw/emis 
+   directory.
+
+ JPROC:
+ 
+   The absorption cross-section and quantum yield data have been updated 
+   for the CB05 mechanism.  Photolysis tables (JTABLE) needed for the CB05 
+   mechanism can be generated using the updated absorption cross-section 
+   and quantum yield data.
+
+   You will need to compile JPROC to use the CB05 mechanism.  The following 
+   is a "patch" style difference in the bldit.jproc.pgf script:
+ 
+      41c41
+      <  set APPL  = d1a
+      ---
+      >  set APPL  = f1a
+      58c58,59
+      <  set Mechanism = cb4_ae4_aq
+      ---
+      > #set Mechanism = cb4_ae4_aq
+      >  set Mechanism = cb05_ae4_aq
+
+
+   You will need to modify run.jproc.  The following is a "patch" style 
+   difference in run.jproc:
+
+      8c8
+      < # Usage: run.jproc >&! jproc_d1a.log &                                #
+      ---
+      > # Usage: run.jproc >&! jproc_f1a.log &                                #
+      23c23
+      <  set APPL  = d1a
+      ---
+      >  set APPL  = f1a
+
+
+
+ ICON:
+ 
+   The ICON and BCON processors have been revised to include conversion of 
+   RADM2 species into CB05 species.  Now, these processors can generate the 
+   clean air vertical profiles for initial and boundary concentrations that 
+   can be used to run the CMAQ model with the CB05 mechanism.
+
+   You will need to compile ICON to use the CB05 mechanism.  The following 
+   is a "patch" style difference in the bldit.icon.pgf script:
+
+      42c42
+      <  set APPL  = e1a
+      ---
+      >  set APPL  = f1a
+      64c64,65
+      <  set ModMech   = ( module radm2_to_cb4      $Revision; )
+      ---
+      > #set ModMech   = ( module radm2_to_cb4      $Revision; )
+      >  set ModMech   = ( module radm2_to_cb05     $Revision; )
+      71c72,73
+      <  set Mechanism = cb4_ae4_aq
+      ---
+      > #set Mechanism = cb4_ae4_aq
+      >  set Mechanism = cb05_ae4_aq
+
+
+   Likewise you will need to modify run.icon.  The following is a "patch" 
+   style difference in run.icon:
+
+      7c7
+      < # Usage: run.icon >&! icon_e2a.log &                                  #
+      ---
+      > # Usage: run.icon >&! icon_f1a.log &                                  #
+      22,23c22,23
+      <  set APPL     = cb4
+      <  set CFG      = e1a
+      ---
+      >  set APPL     = cb05
+      >  set CFG      = f1a
+      
+
+ BCON:
+
+   You will also need to compile BCON to use the CB05 mechanism.  The 
+   following is a "patch" style difference in the bldit.bcon.pgf script:
+
+      42c42
+      <  set APPL  = e1a
+      ---
+      >  set APPL  = f1a
+      62c62,63
+      <  set ModMech   = ( module radm2_to_cb4      $Revision; )
+      ---
+      > #set ModMech   = ( module radm2_to_cb4      $Revision; )
+      >  set ModMech   = ( module radm2_to_cb05     $Revision; )
+      69c70,71
+      <  set Mechanism = cb4_ae4_aq
+      ---
+      > #set Mechanism = cb4_ae4_aq
+      >  set Mechanism = cb05_ae4_aq
+
+
+   You will need to modify run.bcon.  The following is a "patch" style 
+   difference in run.bcon:
+
+      7c7
+      < # Usage: run.bcon >&! bcon_e2a.log &                                  #
+      ---
+      > # Usage: run.bcon >&! bcon_f1a.log &                                  #
+      22,23c22,23
+      <  set APPL     = cb4
+      <  set CFG      = e1a
+      ---
+      >  set APPL     = cb05
+      >  set CFG      = f1a
+
+ CCTM:
+
+   The build script distributed with the standard CMAQ model can be used to 
+   extract source codes for the CB05 mechanism and the relevant EBI solver. 
+   However, the script needs the following changes in order to extract the 
+   correct files:
+
+      43c43
+      <  set APPL  = e2a
+      ---
+      >  set APPL  = f2a
+      106c106,107
+      <  set ModChem   = ( module ebi_cb4            $Revision; )
+      ---
+      > #set ModChem   = ( module ebi_cb4            $Revision; )
+      >  set ModChem   = ( module ebi_cb05           $Revision; )
+      129c130,131
+      <  set Mechanism = cb4_ae4_aq
+      ---
+      > #set Mechanism = cb4_ae4_aq
+      >  set Mechanism = cb05_ae4_aq
+
+   The run script distributed with the standard CMAQ model can be used to 
+   run the CMAQ model with the CB05 mechanism. However, you will need to 
+   provide your own CB05 emissions files.
+
+      7c7
+      < # Usage: run.cctm >&! cctm_e2a.log &                                  #
+      ---
+      > # Usage: run.cctm >&! cctm_f2a.log &                                  #
+      22,23c22,23
+      <  set APPL     = e2a
+      <  set CFG      = e2a
+      ---
+      >  set APPL     = f2a
+      >  set CFG      = f2a
+      106,109c106,109
+      <  set EMISfile  = e_32km_cb4.19990702.ncf
+      < #set EMISfile  = e_32km_cb4.19990703.ncf
+      < #set EMISfile  = e_08km_cb4.19990702.ncf
+      < #set EMISfile  = e_08km_cb4.19990703.ncf
+      ---
+      >  set EMISfile  = e_32km_cb05.19990702.ncf
+      > #set EMISfile  = e_32km_cb05.19990703.ncf
+      > #set EMISfile  = e_08km_cb05.19990702.ncf
+      > #set EMISfile  = e_08km_cb05.19990703.ncf
+      117c117
+      <  set GC_ICfile = ICON_cb4_M_32_99TUT02_profile
+      ---
+      >  set GC_ICfile = ICON_cb05_M_32_99TUT02_profile
+      120c120
+      <  set GC_BCfile = BCON_cb4_M_32_99TUT02_profile
+      ---
+      >  set GC_BCfile = BCON_cb05_M_32_99TUT02_profile
+
+ References:
+
+ Sarwar, G., D. Luecken, G.Yarwood, G. Whitten, and W. P.L. Carter, 2006. 
+     Impact of an Updated Carbon Bond Mechanism on Predictions from the 
+     Community Multiscale Air Quality Model, submitted to the Journal of 
+     Applied Meteorology and Climatology.
+     
+ Yarwood, G., S. Rao, M. Yocke, and G. Whitten, 2005, Updates to the Carbon 
+     Bond Chemical Mechanism: CB05. Final Report to the US EPA, RT-0400675. 
+     Available at http://www.camx.com/publ/pdfs/CB05_Final_Report_120805.pdf.
+

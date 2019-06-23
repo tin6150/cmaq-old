@@ -1,0 +1,130 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/driver/pdm/mlin.F,v 1.9 2005/08/29 20:31:12 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C ****************************************************************
+      SUBROUTINE MLIN ( IT, MMS, IPLUM, JPLUM, VM, TOP, BOT,
+     &                  ITOP, IBOT, IPLMFLG, MTE )
+C*****************************************************************
+
+C  FUNCTION: Set the initial relation of plume and mixing layer(PBL)
+C   Initially, plume top & bottom are set completely above HTMIX or,
+C   completely below HTMIX.
+
+C........................................................
+C i HTMIX  : mixing height                              .
+C i TOPHT  : height of plume top                        .
+C o ITOP   :  1, plume top is located above HTMIX       .
+C          : -1, plume top is located below HTMIX       .
+C o IBOT   :  1, plume bottom is located above HTMIX    .
+C          : -1, plume bottom is located below HTMIX    .
+C........................................................
+
+      USE HGRD_DEFN             ! horizontal domain specifications
+      USE VGRD_DEFN
+      
+      IMPLICIT NONE
+ 
+!     INCLUDE SUBST_HGRD_ID
+!     INCLUDE SUBST_VGRD_ID
+      INCLUDE 'PLUME.EXT'
+
+      INTEGER IT, MMS, MTE
+      INTEGER IPLUM( MS,MTE ), JPLUM( MS,MTE )
+      INTEGER ITOP( MS,MTE ), IBOT( MS,MTE ), IPLMFLG( MS,MTE )
+      REAL VM( NROWS,NLAYS+4,10,NCOLS ), TOP( MS,MTE ), BOT( MS,MTE )
+      
+      INTEGER NS, IP, JP
+      REAL    HTMIX
+
+C Plume top is above mixing layer.
+
+      DO 200 NS = 1 , MMS
+C  Skip stacks or plumes outside the domain
+         IF ( IPLMFLG( NS,IT ) .LT. 0 .OR. IPLMFLG( NS,IT ) .GE. 10 ) GO TO 200
+
+         IP = IPLUM( NS,IT )
+         JP = JPLUM( NS,IT )
+         HTMIX = VM( JP,6,5,IP )
+ 
+         IF ( TOP( NS,IT ) .GT. HTMIX ) THEN
+            ITOP( NS,IT ) = 1
+         ELSE          ! Plume top is below mixing layer.
+            ITOP( NS,IT ) = -1
+         END IF
+
+C Plume bottom above mixing layer.
+C (ywu july,1995)
+ 
+         IF ( BOT( NS,IT ) .GT. HTMIX ) THEN
+            IBOT( NS,IT ) = 1
+         ELSE          ! Plume bottom below mixing layer.
+            IBOT( NS,IT ) = -1
+         END IF
+!        write( *, *) ' MLIN :', NS,IP,JP,HTMIX, BOT( NS,IT ),TOP( NS,IT ),
+!     &                          IBOT( NS,IT ),ITOP( NS,IT )
+
+200   CONTINUE
+      RETURN
+
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

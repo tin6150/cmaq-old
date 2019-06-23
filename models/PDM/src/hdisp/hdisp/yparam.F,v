@@ -1,0 +1,257 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/hdisp/hdisp/yparam.F,v 1.8 2005/08/29 20:32:13 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C*************************************************************************
+      SUBROUTINE YPARAM( IR, NS, USTAR, WSTAR, L, HTMIX, TOP, BOT, XDIST, 
+     &  XDDEL, FCOR, SZ0FAC, SIGY, DSIGY, TSTEP, IDTSEC, IHI, ILO, U, V,
+     &  DSIGYT, DSIGYSH, DDIR, DTHR, SIGY0, TLAG, NOA )
+
+C*************************************************************************
+
+C** FUNCTION:  Calculates sigmaY by parameterization methods
+C   Select ICHUST,ICHUSY,ISHEAR to chose methods for calculating
+C          SIGV,TL,SHEAR for SIGY
+
+C  Input arguments:
+C      IR
+C      NS
+C      USTAR     friction velocity
+C      WSTAR     convective velocity scale
+C      L         M-O length scale
+C      HTMIX     PBL height
+C      TOP       Plume top height
+C      BOT       Plume bottom height
+C      XDIST     Incremental distance traveled
+C      XDDEL
+C      FCOR
+C      SZ0FAC
+C      SIGY      Lateral dispersion parmeter
+C      TSTEP
+C      TIME      Travel time since release
+C      IDTSEC    Time step interval
+C      IHI       Index of layer at plume top
+C      ILO       Index of layer at plume bottom
+C      U,V       Alongwind and crosswind velocity components
+C      DSIGYT
+C      DDIR
+C      DTHR
+C      SIGY0
+C      TLAG
+C      NOA
+C      KZ        Number of vertical layer
+C  Common block:
+C      ICHUST    Options for turb. parms, sigmayt method, and shear -
+C      ICHUSY      "          "
+C      ISHEAR      "          "
+C  Output:
+C      SIGY
+C      DSIGY
+C      DSIGYSH
+
+C  Called by : PDM
+C  Subroutines called: SIGMAV1 or SIGMAV2, DIFFDIR
+
+      USE VGRD_DEFN
+      
+      IMPLICIT NONE
+
+C  Include files:
+!     INCLUDE SUBST_VGRD_ID              ! vertical layer grid
+      INCLUDE 'PLUME.EXT'                ! plume parameters
+
+      INTEGER IR, NS
+      REAL    USTAR, WSTAR, L,  HTMIX, TOP, BOT, XDIST,
+     &        XDDEL, FCOR, SZ0FAC, SIGY, DSIGY, TSTEP
+      INTEGER IDTSEC, IHI, ILO
+      REAL    U( NLAYS ), V( NLAYS )
+      REAL    DSIGYT, DSIGYSH, DDIR, DTHR, SIGY0, TLAG
+      INTEGER NOA
+
+      REAL, SAVE :: TLV( MS,100 ), SIGYTTOLD( MS,100 )
+
+      REAL    ZC, TL, DT, TT, TV, TTB
+      REAL    SIGV, SIGYTT, SIGYTTB, SIGYSHN, SIGYSHB
+
+      INTEGER ICHUST, ICHUSY, ISHEAR
+      COMMON /SIG/ ICHUST, ICHUSY, ISHEAR
+
+C *********************************************************************
+      IF ( ( TSTEP - 1.0 ) .EQ. 1.0 .AND. IR .GE. NOA ) THEN
+         SIGYTTOLD( NS,IR ) = SIGY0 * SIGY0
+      END IF
+
+C  Use the existing SIGY for previous released PSECS to initalize SIGYTTOLD
+      IF ( ( TSTEP - 1.0 ) .EQ. 1.0 .AND. IR .LT. NOA ) THEN
+         SIGYTTOLD( NS,IR ) = SIGY * SIGY
+      END IF
+
+C* Parameterization of sigmaY
+C  TL : Lagrangian time scale in y-dir
+C  ZC : Plume center height
+
+      ZC = 0.5 * ( TOP + BOT )
+
+C  Determining SIGV and the Lagrangian time scale TL...
+C     ICHUST=1, TL,SIGV from Hanna et al.(1982)
+C     ICHUST=2, TL,SIGV from Hicks(1985) for convective BL
+C                            Nieustadt(1984) for stable BL
+C                            Arya(1984) for neutral BL
+
+C  Determine the Lagrangian time scale at beginning, and
+C  if the plume is above the PBL height, then set SIGV at 0.2
+C  and set TL to 1000.0 as prescribed  by Draxler (1976).
+C  If IR is LE NOA, time scale already exists.
+
+      IF ( IR .LE. NOA ) THEN
+         TLV( NS,IR ) = TLAG
+      END IF
+
+      IF ( ZC .GT. HTMIX ) THEN
+         SIGV = 0.20
+         IF ( ( TSTEP - 1.0 ) .EQ. 1.0 ) TLV( NS,IR ) = 1000.0
+      ELSE
+         IF ( ICHUST .EQ. 1 ) THEN
+            CALL SIGMAV1( USTAR, HTMIX, L, SIGV, TL, ZC, FCOR )
+            IF ( ( TSTEP - 1.0 ) .EQ. 1.0 ) TLV( NS,IR ) = MIN( TL,1000.0 )
+         ELSE IF ( ICHUST .EQ. 2 ) THEN
+            CALL SIGMAV2( WSTAR, USTAR, HTMIX, L, SIGV, TL, ZC, FCOR )
+            IF ( ( TSTEP - 1.0 ) .EQ. 1.0 ) TLV( NS,IR ) = MIN( TL,1000.0 )
+         ELSE
+            CALL SIGMAV3( WSTAR, USTAR, HTMIX, L, SIGV, TL, ZC, FCOR )
+            IF ( ( TSTEP - 1.0 ) .EQ. 1.0 ) TLV( NS,IR ) = MIN( TL,1000.0 )
+         END IF
+      END IF
+
+C  Keep the Lagrangian time scale in TLAG to be stored
+      TLAG = TLV( NS,IR )
+!     write(*,*) 'In yparam: NS,IR,TSTEP,TLV SIGV =', NS,IR,TSTEP,TLAG,SIGV
+
+C  Turbulent term of sigmaY...
+C     R: correlation function.
+C     ICHUSY=1: Irwin(1979), turbulent term only ;
+C     ICHUSY=2: preferred method according to Weil (1988), Venkatram (1988)
+
+      DT = FLOAT( IDTSEC )
+
+      IF ( ICHUSY .EQ. 1 ) THEN
+
+         DSIGYT = SIGV * DT * 33.0 / SQRT( XDIST * 1000.0 )
+
+      ELSE IF ( ICHUSY .EQ. 2 ) THEN
+
+C  Compute SIGY turb term squared - formula for overall growth
+         TV = SIGYTTOLD( NS,IR ) / ( 2.0 * SIGV * SIGV * TLV( NS,IR ) )
+         IF ( TV .LT. DT ) TV = DT + 0.1 * DT
+
+         SIGYTT = SIGV * TV / SQRT( 1.0 + ( TV / ( 2.0 * TLV( NS,IR ) ) ) )
+
+         TTB = TV - DT
+         SIGYTTB = SIGV * TTB / SQRT( 1.0 + ( TTB / ( 2.0 * TLV( NS,IR ) ) ) )
+
+         DSIGYT = ( SIGYTT - SIGYTTB ) * ( SIGYTT - SIGYTTB )
+         DSIGYT = MAX( 0.0, DSIGYT )
+
+!        write(*,*) 'SIGYTT, SIGYTTB:', SIGYTT, SIGYTTB
+
+      END IF 
+
+C  shear term of sigmaY
+C  ISHEAR=1, shear term added; else, not
+
+900   CONTINUE
+
+      IF ( ISHEAR .EQ. 1 ) THEN
+         CALL DIFFDIR( U, V, DDIR, IHI, ILO )
+C  Coefficient of .174 in Pasquill eqn is .212 due to plume shape
+         DSIGYSH = 0.212 * DDIR * XDDEL * 1000.0
+      ELSE
+         DSIGYSH = 0.0
+      END IF
+
+C  Sigma terms computed, so check on turb. values, then find total SIGY.
+
+      DSIGY = DSIGYT + DSIGYSH * DSIGYSH 
+
+C  Determine the new plume sigma
+C  Compute the total horizontal sigma from turb. and shear terms.
+
+      SIGY = SIGY + SQRT( DSIGY )
+
+C  Save the current total plume sigma for use in next timestep above.
+      SIGYTTOLD( NS,IR ) = SIGY * SIGY
+
+      DSIGYT = SQRT( DSIGYT )
+
+!     write( *,* ) ' '
+
+!        TT = ( TSTEP - 1.0 ) * DT
+!     write( *,* ) 'YPARAM:IR,TT,TV,DSIGYT,
+!    &     SIGYTT,SIGV,TLV,U*,ZC,PBL,W*,L;',
+!    &     IR,TT,TV,DSIGYT,SIGYTT,SIGV,TLV( NS,IR ),USTAR,
+!    &     ZC,HTMIX,WSTAR,L
+
+!     write( *,* ) ' sh,tb,dir,x,depth,pbl, SIGY:',
+!    &     DSIGYSH,DSIGYT,DDIR,XDIST,(TOP-BOT),HTMIX,SIGY
+
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

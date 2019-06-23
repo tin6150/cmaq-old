@@ -1,0 +1,434 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+ 
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/driver/pdm/outpx.F,v 1.11 2005/08/29 20:31:12 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C***********************************************************************
+      SUBROUTINE OUTP( ITT, IT, IDTSEC, VM, XCN, YCN, ANGL, TOP, BOT, ZCN,
+     &           SZ0FAC,SIGY, XDIST, WDTH, DPTH, SIGYT, SIGYSH, ZL3, IPLMFLG, 
+     &           IPLUM, JPLUM, JDATE, JTIME, DELMIX, PLMID, DDIR, DSPD,
+     &           UI, DX, DY, MMS, IDLL, IDRU, PDMOUT, IPDMOUT,
+     &           RELSTEP, TLAG, NREL, MTE, WDTHDT, DPTHDT, DMIXDT )
+C***********************************************************************
+
+C** Function: Module for generating the PDM IOAPI output data file.
+
+      USE HGRD_DEFN             ! horizontal domain specifications
+      USE VGRD_DEFN
+      
+      IMPLICIT NONE
+
+!     INCLUDE SUBST_HGRD_ID
+!      INCLUDE SUBST_VGRD_ID
+      INCLUDE SUBST_IOPARMS
+      INCLUDE SUBST_IOFDESC
+      INCLUDE SUBST_IODECL
+      INCLUDE 'PLUME.EXT'
+      INCLUDE 'FILES_PDM.EXT'
+
+!     INTEGER NVARS
+!     PARAMETER ( NVARS = 19 )
+
+      CHARACTER( 96 ) :: XMSG = ' '
+      CHARACTER( 16 ) :: PNAME = 'OUTPX'
+      INTEGER NREL, MTE, ITT, IHR, IDEL
+      INTEGER IPLUM( MS,MTE ), JPLUM( MS,MTE ), IPLMFLG( MS,MTE )
+      INTEGER IR, NS, IT, IDTSEC, JDATE, JTIME
+      INTEGER KB, KT, IL, JL, IRT, JR, K, MMS
+      INTEGER PLMID( MS,MTE )
+      INTEGER IDLL( MS,MTE ), IDRU( MS,MTE ), IPDMOUT(  MMS,MTE,4 )
+      INTEGER ALLOCSTAT
+
+      REAL VM( NROWS,NLAYS+4,10,NCOLS ), DELMIX( MS,MTE ), DX, DY
+      REAL XCN( MS,MTE ), YCN( MS,MTE ),  ANGL( MS,MTE ), SIGY( MS,MTE )
+      REAL TOP( MS,MTE ), BOT( MS,MTE ), XDIST( MS,MTE ), WDTH( MS,MTE )
+      REAL DPTH( MS,MTE )
+      REAL ODPTH, OWDTH, RHR
+
+!     POINTER (P1, DPTHDT)
+      REAL DPTHDT( MS,MTE )
+
+!     POINTER (P2, WDTHDT)
+      REAL  WDTHDT( MS,MTE )
+
+!     POINTER (P3, DMIXDT)
+      REAL DMIXDT( MS,MTE )
+
+!     POINTER(P4, HTMIX)
+      REAL, ALLOCATABLE :: HTMIX( :,: )
+
+!     POINTER (P5, XC)
+      REAL, ALLOCATABLE :: XC( :,: )
+
+!     POINTER (P6, YC)
+      REAL, ALLOCATABLE :: YC( :,: )
+
+      REAL ZCN( MS,MTE ), SIGYT( MS,MTE ), SIGYSH( MS,MTE ),
+     &     ZL3( MS,MTE,NLAYS )
+      REAL ANG, XL, YL, XR, YR, WIDE, SZ0FAC( MS )
+      REAL DDIR( MS,MTE ), DSPD( MS,MTE ), UI( MS,MTE ) 
+      REAL PDMOUT(  MMS,MTE,NVARPDM )
+      REAL RELSTEP( MS,MTE ), TLAG( MS,MTE )
+
+      CHARACTER*16 OUTDATA( NVARPDM )
+      DATA OUTDATA / 'PLUME_ID',     'XC_PLUME', 'YC_PLUME', 'ZC_PLUME',
+     &               'WIDTH',        'DEPTH',    'PBL',      'ANGLE',
+     &               'WIDTHDT',      'DEPTHDT',  'DPBLDT',   'DDIR',
+     &               'DSPD',         'ID_LL',    'ID_RU',    'PLUME_FLAG',
+     &               'INITIAL_WIND', 'RELSTEP',  'TSCALE',   'DDIST' /
+
+      LOGICAL, SAVE :: LFIRST = .TRUE.
+      INTEGER LOGDEV
+
+      LOGICAL IPRFLG
+      COMMON /OPTN/ IPRFLG
+
+      INTEGER IMETHD, IDPLUM, IPARTFLG, IOLDFIL
+      COMMON /MTH/ IMETHD, IDPLUM, IPARTFLG, IOLDFIL
+
+      REAL MEPS( MS ), DS( MS ), TS( MS ), VS( MS ), HS( MS ), QS( MS )
+      COMMON /STK/ MEPS, DS, TS, VS, HS, QS
+
+      IF ( LFIRST ) THEN
+         LFIRST = .FALSE.
+         LOGDEV = INIT3()
+      END If
+
+!     CALL ALLOMEM (P1, MS*MTE)
+!     CALL ALLOMEM (P2, MS*MTE)
+!     CALL ALLOMEM (P3, MS*MTE)
+!     CALL ALLOMEM (P4, MS*MTE)
+!     CALL ALLOMEM (P5, MS*MTE)
+!     CALL ALLOMEM (P6, MS*MTE)
+!  USE ALLOCATE INSTEAD
+
+      ALLOCATE ( HTMIX( MS,MTE ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+           XMSG = 'Failure allocating HTMIX'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+      ALLOCATE ( XC( MS,MTE ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating XC'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+      ALLOCATE ( YC( MS,MTE ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating YC'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+
+      IF ( IPRFLG ) WRITE( 8,'(2I8)' ) JDATE, JTIME
+      WRITE( 11,'(I8, " :", I7.6)' ) JDATE, JTIME
+      WRITE( 11,1251 )
+1251  FORMAT( 10X, 'XDIST', 9X, 'BOT', 13X, 'SIGYSH', 8X, 'IL', 4X, 'IPLUM',
+     &        4X, 'IRT', 6X, 'KB', 4X, 'IPLMFLG' /
+     &        1X, 'IR',2X,'NS',10X,'TOP', 12X, 'SIGYT', 10X, 'SIGY', 7X, 'JL',
+     &        4X, 'JPLUM', 5X, 'JR', 6X, 'KT' )
+
+C On first step with previous releases, omit the following:
+      IF ( ITT .EQ. 1 .AND. IOLDFIL .EQ. 1 ) THEN
+         WRITE( LOGDEV,* ) 'OUTPX: PREVIOUS RELEASE INFO KNOWN.'
+C find grid indices of the lower and upper plume
+      ELSE
+         CALL IDBOND( JDATE, JTIME, IT, MMS, XCN, YCN, TOP, BOT, ANGL,
+     &                SIGY, SZ0FAC, ZL3, IDLL, IDRU, DX, DY, MTE )
+      END IF
+
+C output for chemical model or plotting
+      DO 476 IR = IT, 1, -1
+         DO 475 NS = 1, MMS
+
+            IF ( IPLMFLG( NS,IR ) .GE. 0 .AND. IPLMFLG( NS,IR ) .LT. 10 )  THEN 
+               HTMIX( NS,IR ) = VM( JPLUM( NS,IR ),6,5,IPLUM( NS,IR ) )
+            ELSE
+               HTMIX( NS,IR )  = -999.0 
+            END IF
+
+C Perform the transfer of data for the previous releases on 1st time
+            IF ( ITT .EQ. 1 .AND. IOLDFIL .EQ. 1 ) THEN
+               WRITE( LOGDEV,* ) 'OUTPX: PREVIOUS PDM FILE VALUES USED FOR;', IR, NS
+            ELSE  
+               ODPTH = DPTH( NS,IR )
+               OWDTH = WDTH( NS,IR )
+               DPTH( NS,IR ) = ( TOP( NS,IR ) - BOT( NS,IR ) )     ! plume depth
+               ZCN( NS,IR )  = 0.5 * ( TOP( NS,IR ) + BOT( NS,IR ) ) ! plume centerline ht.
+!JMG           WDTH( NS,IR ) = 4.3 * SIGY( NS,IR )
+!jmg           WDTH( NS,IR ) = PLFACT * SIGY( NS,IR )
+               WDTH( NS,IR ) = SZ0FAC( NS ) * SIGY( NS,IR )            ! PLUME WIDTH
+C Determine if time is on the hour
+               RHR = FLOAT( JTIME ) * 0.0001
+               IHR = RHR
+               IDEL = IHR * 10000 - JTIME
+C Use the plume flag to detect a just released plume or not for computing rates of change.
+               IF ( IPLMFLG( NS,IR ) .GE. 0 .AND. IPLMFLG( NS,IR ) .LE. 2 ) THEN
+!              IF ( IR .EQ. IT .AND. IDEL .EQ. 0 ) THEN
+                  DPTHDT( NS,IR ) = DPTH( NS,IR ) / FLOAT( IDTSEC )  ! depth rate
+                  WDTHDT( NS,IR ) = WDTH( NS,IR ) / FLOAT( IDTSEC )
+                  DMIXDT( NS,IR ) = DELMIX( NS,IR ) / FLOAT( IDTSEC )
+               ELSE
+C This is for all releases, except just released plume sections
+                  DPTHDT( NS,IR ) = ( DPTH( NS,IR ) - ODPTH ) / FLOAT( IDTSEC )  ! depth rate
+                  WDTHDT( NS,IR ) = ( WDTH( NS,IR ) - OWDTH ) / FLOAT( IDTSEC )
+                  DMIXDT( NS,IR ) = DELMIX( NS,IR ) / FLOAT( IDTSEC )
+               END IF
+            END IF
+
+C Determine plume section side and vertical edge grid indices
+C Initialize values to be layer 1
+            KB = 1
+            KT = 1
+C Find the top and bottom layer numbers for this plume section
+            DO K = 1 , NLAYS
+               IF ( BOT( NS,IR ) .GE. ZL3( NS,IR,K ) ) KB = K
+               IF ( TOP( NS,IR ) .GE. ZL3( NS,IR,K ) ) KT = K
+            END DO
+C Next determine the left/right plume edges
+            ANG = ANGL( NS,IR )
+            WIDE = WDTH( NS,IR ) * 0.001                   ! kilometers HERE
+            XL = XCN( NS,IR ) - 0.5 * WIDE * SIN( ANG )
+            YL = YCN( NS,IR ) + 0.5 * WIDE * COS( ANG )
+            XR = XCN( NS,IR ) + 0.5 * WIDE * SIN( ANG )
+            YR = YCN( NS,IR ) - 0.5 * WIDE * COS( ANG )
+
+            IL  = INT( XL / ( XCELL3D * 0.001) ) + 1        ! convert from m to km
+            JL  = INT( YL / ( YCELL3D * 0.001) ) + 1
+            IRT = INT( XR / ( XCELL3D * 0.001) ) + 1
+            JR  = INT( YR / ( YCELL3D * 0.001) ) + 1
+
+C Convert x and y coords to meters
+            XC( NS,IR ) = XCN( NS,IR ) * 1000.0
+            YC( NS,IR ) = YCN( NS,IR ) * 1000.0
+
+C Insert the results into the PDMOUT array
+            IPDMOUT(  NS,IR, 1 ) = PLMID( NS,IR )
+            IPDMOUT(  NS,IR, 2 ) = IPLMFLG( NS,IR )
+            IPDMOUT(  NS,IR, 3 ) = IDLL( NS,IR )
+            IPDMOUT(  NS,IR, 4 ) = IDRU( NS,IR )
+            PDMOUT ( NS,IR, 1 ) = XC( NS,IR )
+            PDMOUT ( NS,IR, 2 ) = YC( NS,IR )
+            PDMOUT ( NS,IR, 3 ) = WDTH( NS,IR )
+            PDMOUT ( NS,IR, 4 ) = DPTH( NS,IR )
+            PDMOUT ( NS,IR, 5 ) = ANGL( NS,IR )
+            PDMOUT ( NS,IR, 6 ) = DMIXDT( NS,IR )
+            PDMOUT ( NS,IR, 7 ) = WDTHDT( NS,IR )
+            PDMOUT ( NS,IR, 8 ) = DPTHDT( NS,IR )
+            PDMOUT ( NS,IR, 9 ) = ZCN( NS,IR )
+            PDMOUT ( NS,IR,10 ) = DDIR( NS,IR )
+            PDMOUT ( NS,IR,11 ) = DSPD( NS,IR )
+            PDMOUT ( NS,IR,12 ) = HTMIX( NS,IR )
+            PDMOUT ( NS,IR,13 ) = UI( NS,IR )
+            PDMOUT ( NS,IR,14 ) = RELSTEP( NS,IR )
+            PDMOUT ( NS,IR,15 ) = TLAG( NS,IR )
+            PDMOUT ( NS,IR,16 ) = XDIST( NS,IR )
+
+C output values and angle
+            WRITE( 11,1351 ) IR, NS, XDIST( NS,IR ), TOP( NS,IR ), BOT( NS,IR ),
+     &             SIGYT( NS,IR ), SIGYSH( NS,IR ), SIGY( NS,IR ),
+     &             IL, JL, IPLUM( NS,IR ), JPLUM( NS,IR ), IRT, JR, KB, KT,
+     &             IPLMFLG( NS,IR )
+            IF ( IPRFLG ) THEN
+               WRITE( 8,1352 ) IR, PLMID( NS,IR ), XC( NS,IR ), YC( NS,IR ), ZCN( NS,IR ),
+     &                         WDTH( NS,IR ), DPTH( NS,IR ), ANGL( NS,IR ), HTMIX( NS,IR ),
+     &                         WDTHDT( NS,IR ), DPTHDT( NS,IR )
+            END IF
+475      CONTINUE
+476   CONTINUE
+      WRITE( 11,* ) ' '
+
+1351  FORMAT( I3, 1X, I3, 1X, F6.1, 2F7.1, 3F8.1, 9(1X,I3) )
+1352  FORMAT( 1X, I3, I11, 2F10.0, 3F8.1, 4F8.2 )
+
+C Write out a gridded set of outputs
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 1 ), JDATE, JTIME,
+     &   IPDMOUT( 1,1,1 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 1 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 16 ), JDATE, JTIME,
+     &   IPDMOUT( 1,1,2 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 16 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 14 ), JDATE, JTIME,
+     &   IPDMOUT( 1,1,3 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 14 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 15 ), JDATE, JTIME,
+     &   IPDMOUT( 1,1,4 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 15 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 2 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,1 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 2 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 3 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,2 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 3 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 5 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,3 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 5 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 6 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,4 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 6 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 8 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,5 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 8 )// ' into file',.TRUE.)
+      END IF  
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 11 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,6 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 11 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 9 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,7 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 9 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 10 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,8 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 10 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 4 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,9 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 4 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 12 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,10 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 12 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 13 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,11 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 13 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 7 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,12 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 7 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 17 ), JDATE, JTIME,
+     &    PDMOUT( 1,1,13 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 17 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 18 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,14 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 18 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 19 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,15 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 19 )// ' into file',.TRUE.)
+      END IF
+
+      IF ( .NOT. WRITE3( PDM_PING_1, OUTDATA( 20 ), JDATE, JTIME,
+     &   PDMOUT( 1,1,16 ) ) ) THEN
+         CALL M3ERR( PNAME, JDATE, JTIME,
+     &   'Could not WRITE parameter ' //OUTDATA( 20 )// ' into file',.TRUE.)
+      END IF
+
+!     CALL FREEMEM (P1)
+!     CALL FREEMEM (P2)
+!     CALL FREEMEM (P3)
+!     CALL FREEMEM (P4)
+!     CALL FREEMEM (P5)
+!     CALL FREEMEM (P6)
+      DEALLOCATE ( HTMIX )
+      DEALLOCATE ( XC )
+      DEALLOCATE ( YC )
+
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

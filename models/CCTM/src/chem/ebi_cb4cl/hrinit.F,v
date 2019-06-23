@@ -1,0 +1,289 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.46;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.46;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/chem/ebi_cb4cl/hrinit.F,v 1.1.1.1 2005/06/22 19:53:24 sjr Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+      SUBROUTINE HRINIT
+C***********************************************************************
+C
+C  FUNCTION: To initialize species tolerances, arrays, and indices
+C
+C  PRECONDITIONS: For the CB4CL family of mechanisms
+C
+C  RETURN VALUES: None
+C
+C  KEY SUBROUTINES/FUNCTIONS CALLED: None
+C
+C  REVISION HISTORY: Created by EBI solver program, June 13, 2005
+C
+C***********************************************************************
+
+      USE HRDATA
+
+      IMPLICIT NONE
+
+C.....INCLUDES:
+      INCLUDE SUBST_GC_SPC    ! Gas chem species names and MWs
+      INCLUDE SUBST_GC_EMIS   ! Gas chem emissions name and mapping tables
+      INCLUDE SUBST_RXCMMN    ! Mechanism reaction common block
+
+C.....ARGUMENTS: NONE
+
+C.....PARAMETERS: NONE
+
+
+C.....EXTERNAL FUNCTIONS:
+      INTEGER  FINDEX         ! Finds location of a number in a list
+
+C.....SAVED VARIABLES:
+      CHARACTER( 16 ), SAVE  ::  PNAME = 'HRINIT'   ! Program name
+
+
+C.....LOCAL VARIABLES:
+      CHARACTER*132 MSG       ! Log message
+
+      INTEGER IND             ! Species index
+      INTEGER N               ! Loop index
+
+C***********************************************************************
+
+      N_SPEC = N_GC_SPC
+      N_RXNS = NRXNS
+
+      ALLOCATE( RKI( NRXNS ) )
+      ALLOCATE( RXRAT( NRXNS ) )
+      ALLOCATE( RTOL( N_SPEC) )
+      ALLOCATE( YC(   N_SPEC) )
+      ALLOCATE( YC0(  N_SPEC) )
+      ALLOCATE( YCP(  N_SPEC) )
+      ALLOCATE( PROD( N_SPEC) )
+      ALLOCATE( LOSS( N_SPEC) )
+      ALLOCATE( PNEG( N_SPEC) )
+
+      NING1 = 4
+      NING2 = 4
+
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c  Set species indices and pointers
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      NO2      =   1
+      NO       =   2
+      O        =   3
+      O3       =   4
+      NO3      =   5
+      O1D      =   6
+      OH       =   7
+      HO2      =   8
+      N2O5     =   9
+      HNO3     =  10
+      HONO     =  11
+      PNA      =  12
+      H2O2     =  13
+      CO       =  14
+      FORM     =  15
+      ALD2     =  16
+      C2O3     =  17
+      XO2      =  18
+      PAN      =  19
+      PACD     =  20
+      PAR      =  21
+      XO2N     =  22
+      ROR      =  23
+      NTR      =  24
+      OLE      =  25
+      FACD     =  26
+      AACD     =  27
+      ETH      =  28
+      TOL      =  29
+      CRES     =  30
+      TO2      =  31
+      TOLAER   =  32
+      OPEN     =  33
+      CRO      =  34
+      CSLAER   =  35
+      XYL      =  36
+      MGLY     =  37
+      XYLAER   =  38
+      ISOP     =  39
+      ISPD     =  40
+      SO2      =  41
+      SULF     =  42
+      SULAER   =  43
+      UMHP     =  44
+      CL2      =  45
+      CL       =  46
+      HOCL     =  47
+      HCL      =  48
+      FMCL     =  49
+      ICL1     =  50
+      ICL2     =  51
+      CLO      =  52
+      TERP     =  53
+      TERPAER  =  54
+
+      N_EBISP  =  41
+      ALLOCATE( EBISP( N_EBISP ) ) 
+
+      EBISP(   1 ) = HNO3
+      EBISP(   2 ) = H2O2
+      EBISP(   3 ) = CO
+      EBISP(   4 ) = FORM
+      EBISP(   5 ) = ALD2
+      EBISP(   6 ) = XO2
+      EBISP(   7 ) = PACD
+      EBISP(   8 ) = PAR
+      EBISP(   9 ) = XO2N
+      EBISP(  10 ) = ROR
+      EBISP(  11 ) = NTR
+      EBISP(  12 ) = OLE
+      EBISP(  13 ) = FACD
+      EBISP(  14 ) = AACD
+      EBISP(  15 ) = ETH
+      EBISP(  16 ) = TOL
+      EBISP(  17 ) = CRES
+      EBISP(  18 ) = TO2
+      EBISP(  19 ) = TOLAER
+      EBISP(  20 ) = OPEN
+      EBISP(  21 ) = CRO
+      EBISP(  22 ) = CSLAER
+      EBISP(  23 ) = XYL
+      EBISP(  24 ) = MGLY
+      EBISP(  25 ) = XYLAER
+      EBISP(  26 ) = ISOP
+      EBISP(  27 ) = ISPD
+      EBISP(  28 ) = SO2
+      EBISP(  29 ) = SULF
+      EBISP(  30 ) = SULAER
+      EBISP(  31 ) = UMHP
+      EBISP(  32 ) = CL2
+      EBISP(  33 ) = CL
+      EBISP(  34 ) = HOCL
+      EBISP(  35 ) = HCL
+      EBISP(  36 ) = FMCL
+      EBISP(  37 ) = ICL1
+      EBISP(  38 ) = ICL2
+      EBISP(  39 ) = CLO
+      EBISP(  40 ) = TERP
+      EBISP(  41 ) = TERPAER
+
+
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c  Set species tolerances
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      RTOL( NO2     ) = 1.0E-03
+      RTOL( NO      ) = 1.0E-03
+      RTOL( O       ) = 1.0E+00
+      RTOL( O3      ) = 1.0E-03
+      RTOL( NO3     ) = 1.0E-03
+      RTOL( O1D     ) = 1.0E+00
+      RTOL( OH      ) = 1.0E-03
+      RTOL( HO2     ) = 1.0E-03
+      RTOL( N2O5    ) = 1.0E-03
+      RTOL( HNO3    ) = 1.0E-03
+      RTOL( HONO    ) = 1.0E-03
+      RTOL( PNA     ) = 1.0E-03
+      RTOL( H2O2    ) = 1.0E-03
+      RTOL( CO      ) = 1.0E-03
+      RTOL( FORM    ) = 1.0E-03
+      RTOL( ALD2    ) = 1.0E-03
+      RTOL( C2O3    ) = 1.0E-03
+      RTOL( XO2     ) = 1.0E-03
+      RTOL( PAN     ) = 1.0E-03
+      RTOL( PACD    ) = 1.0E-03
+      RTOL( PAR     ) = 1.0E-03
+      RTOL( XO2N    ) = 1.0E-03
+      RTOL( ROR     ) = 1.0E-03
+      RTOL( NTR     ) = 1.0E+00
+      RTOL( OLE     ) = 1.0E-03
+      RTOL( FACD    ) = 1.0E-03
+      RTOL( AACD    ) = 1.0E-03
+      RTOL( ETH     ) = 1.0E-03
+      RTOL( TOL     ) = 1.0E-03
+      RTOL( CRES    ) = 1.0E-03
+      RTOL( TO2     ) = 1.0E-03
+      RTOL( TOLAER  ) = 1.0E-03
+      RTOL( OPEN    ) = 1.0E-03
+      RTOL( CRO     ) = 1.0E-03
+      RTOL( CSLAER  ) = 1.0E-03
+      RTOL( XYL     ) = 1.0E-03
+      RTOL( MGLY    ) = 1.0E-03
+      RTOL( XYLAER  ) = 1.0E-03
+      RTOL( ISOP    ) = 1.0E-03
+      RTOL( ISPD    ) = 1.0E-03
+      RTOL( SO2     ) = 1.0E-03
+      RTOL( SULF    ) = 1.0E+00
+      RTOL( SULAER  ) = 1.0E-03
+      RTOL( UMHP    ) = 1.0E-03
+      RTOL( CL2     ) = 1.0E-03
+      RTOL( CL      ) = 1.0E-03
+      RTOL( HOCL    ) = 1.0E-03
+      RTOL( HCL     ) = 1.0E-03
+      RTOL( FMCL    ) = 1.0E-03
+      RTOL( ICL1    ) = 1.0E-03
+      RTOL( ICL2    ) = 1.0E-03
+      RTOL( CLO     ) = 1.0E-03
+      RTOL( TERP    ) = 1.0E-03
+      RTOL( TERPAER ) = 1.0E-03
+
+
+      RETURN
+
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

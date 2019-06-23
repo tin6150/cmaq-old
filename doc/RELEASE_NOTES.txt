@@ -1,0 +1,64 @@
+                 RELEASE_NOTES for CMAQv4.5.1 - 17 Mar 2006
+
+
+The changes and new features of this release are:
+
+1)  Mercury
+        - Added mercury modeling capability (see MERCURY_NOTES)
+
+2)  Chemistry
+        - Beta-version of CB05 (see CB05_NOTES)
+        - Updates to the SAPRC99/air toxics chemistry and associated EBI solver
+
+3)  Aerosols
+        - Recomputed tabulated binary activity coefficients in ISORROPIA
+
+4)  PBL modeling
+        - Eliminate surrogate JACOBF, since now in mcip output
+        - Code change to accomodate more ways to specify mol/s for emissions
+          units, assumes mass units no longer used
+        - Cap the application of the kzmin algorithm at 500 m above surface
+
+5)  Clouds
+        - Floor-value set for Aitken-mode mass in getalpha.f to avoid
+          possible NANs
+        Aqueous Chemistry:
+        - Integration timestep calculation bug fix
+        - Discontinued aerosol species lumping:  separate elemental carbon
+          from primary aerosol; split organic aerosols into primary,
+          secondary biogenic, and secondary anthropogenic
+        - The AE_A2AQ.EXT file for all chemical mechanisms was updated to
+          reflect the new species treatment in the cloud model
+        - Fixed 3rd moment calc to include EC and primary organics (not
+          secondary)
+        - Re-arranged logic for setting Cl & Na ending conc
+        - Added pointers/indirect addressing for arrays WETDEP and LIQUID
+
+6)  Advection
+        - Bug fixes: Fortran 90 code interface for ASTEP and CFL number check
+
+7)  Parallel I/O library
+        - More robust allocation error checking and ensuring that I/O processor
+          can't access non-existing memory
+        - Add worker and I/O processors partition scheme
+
+8)  Process Analysis
+        PROCAN
+        - Add correct methods to access mass-conserving advection process
+        - Changed the names of some of the operators to be 4 chars in length
+          to help insure unique compound variable names
+        - Change NPROCS in PA_CMN.EXT to NPRCS to avoid name conflict with 
+          CCTM multiprocessing variable
+        - Bug fixes: gas species family flag array index, N_IPR_SPC value for
+          no integrated process rates option, remove blank character in
+          'Air density' species name
+        CCTM
+        - Fix erroneous operation in parallel CCTM for Process Analysis
+          subdomains that are windowed from model domain
+        - Move code dealing with process analysis from Frotran 90 module
+          HGRD_DEFN to module PAGRD_DEFN and modify PAGRD_DEFN to handle
+          subdomains that are windowed from model domain
+          
+9) Other
+        - Move barrier in wr_aconc.F to avoid race condition (Michael Bane's
+          suggestion)

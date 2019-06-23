@@ -1,0 +1,993 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.53;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.53;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/vdiff/acm/vdiffacm.F,v 1.3 2003/09/02 14:23:56 yoj Exp $
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C @@(#)vdiffim.F 1.8 /project/mod3/CMAQ/src/vdiff/eddy/SCCS/s.vdiffim.F 25 Jul 1997 12:57:45
+
+C:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+      SUBROUTINE VDIFF ( CGRID, JDATE, JTIME, TSTEP )
+
+C-----------------------------------------------------------------------
+C Function:
+C   calculates and writes dry deposition.
+C   calculates vertical diffusion
+C   controlled by flag THETA, using Crank-Nicolson difference scheme
+C   THETA : Crank-Nicolson index  [ 1, fully implicit | 0, fully explicit ]
+
+C Subroutines and Functions Called:
+C   INIT3, INTERP3, SEC2TIME, TIME2SEC, OPEN3, DESC3, WRITE3, NEXTIME,
+C   M3EXIT, EDYINTB, TRIDIAG, PA_UPDATE_EMIS, PA_UPDATE_DDEP, AERO_DEPV
+
+C Revision History:
+C      Aug 99 JP   - Combined VDIFFIM from CMAQ and ACM from MM5    
+C      Nov 01 JP   - Updated for 2002 release
+C-----------------------------------------------------------------------
+      USE AERO_EMIS           ! inherits HGRD_DEFN
+
+      USE SUBST_MODULES              ! stenex
+!     USE SUBST_GLOBAL_SUM_MODULE    ! stenex
+
+
+      IMPLICIT NONE
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+      INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table
+      INCLUDE SUBST_GC_EMIS   ! gas chem emis surrogate names and map table
+      INCLUDE SUBST_GC_DEPV   ! gas chem dep vel surrogate names and map table
+      INCLUDE SUBST_GC_DDEP   ! gas chem dry dep species and map table
+      INCLUDE SUBST_GC_DIFF   ! gas chem diffusion species and map table
+
+      INCLUDE SUBST_AE_SPC    ! aerosol species table
+!     INCLUDE SUBST_AE_EMIS   ! aerosol emis surrogate names and map table
+      INCLUDE SUBST_AE_DEPV   ! aerosol dep vel surrogate names and map table
+      INCLUDE SUBST_AE_DDEP   ! aerosol dry dep species and map table
+      INCLUDE SUBST_AE_DIFF   ! aerosol diffusion species and map table
+
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table
+      INCLUDE SUBST_NR_EMIS   ! non-react emis surrogate names and map table
+      INCLUDE SUBST_NR_DEPV   ! non-react dep vel surrogate names and map table
+      INCLUDE SUBST_NR_DDEP   ! non-react dry dep species and map table
+      INCLUDE SUBST_NR_DIFF   ! non-react diffusion species and map table
+
+      INCLUDE SUBST_TR_SPC    ! tracer species table
+      INCLUDE SUBST_TR_EMIS   ! tracer emis surrogate names and map table
+      INCLUDE SUBST_TR_DEPV   ! tracer dep vel surrogate names and map table
+      INCLUDE SUBST_TR_DDEP   ! tracer dry dep species and map table
+      INCLUDE SUBST_TR_DIFF   ! tracer diffusion species and map table
+
+!     INCLUDE SUBST_EMLYRS_ID ! emissions layers parameter
+#ifdef emis_chem
+      INCLUDE SUBST_EMPR_CH   ! emissions processing in chem
+#else
+      INCLUDE SUBST_EMPR_VD   ! emissions processing in vdif
+#endif
+      INCLUDE SUBST_PACTL_ID  ! PA control parameters
+      INCLUDE SUBST_CONST     ! constants
+      INCLUDE SUBST_FILES_ID  ! file name parameters
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+#include      SUBST_IODECL    # I/O definitions and declarations
+      INCLUDE SUBST_COORD_ID  ! coordinate and domain definitions (req IOPARMS)
+
+      CHARACTER( 96 ) :: XMSG = ' '
+
+C Arguments:
+
+      REAL, POINTER :: CGRID( :,:,:,: )              !  concentrations
+      INTEGER      JDATE        ! current model date, coded YYYYDDD
+      INTEGER      JTIME        ! current model time, coded HHMMSS
+      INTEGER      TSTEP( 2 )   ! time step vector (HHMMSS)
+                                ! TSTEP(1) = local output step
+                                ! TSTEP(2) = sciproc sync. step (chem)
+C Parameters:
+
+C explicit, THETA = 0, implicit, THETA = 1
+      REAL, PARAMETER :: THETA = 0.5,  ! Semi-implicit (Crank-Nicolson)
+     &                   THBAR = 1.0 - THETA
+
+      INTEGER, PARAMETER :: N_SPC_DDEP = N_GC_DDEP
+     &                                 + N_AE_DDEP
+     &                                 + N_NR_DDEP
+     &                                 + N_TR_DDEP
+
+C global dep vel species
+      INTEGER, PARAMETER :: N_SPC_DEPV = N_GC_DEPV
+     &                                 + N_AE_DEPV
+     &                                 + N_NR_DEPV
+     &                                 + N_TR_DEPV
+
+C global diffusion species
+      INTEGER, PARAMETER :: N_SPC_DIFF = N_GC_DIFF
+     &                                 + N_AE_DIFF
+     &                                 + N_NR_DIFF
+     &                                 + N_TR_DIFF
+
+C global emissions species
+      INTEGER, SAVE      :: N_SPC_EMIS
+ 
+C number of CGRID species
+
+      INTEGER, SAVE :: N_SPC_CGRID
+      
+C number of species on the PM emissions input file. Set in OPEMIS
+C the value changes with the type of emissions file.
+      INTEGER, SAVE :: NAESPCEMIS
+
+      REAL, PARAMETER :: M2PHA = 1.0E+04       ! 1 hectare = 1.0e4 m**2
+      REAL, PARAMETER :: CMLMR = 1.0E+06       ! ppmV/Molar Mixing Ratio
+      REAL, PARAMETER :: CNVTD = M2PHA / CMLMR / MWAIR ! combined ddep
+                                                       ! conversion factor
+      REAL, PARAMETER :: GPKG = 1.0E+03        ! g/Kg
+      REAL, PARAMETER :: MGPG = 1.0E+06        ! micro-g/g
+
+C External Functions not previously declared in IODECL3.EXT:
+
+      INTEGER, EXTERNAL :: SECSDIFF, SEC2TIME, TIME2SEC
+
+C File variables:
+
+      REAL         RDEPVHT( NCOLS,NROWS )        ! reciprocal dep vel height
+      REAL         RJACM  ( NCOLS,NROWS,NLAYS )  ! reciprocal mid-layer Jacobian
+      REAL         RRHOJ  ( NCOLS,NROWS,NLAYS )  ! reciprocal density X Jacobian
+      REAL         DEPV   ( N_SPC_DEPV+1,NCOLS,NROWS ) ! deposition velocities
+!     REAL         MDEPV  ( N_SPC_DEPV+1,NCOLS,NROWS ) ! deposition velocities
+                                                       ! X air density for all
+                                                       ! but aerosol species
+C Local Variables:
+
+      CHARACTER( 16 ), SAVE :: PNAME = 'VDIFFIM'
+      CHARACTER( 16 ), SAVE :: DDEP_SPC( N_SPC_DDEP + 1 )
+
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+      INTEGER, SAVE :: WSTEP  = 0               ! local write counter
+
+      REAL          DX1, DX2                    ! CX x1- and x2-cell widths
+      REAL, SAVE :: DX3F ( NLAYS )              ! layer thickness at face
+      REAL, SAVE :: RDX3F( NLAYS )              ! reciprocal layer thickness
+      REAL          X3M  ( NLAYS )              ! middle layer heigth
+      REAL          DX3M ( NLAYS )              ! layer thickness at middle
+      REAL, SAVE :: RDX3M( NLAYS )              ! reciprocal layer thickness
+      REAL          CONVPA           ! conversion factor to pressure in Pascals
+      REAL          CONVEM           ! conversion for emissions rates to Kg/s
+!     REAL          CNVTE( N_SPC_EMIS )         ! combined conversion factor
+      REAL, SAVE :: CNVTE                       ! combined conversion factor
+      REAL       :: CNVTR                       ! combined conversion factor
+ 
+      REAL, ALLOCATABLE, SAVE :: CNGRD( :,:,:,: )  ! cgrid replacement
+
+      REAL, ALLOCATABLE, SAVE :: DDEP( :,:,: )  ! ddep accumulator
+      REAL          WRDD( NCOLS,NROWS )         ! ddep write buffer
+
+      INTEGER, SAVE :: DEPV_MAP( N_SPC_DEPV+1 ) ! global depv map to CGRID
+      INTEGER, SAVE :: DIFF_MAP( N_SPC_DIFF+1 ) ! global diff map to CGRID
+      INTEGER, SAVE :: DF2DV   ( N_SPC_DIFF+1 ) ! map from diff spc to depv spc
+      INTEGER, SAVE :: DF2EM   ( N_SPC_DIFF+1 ) ! map from diff spc to emis spc
+      INTEGER, SAVE :: DD2DV   ( N_SPC_DDEP+1 ) ! map from ddep spc to depv spc
+
+      INTEGER, SAVE :: ELAYS                    ! no. of emis integration layers
+                                                ! ELAYS must be .LT. NLAYS
+      INTEGER          EMISLYRS                 ! no. of file emissions layers
+
+      REAL, ALLOCATABLE, SAVE :: VDEMIS   ( :,:,:,: ) ! total emissions array
+      REAL, ALLOCATABLE, SAVE :: VDEMIS_AE( :,:,:,: ) ! aerosol emissions
+      REAL, ALLOCATABLE, SAVE :: VDEMIS_NR( :,:,:,: ) ! nonreactive gase emissions
+      REAL, ALLOCATABLE, SAVE :: VDEMIS_TR( :,:,:,: ) ! tracer emissions
+
+      LOGICAL, SAVE :: EM_TRAC = .FALSE.        ! do tracer emissions?
+      INTEGER, SAVE :: NEMIS_AE                 ! no. of aero emis species
+
+      REAL, SAVE :: DD_CONV( N_SPC_DEPV+1 )     ! ddep spc conversion factors
+      
+      REAL         LI ( NLAYS )                ! see under Function, above
+      REAL         DI ( N_SPC_DIFF,NLAYS )     ! see under Function, above
+      REAL         BI ( N_SPC_DIFF,NLAYS )     ! see under Function, above
+      REAL         UI ( NLAYS )                ! see under Function, above
+      REAL         XI ( N_SPC_DIFF,NLAYS )     ! see under Function, above
+      REAL         PK ( NLAYS )                ! UI subfactor
+      REAL         QK ( NLAYS )                ! LI subfactor
+      REAL         DVFACB( NCOLS,NROWS )        ! dep vel factor in BI (r.h.s.)
+      REAL         DVFACD( NCOLS,NROWS )        ! dep vel factor in DI (diag.)
+      REAL         EDDYV ( NCOLS,NROWS,NLAYS )  ! from eddy
+      INTEGER      NSTEPS( NCOLS,NROWS )        ! diffusion time steps
+      REAL         DT    ( NCOLS,NROWS )        ! eddy diff. delta T
+      REAL         DTSEC                        ! model time step in seconds
+
+      INTEGER, SAVE :: LOGDEV
+ 
+      INTEGER      ALLOCSTAT
+      INTEGER      C, R, L, S, V, N            ! loop induction variables
+      INTEGER      STRT, FINI
+      INTEGER      MDATE, MTIME, MSTEP         ! internal simulation date&time
+                                               ! array in vert. mixing
+
+      REAL DT_AVG
+      REAL NSTP_AVG
+
+C ACM Local Variables
+      REAL        MBAR  ( NCOLS,NROWS )    ! ACM mixing rate (S-1)
+      REAL        MBARKS( NLAYS )          ! by layer
+      REAL        MDWN  ( NLAYS )          ! ACM down mix rate
+      REAL        XPBL  ( NCOLS,NROWS )    ! PBL HT in gen coords
+      INTEGER     LPBL  ( NCOLS,NROWS )    ! layer containing PBL HT
+      INTEGER     NOCONV( NCOLS,NROWS )    ! flag for ACM
+      REAL        AA    ( NLAYS )          ! matrix arrays
+      REAL        DD    ( NLAYS )
+      REAL        EE    ( NLAYS )
+      REAL        BB    ( NLAYS )
+      REAL        UU    ( NLAYS )
+      REAL        BETA                     ! matrix solver variables
+      REAL        GAMA   
+      REAL        ALPHA  
+      INTEGER     NLP, NL, L1, L2, LCBL
+      REAL        DTLIM, DTS, RZ, DELC, F1
+      REAL        DTACM
+      REAL, PARAMETER :: VDMX = 0.1    ! 10 cm/sec
+      REAL, PARAMETER :: CRANKP = 0.5 
+
+C TRIDIAG Local Variables
+      REAL        GAM( N_SPC_DIFF,NLAYS )
+      REAL        BET( N_SPC_DIFF )
+      INTEGER     K
+
+      INTERFACE
+         SUBROUTINE RDMET ( MDATE, MTIME, RDDEPVHT, RJACM, RRHOJ )
+            IMPLICIT NONE
+            INTEGER, INTENT( IN )       :: MDATE, MTIME
+            REAL, INTENT( OUT )         :: RDDEPVHT( :,: )
+            REAL, INTENT( OUT )         :: RJACM( :,:,: )
+            REAL, INTENT( OUT )         :: RRHOJ( :,:,: )
+         END SUBROUTINE RDMET
+         SUBROUTINE RDDEPV ( MDATE, MTIME, MSTEP, CGRID, DEPV )
+            IMPLICIT NONE
+            INTEGER, INTENT( IN )       :: MDATE, MTIME, MSTEP
+            REAL, POINTER               :: CGRID( :,:,:,: )
+            REAL, INTENT( OUT )         :: DEPV( :,:,: )
+         END SUBROUTINE RDDEPV
+         SUBROUTINE RDEMIS_GC ( MDATE, MTIME, EMISLYRS, NSPC_EMIS, VDEMIS )
+            IMPLICIT NONE
+            INTEGER, INTENT( IN )       :: MDATE, MTIME, EMISLYRS, NSPC_EMIS
+            REAL, INTENT( OUT )         :: VDEMIS( :,:,:,: )
+         END SUBROUTINE RDEMIS_GC
+         SUBROUTINE RDEMIS_NR ( MDATE, MTIME, EMISLYRS, NSPC_EMIS, VDEMIS )
+            IMPLICIT NONE
+            INTEGER, INTENT( IN )       :: MDATE, MTIME, EMISLYRS, NSPC_EMIS
+            REAL, INTENT( OUT )         :: VDEMIS( :,:,:,: )
+         END SUBROUTINE RDEMIS_NR
+         SUBROUTINE RDEMIS_TR ( MDATE, MTIME, EMISLYRS, NSPC_EMIS, VDEMIS )
+            IMPLICIT NONE
+            INTEGER, INTENT( IN )       :: MDATE, MTIME, EMISLYRS, NSPC_EMIS
+            REAL, INTENT( OUT )         :: VDEMIS( :,:,:,: )
+         END SUBROUTINE RDEMIS_TR
+         SUBROUTINE PA_UPDATE_EMIS ( PNAME, VDEMIS, JDATE, JTIME, TSTEP )
+            IMPLICIT NONE
+            CHARACTER( * ), INTENT( IN ) :: PNAME
+            REAL, INTENT( IN )           :: VDEMIS( :,:,:,: )
+            INTEGER, INTENT( IN )        :: JDATE, JTIME
+            INTEGER, INTENT( IN )        :: TSTEP( 2 )
+         END SUBROUTINE PA_UPDATE_EMIS
+         SUBROUTINE PA_UPDATE_DDEP ( PNAME, DDEP, JDATE, JTIME, TSTEP )
+            IMPLICIT NONE
+            CHARACTER( * ), INTENT( IN ) :: PNAME
+            REAL, INTENT( IN )           :: DDEP( :,:,: )
+            INTEGER, INTENT( IN )        :: JDATE, JTIME
+            INTEGER, INTENT( IN )        :: TSTEP( 2 )
+         END SUBROUTINE PA_UPDATE_DDEP
+         SUBROUTINE CONV_CGRID ( CGRID, JDATE, JTIME, CNGRD )
+            IMPLICIT NONE
+            REAL, POINTER :: CGRID( :,:,:,: )
+            INTEGER, INTENT( IN )        :: JDATE, JTIME
+            REAL, INTENT( OUT ) :: CNGRD( :,:,:,: )
+         END SUBROUTINE CONV_CGRID
+         SUBROUTINE REV_CGRID ( CNGRD, JDATE, JTIME, CGRID )
+            IMPLICIT NONE
+            REAL, INTENT( IN ) :: CNGRD( :,:,:,: )
+            INTEGER, INTENT( IN )        :: JDATE, JTIME
+            REAL, POINTER :: CGRID( :,:,:,: )
+         END SUBROUTINE REV_CGRID
+         SUBROUTINE EDDYPX ( EDDYV, JDATE, JTIME, TSTEP )
+            IMPLICIT NONE
+            REAL, INTENT( OUT )         :: EDDYV( :,:,: )
+            INTEGER, INTENT( IN )       :: JDATE, JTIME, TSTEP
+         END SUBROUTINE EDDYPX
+         SUBROUTINE MIXRATE ( MBAR, XPBL, LPBL, NOCONV, 
+     &                        RJACM, RRHOJ, JDATE, JTIME, TSTEP)
+            IMPLICIT NONE
+            REAL, INTENT( OUT )         ::  MBAR  ( :,: )  
+            REAL, INTENT( OUT )         ::  XPBL  ( :,: ) 
+            INTEGER, INTENT( OUT )      ::  LPBL  ( :,: ) 
+            INTEGER, INTENT( OUT )      ::  NOCONV( :,: )
+            REAL, INTENT( IN )          ::  RJACM ( :,:,: ) 
+            REAL, INTENT( IN )          ::  RRHOJ ( :,:,: )
+            INTEGER, INTENT( IN )       :: JDATE, JTIME, TSTEP
+         END SUBROUTINE MIXRATE
+      END INTERFACE
+
+C-----------------------------------------------------------------------
+
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+         LOGDEV = INIT3()
+
+C Open the met files
+
+         CALL OPMET ( JDATE, JTIME, CONVPA )
+ 
+c for emissions (form COORD.EXT) .......................................
+
+         IF ( GDTYP_GD .EQ. LATGRD3 ) THEN
+            DX1 = DG2M * XCELL_GD ! in m.
+            DX2 = DG2M * YCELL_GD
+     &          * COS( PI180*( YORIG_GD + YCELL_GD * FLOAT( GL_NROWS/2 ))) ! in m.
+            ELSE
+            DX1 = XCELL_GD        ! in m.
+            DX2 = YCELL_GD        ! in m.
+            END IF
+
+C Open Emissions files
+
+         CALL OPEMIS ( JDATE, JTIME, NEMIS, EM_TRAC, CONVEM, EMISLYRS )
+
+         ELAYS = MIN ( EMISLYRS, NLAYS - 1 )
+
+C Set output file characteristics based on COORD.EXT and open the dry dep file
+
+         IF ( MYPE .EQ. 0 ) CALL OPDDEP ( JDATE, JTIME, TSTEP( 1 ), N_SPC_DDEP )
+
+C Allocate and initialize dry deposition array
+
+         ALLOCATE ( DDEP( N_SPC_DEPV,MY_NCOLS,MY_NROWS ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating DDEP'
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+
+         DDEP = 0.0
+
+C create global maps
+
+         CALL VDIFF_MAP ( DF2EM, DF2DV, DD2DV,
+     &                    DEPV_MAP, DIFF_MAP, DDEP_SPC )
+
+C set vertical layer definitions from COORD.EXT
+
+         DO L = 1, NLAYS
+            DX3F( L )  = X3FACE_GD( L ) - X3FACE_GD( L-1 )
+            RDX3F( L ) = 1.0 / DX3F( L )
+            X3M( L ) = 0.5 * ( X3FACE_GD( L ) + X3FACE_GD( L-1 ) )
+            END DO
+
+         DO L = 1, NLAYS - 1
+            RDX3M( L ) = 1.0 / ( X3M( L+1 ) - X3M( L ) )
+            END DO
+         RDX3M( NLAYS ) = 0.0
+
+C set molecular weights
+
+         S = 0
+         DO V = 1, N_GC_DEPV
+            S = S + 1
+            DD_CONV( S ) = CNVTD * GC_MOLWT( GC_DEPV_MAP( V ) )
+            END DO
+         DO V = 1, N_AE_DEPV
+            S = S + 1
+            IF ( AE_SPC( AE_DEPV_MAP( V ) )( 1:3 ) .EQ. 'NUM' ) THEN
+               DD_CONV( S ) = M2PHA 
+               ELSE IF ( AE_SPC( AE_DEPV_MAP( V ) )( 1:3 ) .EQ. 'SRF' ) THEN
+               DD_CONV( S ) = M2PHA 
+               ELSE
+!              DD_CONV( S ) = M2PHA / GPKG / MGPG
+               DD_CONV( S ) = CNVTD * AE_MOLWT( AE_DEPV_MAP( V ) )
+               END IF
+            END DO
+         DO V = 1, N_NR_DEPV
+            S = S + 1
+            DD_CONV( S ) = CNVTD * NR_MOLWT( NR_DEPV_MAP( V ) )
+            END DO
+         DO V = 1, N_TR_DEPV
+            S = S + 1
+            DD_CONV( S ) = CNVTD * TR_MOLWT( TR_DEPV_MAP( V ) )
+            END DO
+
+         IF ( N_AE_SPC .GT. 0 ) THEN
+            WRITE( LOGDEV,'( /5X, A )' ) 'Aerosol Emissions Processing in '
+     &                                // 'Vertical diffusion ...'
+            NEMIS_AE = N_AE_EMIS  ! from AERO_EMIS module
+            ELSE
+            NEMIS_AE = 0
+            END IF
+
+         N_SPC_EMIS = NEMIS
+     &              + NEMIS_AE
+     &              + N_NR_EMIS
+     &              + N_TR_EMIS
+
+C combined gas emssions conversion factor
+         CNVTE = CMLMR * CONVPA * CONVEM * MWAIR / ( DX1 * DX2 )
+ 
+         N_SPC_CGRID = SIZE ( CGRID,4 )
+
+         ALLOCATE ( CNGRD( N_SPC_CGRID,NLAYS,MY_NCOLS,MY_NROWS ),
+     &              STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating CNGRD'
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+
+         CNGRD = 0.0
+
+
+         END IF          !  if Firstime
+
+C set file interpolation to middle of time step
+
+      MDATE = JDATE
+      MTIME = JTIME
+      MSTEP = TIME2SEC( TSTEP( 2 ) )
+      DTSEC = FLOAT( MSTEP )
+      CALL NEXTIME ( MDATE, MTIME, SEC2TIME( MSTEP / 2 ) )
+
+C read & interpolate met data
+
+      CALL RDMET ( MDATE, MTIME, RDEPVHT, RJACM, RRHOJ )
+
+C read & interpolate deposition velocities
+
+      CALL RDDEPV ( MDATE, MTIME, TSTEP( 2 ), CGRID, DEPV )
+
+C Initialize deposition velocities for nondeposited species to zero
+
+      DO R = 1, MY_NROWS
+         DO C = 1, MY_NCOLS
+            DEPV( N_SPC_DEPV+1,C,R ) = 0.0 ! accounts for dry dep. species
+            END DO                         ! names as a subset of the
+         END DO                            ! vert. diffused species list
+
+C read & interpolate emissions (create VDEMIS in the species class order)
+
+      ALLOCATE ( VDEMIS ( N_SPC_EMIS+1,ELAYS,MY_NCOLS,MY_NROWS ),
+     &           STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'VDEMIS memory allocation failed'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      VDEMIS = 0.0
+
+      CALL RDEMIS_GC ( MDATE, MTIME, ELAYS, NEMIS, VDEMIS )
+
+C reactive gases (conversion to ppmv/s) VDEMIS in this order from RDEMIS
+
+      STRT = 1
+      FINI = NEMIS
+      DO R = 1, MY_NROWS
+         DO C = 1, MY_NCOLS
+            DO L = 1, ELAYS
+               CNVTR = CNVTE * RDX3F( L ) * RRHOJ( C,R,L )
+               DO V = STRT, FINI
+                  VDEMIS( V,L,C,R ) = VDEMIS( V,L,C,R ) * CNVTR
+                  END DO
+               END DO
+            END DO
+         END DO
+
+C aerosol emissions - all units conversions done in RDEMIS_AE for aerosols
+
+      IF ( N_AE_SPC .GT. 0 ) THEN
+         ALLOCATE ( VDEMIS_AE( NEMIS_AE,ELAYS,MY_NCOLS,MY_NROWS ),
+     &              STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'VDEMIS_AE memory allocation failed'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+C        RDEMIS_AE in f90 module AERO_EMIS
+         CALL RDEMIS_AE ( MDATE, MTIME, ELAYS, RJACM, VDEMIS, VDEMIS_AE )
+         END IF
+
+
+      STRT = NEMIS + 1
+      FINI = NEMIS + NEMIS_AE
+      DO R = 1, MY_NROWS
+         DO C = 1, MY_NCOLS
+            DO L = 1, ELAYS
+               DO V = STRT, FINI
+                  S = V + 1 - STRT
+                  VDEMIS( V,L,C,R ) = VDEMIS_AE( S,L,C,R )
+                  END DO
+               END DO
+            END DO
+         END DO
+
+C non-reactive gases (conversion to ppmv/s) VDEMIS in this order from RDEMIS
+
+      IF ( N_NR_EMIS .GT. 0 ) THEN
+         ALLOCATE ( VDEMIS_NR( N_NR_EMIS,ELAYS,MY_NCOLS,MY_NROWS ),
+     &              STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'VDEMIS_NR memory allocation failed'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+         CALL RDEMIS_NR ( MDATE, MTIME, ELAYS, N_NR_EMIS, VDEMIS_NR )
+         END IF
+
+
+      STRT = NEMIS + NEMIS_AE + 1
+      FINI = NEMIS + NEMIS_AE + N_NR_EMIS
+      DO R = 1, MY_NROWS
+         DO C = 1, MY_NCOLS
+            DO L = 1, ELAYS
+               CNVTR = CNVTE * RDX3F( L ) * RRHOJ( C,R,L )
+               DO V = STRT, FINI
+                  S = V + 1 - STRT
+                  VDEMIS( V,L,C,R ) = VDEMIS_NR( S,L,C,R ) * CNVTR
+                  END DO
+               END DO
+            END DO
+         END DO
+
+C tracer gases (conversion to ppmv/s)
+
+      IF ( EM_TRAC .AND. N_TR_EMIS .GT. 0 ) THEN
+         ALLOCATE ( VDEMIS_TR( N_TR_EMIS,ELAYS,MY_NCOLS,MY_NROWS ),
+     &              STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'VDEMIS_TR memory allocation failed'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+         CALL RDEMIS_TR ( MDATE, MTIME, ELAYS, N_TR_EMIS, VDEMIS_TR )
+         END IF
+
+
+      STRT = NEMIS + NEMIS_AE + N_NR_EMIS + 1
+      FINI = NEMIS + NEMIS_AE + N_NR_EMIS + N_TR_EMIS
+      DO R = 1, MY_NROWS
+         DO C = 1, MY_NCOLS
+            DO L = 1, ELAYS
+               CNVTR = CNVTE * RDX3F( L ) * RRHOJ( C,R,L )
+               DO V = STRT, FINI
+                  S = V + 1 - STRT
+                  VDEMIS( V,L,C,R ) = VDEMIS_TR( S,L,C,R ) * CNVTR
+                  END DO
+               END DO
+            END DO
+         END DO
+
+C zero out emissions values for species not included in diffused list
+
+      DO R = 1, MY_NROWS
+         DO C = 1, MY_NCOLS
+            DO L = 1, ELAYS
+               VDEMIS( N_SPC_EMIS+1,L,C,R ) = 0.0  ! accounts for emissions
+               END DO                              ! species names as a subset
+            END DO                                 ! of the vert. diffused
+         END DO                                    ! species list
+
+!     IF ( LIPR ) CALL PA_UPDATE_EMIS ( 'VDIF', VDEMIS, JDATE, JTIME, TSTEP )
+
+!     CALL EDYINTB ( EDDYV, DT, JDATE, JTIME, TSTEP( 2 ) )
+!     CALL EDDYBLACK ( EDDYV, DT, JDATE, JTIME, TSTEP( 2 ) )
+      CALL EDDYPX ( EDDYV, JDATE, JTIME, TSTEP( 2 ) )
+
+c EDDYV returned = Kz, where Kz is in m**2/sec
+ 
+C Convert non-molar mixing ratio species and re-order CGRID
+
+      CALL CONV_CGRID ( CGRID, JDATE, JTIME, CNGRD )
+
+C compute species-independent deposition velocity combination conversion
+C factors DVFACB, DVFACD, and ddep accumulation factor
+
+      DO R = 1, MY_NROWS
+         DO C = 1, MY_NCOLS
+
+            DVFACB( C,R ) = THBAR * RDEPVHT( C,R )
+            DVFACD( C,R ) = THETA * RDEPVHT( C,R )
+
+            END DO
+         END DO
+
+      IF ( WSTEP .EQ. 0 ) DDEP = 0.0
+
+C compute mixing rate for ACM
+
+      CALL MIXRATE ( MBAR, XPBL, LPBL, NOCONV, RJACM, 
+     &               RRHOJ, JDATE, JTIME, TSTEP( 2 ) )
+
+! test test test
+!     do r = 1, my_nrows
+!     do c = 1, my_ncols
+!        noconv(c,r)=0
+!     end do
+!     end do
+
+      C = MY_NCOLS / 2
+      R = MY_NROWS / 2
+      WRITE( LOGDEV, * ) ' RDEPVHT=', RDEPVHT(C,R), ' PBL=', XPBL(C,R),
+     &       LPBL(C,R), ' MBAR=', MBAR(C,R), ' C,R=', C,R
+
+      DO 2200 R = 1,MY_NROWS  
+      DO 2100 C = 1,MY_NCOLS
+         IF ( NOCONV( C,R ) .EQ. 1 ) THEN  !  Do ACM for this column
+            LCBL = LPBL( C,R )
+            DTLIM = DTSEC
+            DO L = 1, NLAYS
+               MBARKS( L ) = 0.0
+               MDWN( L ) = 0.0
+             END DO
+
+         RZ     = (X3FACE_GD( LCBL ) - X3FACE_GD( 1 ) ) * RDX3F( 1 )
+!        DTLIM  = MIN( 0.5 / ( MBAR( C,R ) * RZ ), DTLIM )
+         DTACM  = 1.0/ (MBAR(C,R) * RZ+VDMX*RDEPVHT( C,R ))
+         DTLIM  = MIN( 0.75 * DTACM, DTLIM )
+!        DTLIM  = MIN( DTACM, DTLIM )
+
+!        print *,' kcblmx = ',kcblmx
+         DO L = 1, LCBL-1
+            MBARKS( L ) = MBAR( C,R )
+            MDWN( L ) = MBAR( C,R ) * ( XPBL( C,R ) - X3FACE_GD( L-1) ) /
+     &                  DX3F( L )
+         END DO
+         MBARKS( LCBL ) = MBAR(C,R) * ( XPBL( C,R ) - X3FACE_GD( LCBL-1 ) ) /
+     &                  DX3F( LCBL )
+         MDWN( LCBL ) = MBARKS( LCBL )
+
+         NLP = INT( DTSEC / DTLIM + 1.0 )
+         DTS = ( DTSEC / NLP )
+         DO 2000 NL = 1, NLP      ! loop over sub time
+
+         DO 1000 V = 1, N_SPC_DIFF     ! loop for thetav, q, u and v (qc, qi)
+            S = DIFF_MAP(V)
+
+C Compute tendency of CBL concentrations - semi-implicit solution
+
+            DO 20 L = 2,LCBL
+               DELC = DTS * (MBARKS(L) * CNGRD(S,L,C,R) - MDWN(L)*
+     &                CNGRD(S,L,C,R) + DX3F(L+1) * RDX3F(L) *
+     &                MDWN(L+1) * CNGRD(S,L+1,C,R))
+            IF (L.LE.ELAYS) THEN
+               DD(L) = CNGRD(S,L,C,R) + (1.0 - CRANKP) * DELC
+     &                + VDEMIS(DF2EM(V),L,C,R) * DTS
+            ELSE
+               DD(L) = CNGRD(S,L,C,R) + (1.0 - CRANKP) * DELC
+            ENDIF
+               EE(L) = -CRANKP*MDWN(L)*DTS*DX3F(L)*RDX3F(L-1)
+               BB(L) = 1.0 + CRANKP * MDWN(L) * DTS
+               AA(L) = -CRANKP * MBARKS(L) * DTS
+20          CONTINUE
+            BB(1) = 1.0 + CRANKP * MBARKS(1) *
+     &            (XPBL(C,R) - X3FACE_GD(1)) * DTS * RDX3F(1)
+     &            - DEPV(DF2DV(V),C,R) * DVFACD(C,R) * DTS
+            F1 = MBARKS(1) *
+     &         (XPBL(C,R) - X3FACE_GD(1)) * CNGRD(S,1,C,R) -
+     &          MDWN(2) * CNGRD(S,2,C,R) * DX3F(2)
+            DD(1) = CNGRD(S,1,C,R) -
+     &            (1.0 - CRANKP) * F1 * RDX3F(1) * DTS     ! net mixing above
+     &       - DEPV(DF2DV(V),C,R) * DVFACB(C,R) * CNGRD(S,1,C,R) * DTS ! Dry dep
+     &                + VDEMIS(DF2EM(V),1,C,R) * DTS              ! emissions   
+ 
+C-- Define arrays A,B,E which make up MATRIX and D which is RHS
+C-- Subroutine MATRIX then solves for U
+
+!           CALL MATRIX(AA,BB,EE,DD,UU,KCBL,KL)
+!           IF (BB(C,1) .EQ. 0.0) STOP 1234
+            BETA = DD(1)
+               GAMA = BB(1)
+               ALPHA = 1.0
+               DO 21 L = 2,LCBL
+                  ALPHA = -ALPHA * EE(L) / BB(L)
+                  BETA  = ALPHA * DD(L) + BETA
+                  GAMA  = ALPHA * AA(L) + GAMA
+21             CONTINUE
+          
+            UU(1)    = BETA / GAMA
+            UU(LCBL) = (DD(LCBL)-AA(LCBL)
+     &                          *UU(1)) / BB(LCBL)
+C
+C **  back substitution:
+            DO 22 L = LCBL - 1,2,-1
+              UU(L) = (DD(L) - AA(L) * UU(1) - EE(L+1) 
+     &                 * UU(L+1)) / BB(L)
+22          CONTINUE
+C     WRITE(6,*)' AFT MATRIX   '
+C
+C-- LoAD INTO CGRID
+            DO 30 L = 1,LCBL
+               CNGRD(S,L,C,R) = UU(L)
+30          CONTINUE
+C
+1000    CONTINUE                 ! end loop for species
+2000    CONTINUE                 ! end sub time loop
+        ELSE                     ! no acm
+           LPBL(C,R) = 1
+        ENDIF                    ! acm if
+2100  CONTINUE                   ! end of cols loop
+2200  CONTINUE                   ! end of rows loop
+
+      DO R = 1, MY_NROWS
+         DO C = 1, MY_NCOLS
+            DT( C,R ) = DTSEC
+            END DO
+         END DO
+      C = MY_NCOLS / 2
+      R = MY_NROWS / 2
+      WRITE(LOGDEV, *)' EDDYV=',EDDYV( C,R,1 )
+
+C  convert Kz from m2/s to model vert coords
+      DO L = 1, NLAYS - 1
+         DO R = 1, MY_NROWS
+            DO C = 1, MY_NCOLS
+               EDDYV( C,R,L ) = EDDYV( C,R,L )
+     &                        * RJACM( C,R,L ) * RJACM( C,R,L ) * RDX3M( L )
+C  Note: DT has been moved from EDDY to here, dt = .75 dzf dzh / Kz
+               IF(L.GE.LPBL(C,R))  DT( C,R ) = MIN( DT( C,R ),
+     &                     0.75 / (EDDYV( C,R,L ) * RDX3F( L )))
+!    &                     1.0 / (EDDYV( C,R,L ) * RDX3F( L )))
+               END DO
+            END DO
+         END DO
+      C = MY_NCOLS / 2
+      R = MY_NROWS / 2
+      WRITE(LOGDEV, *) ' EDDYV=', EDDYV( C,R,1 ),' RJACM,RDX3M,RDX3F=',
+     &      RJACM( C,R,1 ),RDX3M( 1 ), RDX3F( 1 ),' DT=', DT( C,R )
+
+C get number of steps based on eddy time
+
+      NSTP_AVG = 0.0
+      DT_AVG = 0.0
+      DO R = 1, MY_NROWS
+         DO C = 1, MY_NCOLS
+            NSTEPS( C,R ) = INT ( DTSEC / DT( C,R ) ) + 1
+            DT( C,R ) = DTSEC / FLOAT( NSTEPS( C,R ) )
+            NSTP_AVG = NSTP_AVG + FLOAT( NSTEPS( C,R ) )
+            DT_AVG = DT_AVG + DT( C,R )
+            END DO
+         END DO
+
+      WRITE(LOGDEV, 1003) SUBST_GLOBAL_SUM( DT_AVG ) / 
+     &                    FLOAT( GL_NCOLS*GL_NROWS ),
+     &                    SUBST_GLOBAL_SUM( NSTP_AVG ) / 
+     &                    FLOAT( GL_NCOLS*GL_NROWS )
+1003  FORMAT( 5X, 'Grid-average eddy DT (sec) & no. of integration steps:',
+     &        2(1PE10.2) )
+
+
+      DO 345 R = 1, MY_NROWS
+         DO 344 C = 1, MY_NCOLS
+            L1 = LPBL(C,R)
+            PK( L1 ) = EDDYV( C,R,L1 ) * DT( C,R ) * RDX3F( L1 )
+            UI( L1 ) = -THETA * PK( L1 )
+            DO L = L1+1, NLAYS
+               PK( L )   = EDDYV( C,R,L   ) * DT( C,R ) * RDX3F( L )
+               QK( L )   = EDDYV( C,R,L-1 ) * DT( C,R ) * RDX3F( L )
+               UI( L )   = -THETA * PK( L )
+               LI( L )   = -THETA * QK( L )
+               DI( 1,L ) = 1.0 - UI( L ) - LI( L )  ! UI(NLAYS) = 0
+               END DO
+ 
+            DO V = 1, N_SPC_DIFF
+               IF(L1.EQ.1) THEN
+                  DI( V,1 ) = 1.0 - UI( 1 )
+     &                + DEPV( DF2DV(V),C,R ) * DVFACD( C,R ) * DT(C,R)
+               ELSE
+                  DI(V,L1) = 1.0 - UI(L1)
+               ENDIF
+               DI( V,NLAYS ) = DI( 1,NLAYS )
+               END DO
+ 
+            DO L = L1+1, NLAYS - 1
+               DO V = 1, N_SPC_DIFF
+                  DI( V,L ) = DI( 1,L )
+                  END DO
+               END DO
+
+            DO 301 N = 1, NSTEPS( C,R )
+
+               DO V = 1, N_SPC_DEPV
+                  DDEP( V,C,R ) = DDEP( V,C,R ) + THBAR * DD_CONV( V )
+     &                          * DT( C,R ) * DEPV( V,C,R ) 
+     &                          * CNGRD( DEPV_MAP( V ),1,C,R )
+                  END DO
+
+               DO V = 1, N_SPC_DIFF
+                  S = DIFF_MAP( V )
+                  IF(L1.EQ.1) THEN
+                     L = 1
+                     BI( V,L ) = CNGRD( S,L,C,R )
+     &                      + THBAR * PK( L )
+     &                      * ( CNGRD( S,L+1,C,R ) - CNGRD( S,L,C,R ) )
+     &                      - DEPV ( DF2DV(V),C,R ) * DVFACB( C,R ) 
+     &                      * CNGRD( S,L,C,R ) * DT( C,R )
+     &                      + VDEMIS( DF2EM( V ),L,C,R ) * DT( C,R )
+                  ELSE
+                     L = L1
+                     BI(V,L1) = CNGRD( S,L,C,R )
+     &                      + THBAR * PK( L )
+     &                      * ( CNGRD( S,L+1,C,R ) - CNGRD( S,L,C,R ) )
+                  ENDIF
+                  L = NLAYS
+                  BI( V,L ) = CNGRD( S,L,C,R )
+     &                      - THBAR * QK( L ) 
+     &                      * ( CNGRD( S,L,C,R ) - CNGRD( S,L-1,C,R ) )
+                  END DO
+
+               IF (L1.LT.ELAYS) THEN
+                DO L = L1+1, ELAYS
+                  DO V = 1, N_SPC_DIFF
+                     S = DIFF_MAP( V )
+                     BI( V,L ) = CNGRD( S,L,C,R )
+     &                         + THBAR
+     &                         * ( PK( L )
+     &                         * ( CNGRD( S,L+1,C,R ) - CNGRD( S,L,C,R ) )
+     &                         -   QK( L )
+     &                         * ( CNGRD( S,L,C,R ) - CNGRD( S,L-1,C,R ) ) )
+     &                         + VDEMIS( DF2EM( V ),L,C,R ) * DT( C,R )
+                     END DO
+                  END DO
+                  L2 = ELAYS + 1
+               ELSE
+                  L2 = L1 + 1
+               ENDIF
+
+               DO L = L2, NLAYS - 1
+                  DO V = 1, N_SPC_DIFF
+                     S = DIFF_MAP( V )
+                     BI( V,L ) = CNGRD( S,L,C,R )
+     &                         + THBAR
+     &                         * ( PK( L )
+     &                         * ( CNGRD( S,L+1,C,R ) - CNGRD( S,L,C,R ) )
+     &                         -   QK( L )
+     &                         * ( CNGRD( S,L,C,R ) - CNGRD( S,L-1,C,R ) ) )
+                     END DO
+                  END DO
+
+C-- In-Line TRIDIAG so bottom layer can be changed to L1
+C               CALL TRIDIAG ( LI, DI, UI, BI, XI )
+C Decomposition and forward substitution:
+
+      DO V = 1, N_SPC_DIFF
+         BET( V ) = 1.0 / DI( V,L1 )
+         XI( V,L1 ) = BET( V ) * BI( V,L1 )
+         END DO
+
+      DO K = L1+1, NLAYS
+         DO V = 1, N_SPC_DIFF
+            GAM( V,K ) = BET( V ) * UI( K-1 )
+            BET( V ) = 1.0 / ( DI( V,K ) - LI( K ) * GAM( V,K ) )
+            XI( V,K ) = BET( V ) * ( BI( V,K ) - LI( K ) * XI( V,K-1 ) )
+            END DO
+         END DO
+
+C Back-substitution:
+
+      DO K = NLAYS - 1, L1, -1
+         DO V = 1, N_SPC_DIFF
+            XI( V,K ) = XI( V,K ) - GAM( V,K+1 ) * XI( V,K+1 )
+            END DO
+         END DO
+C--- End TRIDIAG -------------------------------------------
+
+               DO L = L1, NLAYS
+                  DO V = 1, N_SPC_DIFF
+                     S = DIFF_MAP( V )
+!                     IF ( XI( V,L ) .LT. 0.0 ) THEN
+!                        WRITE( *,* ) C,R,L,S, XI( V,L )
+!                        END IF
+                     CNGRD( S,L,C,R ) = XI( V,L )
+                     END DO
+                  END DO
+
+               DO V = 1, N_SPC_DEPV
+                  DDEP( V,C,R ) = DDEP( V,C,R ) + THETA * DD_CONV( V )
+     &                          * DT( C,R ) * DEPV( V,C,R ) 
+     &                          * CNGRD( DEPV_MAP( V ),1,C,R )
+                  END DO
+
+301            CONTINUE      !  end time steps loop 
+344         CONTINUE         !  end loop on col C
+345      CONTINUE            !  end loop on row R
+
+C Revert non-molar mixing ratio species and re-order CGRID
+
+      CALL REV_CGRID ( CNGRD, JDATE, JTIME, CGRID )
+
+C If last call this hour:  write accumulated depositions:
+
+      WSTEP = WSTEP + TIME2SEC( TSTEP( 2 ) )
+      IF ( WSTEP .GE. TIME2SEC( TSTEP( 1 ) ) ) THEN
+         MDATE = JDATE
+         MTIME = JTIME
+         CALL NEXTIME( MDATE, MTIME, TSTEP( 2 ) )
+         WSTEP = 0
+ 
+         DO V = 1, N_SPC_DDEP
+            S = DD2DV( V )
+            DO R = 1, MY_NROWS
+               DO C = 1, MY_NCOLS
+                  WRDD( C,R ) = DDEP( S,C,R )
+                  END DO
+               END DO
+
+            IF ( .NOT. WRITE3( CTM_DRY_DEP_1, DDEP_SPC( V ),
+     &                 MDATE, MTIME, WRDD ) ) THEN
+               XMSG = 'Could not write ' // CTM_DRY_DEP_1 // ' file'
+               CALL M3EXIT( PNAME, MDATE, MTIME, XMSG, XSTAT1 )
+               END IF
+            END DO
+
+         WRITE( LOGDEV, '( /5X, 3( A, :, 1X ), I8, ":", I6.6 )' )
+     &         'Timestep written to', CTM_DRY_DEP_1,
+     &         'for date and time', MDATE, MTIME
+
+!        IF ( LIPR ) CALL PA_UPDATE_DDEP ( 'VDIF', DDEP, JDATE, JTIME, TSTEP )
+
+
+C re-set dry deposition array to zero
+
+         DDEP = 0.0
+
+         END IF
+
+      DEALLOCATE ( VDEMIS )
+      IF ( ALLOCATED ( VDEMIS_AE ) ) DEALLOCATE ( VDEMIS_AE )
+      IF ( ALLOCATED ( VDEMIS_NR ) ) DEALLOCATE ( VDEMIS_NR )
+      IF ( ALLOCATED ( VDEMIS_TR ) ) DEALLOCATE ( VDEMIS_TR )
+
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

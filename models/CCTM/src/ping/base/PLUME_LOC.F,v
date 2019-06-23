@@ -1,0 +1,770 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.51;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.51;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/base/PLUME_LOC.F,v 1.6 2005/02/14 15:44:29 yoj Exp $
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+      MODULE PLUME_LOC
+
+C 28 Nov 00 J.Young: Dave Wong's f90 stenex MY_REGION, GLOBAL_TO_LOCAL_COORD
+C 22 Sep 01 J.Young: dyn alloc - Use HGRD_DEFN
+C        Change: NPTSPDM =  no. of mepses in PDM file 
+C                N_MEPSES = no. of mepses in windowed domain (could be the same)
+C 03 Dec 01 David Wong: added SAVE statemnt to dynamic allocate variables;
+C                       invoked SUBST_IN_SYN to determine a global value for
+C                       FLAG_SUB with respect to the PE who owns the plume
+C 04 Dec 04 J.Godowitch: improve plume center grid indices
+ 
+      USE HGRD_DEFN           ! horizontal domain specifications ( for NTHIK)
+
+      USE SUBST_MODULES              ! stenex
+!     USE SUBST_UTIL_MODULE          ! stenex
+
+      USE PING_GLOBDIM
+
+      IMPLICIT NONE
+
+C Plume coordinates within gridded domain for the current time
+ 
+C x-coordinate of the lower left side of the plume section
+      INTEGER, ALLOCATABLE, SAVE :: IXLL( : )
+C y-coordinate of the lower left side of the plume section
+      INTEGER, ALLOCATABLE, SAVE :: IYLL( : )
+C z-coordinate of the lower left side of the plume section
+      INTEGER, ALLOCATABLE, SAVE :: IZLL( : )
+C x-coordinate of the upper right side of the plume section
+      INTEGER, ALLOCATABLE, SAVE :: IXUR( : )
+C y-coordinate of the upper right side of the plume section
+      INTEGER, ALLOCATABLE, SAVE :: IYUR( : )
+C z-coordinate of the upper right side of the plume section
+      INTEGER, ALLOCATABLE, SAVE :: IZUR( : )
+
+!     COMMON / PINGI2 / IXLL, IYLL, IZLL, IXUR, IYUR, IZUR
+
+C x-coordinate of the plume section center
+      INTEGER, ALLOCATABLE, SAVE :: IXC( : )
+C y-coordinate of the plume section center
+      INTEGER, ALLOCATABLE, SAVE :: IYC( : )
+C z-coordinate of the plume section center
+!     INTEGER, ALLOCATABLE, SAVE :: IZC( : )
+
+!     COMMON / PINGI3 / IXC, IYC, IZC
+
+C IX lower left side of the plume for this processor
+      INTEGER, ALLOCATABLE, SAVE :: MY_IXLL( : )
+C IY lower left side of the plume for this processor
+      INTEGER, ALLOCATABLE, SAVE :: MY_IYLL( : )
+C IZ lower left side of the plume for this processor
+      INTEGER, ALLOCATABLE, SAVE :: MY_IZLL( : )
+C IX upper right side of the plume for this processor
+      INTEGER, ALLOCATABLE, SAVE :: MY_IXUR( : )
+C IY upper right side of the plume for this processor
+      INTEGER, ALLOCATABLE, SAVE :: MY_IYUR( : )
+C IZ upper right side of the plume for this processor
+      INTEGER, ALLOCATABLE, SAVE :: MY_IZUR( : )
+
+C IX position of the plume center for this processor
+      INTEGER, ALLOCATABLE, SAVE :: MY_IXC( : )
+C IY position of the plume center for this processor
+      INTEGER, ALLOCATABLE, SAVE :: MY_IYC( : )
+
+C this processor indicator
+      LOGICAL, ALLOCATABLE, SAVE :: MY_REGION( : )
+
+C plumes that have been initialized (NPLUMES) for this processor
+      INTEGER :: MY_NPLUMES
+      INTEGER, ALLOCATABLE, SAVE :: MY_PLUMEPTR( : )
+
+C processor containing plume section I
+      INTEGER, ALLOCATABLE, SAVE :: PEC( : )
+C previous processor containing plume section I
+      INTEGER, ALLOCATABLE, SAVE :: OLDPEC( : )
+
+C PDM Plume history indicator
+      INTEGER, ALLOCATABLE, SAVE :: PDMFLAG( : )
+
+!     COMMON / PINGI1 / PDMFLAG
+
+C  Plume Flag Description:
+C      Value      Description
+C        0        non-existent plume
+C        1        new inactive plume (released, but not initialized)
+C        2        new active plume   (to be initialized)
+C        3        old active plume   (has already been initialized)
+C        4        handing over plume
+C        5        dead plume
+
+C  PDMflag Description:
+C      Value      Description
+C        0        newly released plume (at the source, not active yet)
+C        1        new plume after plume rise (Wp, Hp > 0)
+C        2        plume has reached the critical width for initialization
+C        3        normal case (plume inside the domain, all conditions normal)
+C        4        Zi dramatically drops ( Partial Hand-over)
+C       10        night-time condition, total hand-over (night)
+C       11        wind directional shear is more than the critical level
+C       12        wind speed shear is above the critical level
+C       13        final width criterion met
+C      +21        out of domain (positive X-direction)
+C      +22        out of domain (positive Y-direction)
+C      -21        out of domain (negative X-direction)
+C      -22        out of domain (negative Y-direction)
+C     -100        plumes not released yet (initial setting)
+
+      CONTAINS
+
+         SUBROUTINE PLUME_COORD ( DATE, TIME, NRLEASES )
+
+         INTEGER, INTENT( IN )  :: DATE
+         INTEGER, INTENT( IN )  :: TIME
+         INTEGER, INTENT( OUT ) :: NRLEASES
+
+!        INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+         INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+         INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+         INCLUDE SUBST_IOFDESC     ! file header data structure
+         INCLUDE SUBST_FILES_ID  ! file name parameters
+
+         CHARACTER( 200 ) :: MSG
+         CHARACTER( 16 )  :: PNAME = 'PLUME_COORD'
+         CHARACTER( 16 )  :: VNAME
+
+         INTEGER, ALLOCATABLE :: IVARF( :,: )
+         INTEGER, ALLOCATABLE :: IVAR( :,:,: )
+         REAL, ALLOCATABLE    :: RVAR( :,:,: )
+         REAL, ALLOCATABLE :: XC( : ), YC( : )
+         REAL, ALLOCATABLE, SAVE :: XC0( : ), YC0( : )
+
+         INTEGER ALLOCSTAT
+         INTEGER I, J, K, IS, IP
+         INTEGER CDATE, CTIME
+         INTEGER, SAVE :: GHOST   ! for global_to_local_coord
+         INTEGER PXLL, PYLL, PZLL, PXUR, PYUR, PZUR
+!        INTEGER LOCL_XC, LOCL_YC
+         INTEGER, SAVE :: GRID_ISW, GRID_JSW, GRID_INE, GRID_JNE
+
+         INTEGER, SAVE :: NPLUMTOT
+         INTEGER, SAVE :: NRLEASES0 = 0
+         INTEGER, SAVE :: MET_NCOLS = 0
+         INTEGER, SAVE :: MET_NROWS = 0
+
+         LOGICAL OK, IN_SUB, FLAG_SUB
+         LOGICAL, EXTERNAL :: CURRSTEP
+         INTEGER, EXTERNAL :: FINDEX
+         INTEGER, SAVE :: LOGDEV
+         LOGICAL, SAVE :: FIRSTIME = .TRUE.
+
+C-----------------------------------------------------------------------
+
+         IF ( FIRSTIME ) THEN
+            FIRSTIME = .FALSE.
+            LOGDEV = INIT3 ()
+
+C Retrieve info from PDM file
+
+            IF ( .NOT. OPEN3( PDM_PING_1, FSREAD3, PNAME ) ) THEN
+               MSG = 'Could not open PDM_PING_1'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+
+            IF ( .NOT. DESC3( PDM_PING_1 ) ) THEN
+               MSG = 'Could not get PDM_PING_1 header description'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+
+C Get met file horizontal grid dimensions
+
+            IF ( .NOT. OPEN3( MET_CRO_2D, FSREAD3, PNAME ) ) THEN
+               MSG = 'Could not open MET_CRO_2D'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+
+            IF ( .NOT. DESC3( MET_CRO_2D ) ) THEN
+               MSG = 'Could not get MET_CRO_2D header description'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+
+            MET_NCOLS = NCOLS3D
+            MET_NROWS = NROWS3D
+
+            CALL GET_NMEPSES ( )
+
+            NPLUMTOT = N_MEPSES * N_RLEASES
+
+            ALLOCATE ( IXLL( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** IXLL Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( IXLL, -999 )
+
+            ALLOCATE ( IYLL( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** IYLL Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( IYLL, -999 )
+
+            ALLOCATE ( IZLL( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** IZLL Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( IZLL, -999 )
+
+            ALLOCATE ( IXUR( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** IXUR Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( IXUR, -999 )
+
+            ALLOCATE ( IYUR( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** IYUR Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( IYUR, -999 )
+
+            ALLOCATE ( IZUR( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** IZUR Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( IZUR, -999 )
+
+            ALLOCATE ( IXC( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** IXC Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( IXC, -999 )
+
+            ALLOCATE ( IYC( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** IYC Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( IYC, -999 )
+
+            ALLOCATE ( MY_IXLL( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** MY_IXLL Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( MY_IXLL, -999 )
+
+            ALLOCATE ( MY_IYLL( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** MY_IYLL Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( MY_IYLL, -999 )
+
+            ALLOCATE ( MY_IZLL( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** MY_IZLL Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( MY_IZLL, -999 )
+
+            ALLOCATE ( MY_IXUR( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** MY_IXUR Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( MY_IXUR, -999 )
+
+            ALLOCATE ( MY_IYUR( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** MY_IYUR Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( MY_IYUR, -999 )
+
+            ALLOCATE ( MY_IZUR( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** MY_IZUR Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( MY_IZUR, -999 )
+
+            ALLOCATE ( MY_IXC( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** MY_IXC Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( MY_IXC, -999 )
+
+            ALLOCATE ( MY_IYC( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** MY_IYC Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( MY_IYC, -999 )
+
+            ALLOCATE ( MY_REGION( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** MY_REGION Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            DO I = 1, NPLUMTOT
+               MY_REGION( I ) = .FALSE.
+               END DO
+
+            ALLOCATE ( MY_PLUMEPTR( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** MY_PLUMEPTR Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( MY_PLUMEPTR, -1 )
+
+            ALLOCATE ( PEC( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** PEC Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( PEC, -999 )
+
+            ALLOCATE ( OLDPEC( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** OLDPEC Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( OLDPEC, -888 )
+
+            ALLOCATE ( PDMFLAG( NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** PDMFLAG Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( PDMFLAG, -100 )
+
+            ALLOCATE ( XC0( N_RLEASES * NPTSPDM ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** XC0 Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( XC0, -888.8 )
+
+            ALLOCATE ( YC0( N_RLEASES * NPTSPDM ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** YC0 Memory allocation failed'
+               CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( YC0, -888.8 )
+
+            GHOST = NTHIK
+
+            GRID_ISW = INT ( ( GRID_XSW - XORIG_PDM ) / XCELL3D )
+            GRID_JSW = INT ( ( GRID_YSW - YORIG_PDM ) / YCELL3D )
+            GRID_INE = INT ( ( GRID_XNE - XORIG_PDM ) / XCELL3D ) + 1
+            GRID_JNE = INT ( ( GRID_YNE - YORIG_PDM ) / YCELL3D ) + 1
+
+            write( logdev,* ) '@@@@ Plume_Coord: ' //
+     &                        ' grid_xSW, grid_ySW, grid_xNE, grid_yNE: ',
+     &                          GRID_ISW, GRID_JSW, GRID_INE, GRID_JNE 
+
+            END IF   ! FIRSTIME
+
+         OK = CURRSTEP ( DATE, TIME, PDM_SDATE, PDM_STIME, PDM_TSTEP,
+     &                   CDATE, CTIME )
+         IF ( .NOT. OK ) CALL M3ERR ( PNAME, DATE, TIME,
+     &                               'Cannot get current step', .TRUE. )
+
+!        write( logdev,* ) '@@@@ Plume_Coord: DATE,CDATE, TIME,CTIME ',
+!    &                                     date, cdate, time, ctime
+
+         ALLOCATE ( IVARF( NPTSPDM,N_RLEASES ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** IVARF Memory allocation failed'
+            CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+            END IF
+
+         VNAME = 'PLUME_FLAG'
+         OK = READ3( PDM_PING_1, VNAME, ALLAYS3, CDATE, CTIME, IVARF )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, CDATE, CTIME, VNAME, .TRUE. )
+
+C calculate the current number of hourly releases
+
+         I = 1
+         DO WHILE ( IVARF( 1,I ) .NE. -100 .AND. I .LE. N_RLEASES )
+            I = I + 1
+            END DO
+
+         NRLEASES = I - 1
+
+!        write( logdev,* ) '@@@@ Plume_Coord: NRLEASES ', nrleases
+
+C Return if there are no plumes yet (no releases)
+
+         IF ( NRLEASES .EQ. 0 ) THEN
+            DEALLOCATE ( IVARF )
+            RETURN
+            END IF
+
+         ALLOCATE ( IVAR( NPTSPDM,N_RLEASES,2 ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** IVAR Memory allocation failed'
+            CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+            END IF
+
+         ALLOCATE ( RVAR( NPTSPDM,N_RLEASES,2 ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** RVAR Memory allocation failed'
+            CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+            END IF
+
+         ALLOCATE ( XC( NRLEASES * NPTSPDM ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** XC Memory allocation failed'
+            CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+            END IF
+         CALL SUBST_INIT_ARRAY( XC, -999.9 )
+
+         ALLOCATE ( YC( NRLEASES * NPTSPDM ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** YC Memory allocation failed'
+            CALL M3ERR ( PNAME, DATE, TIME, MSG, .TRUE.)
+            END IF
+         CALL SUBST_INIT_ARRAY( YC, -999.9 )
+
+C Read the plume ID, grid point for lower left corner of the plume,
+C the grid point for upper right corner of the plume, and the PDM plume flag
+ 
+         VNAME = 'ID_LL'
+         OK = READ3( PDM_PING_1, VNAME, ALLAYS3, CDATE, CTIME, IVAR( 1,1,1 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, CDATE, CTIME, VNAME, .TRUE. )
+
+         VNAME = 'ID_RU'
+         OK = READ3( PDM_PING_1, VNAME, ALLAYS3, CDATE, CTIME, IVAR( 1,1,2 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, CDATE, CTIME, VNAME, .TRUE. )
+
+         VNAME = 'XC_PLUME'
+         OK = READ3( PDM_PING_1, VNAME, ALLAYS3, CDATE, CTIME, RVAR( 1,1,1 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, CDATE, CTIME, VNAME, .TRUE. )
+
+         VNAME = 'YC_PLUME'
+         OK = READ3( PDM_PING_1, VNAME, ALLAYS3, CDATE, CTIME, RVAR( 1,1,2 ) )
+         IF ( .NOT. OK ) CALL M3ERR( PNAME, CDATE, CTIME, VNAME, .TRUE. )
+
+C Get plume section center coordinates in meters
+         IP = 0
+         DO K = 1, NRLEASES
+            DO J = 1, NPTSPDM
+               IP = IP + 1
+               XC( IP ) = RVAR( J,K,1 )
+               YC( IP ) = RVAR( J,K,2 )
+               END DO
+            END DO
+
+         IF ( NRLEASES .GT. NRLEASES0 ) THEN
+            IP = NRLEASES0 * NPTSPDM
+            DO K = 1, NRLEASES - NRLEASES0
+               DO J = 1, NPTSPDM
+                  IP = IP + 1
+                  XC0( IP ) = XC( IP )
+                  YC0( IP ) = YC( IP )
+                  END DO
+               END DO
+            END IF
+
+!     write( logdev,3003 ) NRLEASES, NRLEASES0
+3003  format( 1x, '>0> NRLEASES, NRLEASES0:', 2i4 )
+
+         NRLEASES0 = NRLEASES
+
+C Set PING variables:
+C K is the release number, J is the source number and I is the plume number
+
+         MY_NPLUMES = 0
+         I = 0
+         IP = 0
+         DO K = 1, NRLEASES
+            DO J = 1, NPTSPDM
+               IP = IP + 1
+               IS = FINDEX ( J, N_MEPSES, SUB_SOURCE )
+
+               IF ( IS .GT. 0 ) THEN !can't handle plumes moving INTO subdomain
+                  I = I + 1
+
+!     write( logdev,3005 ) I, IS
+3005  format( 1x, '>0> plume:', i3, 1x, 'source:', i3 )
+
+C Get plume section coordinates (IXLL,IYLL,IZLL,IXUR,IYUR,IZUR,IXC,IYC)
+                  CALL MAP1TO3( IVAR( J,K,1 ),
+     &                          MET_NCOLS, PXLL, MET_NROWS, PYLL, PZLL )
+                  CALL MAP1TO3( IVAR( J,K,2 ),
+     &                          MET_NCOLS, PXUR, MET_NROWS, PYUR, PZUR )
+
+C if plume has moved wholly out of subdomain, fake it into thinking PDM file no
+C longer changing
+                  IF ( PXLL .LE. GRID_ISW .AND.
+     &                 PXUR .LE. GRID_ISW ) THEN
+                     PXLL = GRID_ISW + 1
+                     PXUR = GRID_ISW + 1
+                     PDMFLAG( I ) = -21
+                     WRITE( LOGDEV,1003 ) I, 'west'
+                     END IF
+
+                  IF ( PYLL .LE. GRID_JSW .AND.
+     &                 PYUR .LE. GRID_JSW ) THEN
+                     PYLL = GRID_JSW + 1
+                     PYUR = GRID_JSW + 1
+                     PDMFLAG( I ) = -22
+                     WRITE( LOGDEV,1003 ) I, 'south'
+                     END IF
+
+                  IF ( PXLL .GE. GRID_INE .AND.
+     &                 PXUR .GE. GRID_INE ) THEN
+                     PXLL = GRID_INE - 1
+                     PXUR = GRID_INE - 1
+                     PDMFLAG( I ) = 21
+                     WRITE( LOGDEV,1003 ) I, 'east'
+                     END IF
+
+                  IF ( PYLL .GE. GRID_JNE .AND.
+     &                 PYUR .GE. GRID_JNE ) THEN
+                     PYLL = GRID_JNE - 1
+                     PYUR = GRID_JNE - 1
+                     PDMFLAG( I ) = 22
+                     WRITE( LOGDEV,1003 ) I, 'north'
+                     END IF
+
+                  FLAG_SUB = ABS ( PDMFLAG( I ) ) .NE. 21 .AND.
+     &                       ABS ( PDMFLAG( I ) ) .NE. 22 .AND.
+     &                             PDMFLAG( I )   .NE. -3
+
+                  CALL SUBST_IN_SYN ( FLAG_SUB, PEC( I ) )
+
+!     if ( .not. FLAG_SUB ) then
+!        write( logdev,3007 ) FLAG_SUB, IP, I, IS,
+!    &                        PXLL, PYLL, PZLL, PXUR, PYUR, PZUR 
+3007  format(  1x, '>@@> Flag_Sub:', l2, 2x, 'PDM plume:', i3,
+     &         1x, 'local plume:', i3, 1x, 'source:', i3,
+     &       / 7x, 'PXll,  PYll,  PZll,  PXur,  PYur,  PZur: ', 6I5 )
+!        end if
+
+C determine if the center of the plume is in the subdomain as an open set
+
+!                 IN_SUB = LOCL_XC .GT. GRID_ISW .AND.
+!    &                     LOCL_YC .GT. GRID_JSW .AND.
+!    &                     LOCL_XC .LT. GRID_INE .AND.
+!    &                     LOCL_YC .LT. GRID_JNE
+
+C determine if any part of the plume is in the subdomain as an open set
+
+                  IN_SUB = PXLL .GT. GRID_ISW .OR.
+     &                     PXUR .GT. GRID_ISW .AND.
+     &                     PYLL .GT. GRID_JSW .OR.
+     &                     PYUR .GT. GRID_JSW .AND.
+     &                     PXLL .LT. GRID_INE .OR.
+     &                     PXUR .LT. GRID_INE .AND.
+     &                     PYLL .LT. GRID_JNE .OR.
+     &                     PYUR .LT. GRID_JNE
+
+!     if ( .not. IN_SUB ) then
+!        write( logdev,3011 ) IN_SUB, IP, I, IS,
+!    &                        PXLL, PXUR, PYLL, PYUR, GRID_ISW, GRID_JSW
+3011     format(  1x, '>>> In_Sub:', l2, 2x, 'IP:', i3,
+     &            1x, 'local plume:', i3, 1x, 'source:', i3,
+     &          / 7x, 'PXLL, PXUR, PYLL, PYUR, GRID_ISW, GRID_JSW: ', 6I5 )
+!        end if
+
+                  IF ( IN_SUB ) THEN
+
+C the calculation assumes the left side and the bottom of the grid is closed,
+C and the right side and the top is open
+
+                     IXLL( I ) = PXLL - GRID_ISW
+                     IYLL( I ) = PYLL - GRID_JSW
+                     IZLL( I ) = PZLL
+                     IXUR( I ) = PXUR - GRID_ISW
+                     IYUR( I ) = PYUR - GRID_JSW
+                     IZUR( I ) = PZUR
+
+                     MY_IZLL( I ) = IZLL( I )
+                     MY_IZUR( I ) = IZUR( I )
+
+!     if ( iyll( i ) .le. 0 .or. iyur( i ) .le. 0 ) then
+!        write( logdev,3017 ) ip, i, is, iyll( i ), iyur( i )
+3017  format(  1x, '>-> In subdomain:', 2x, 'IP:', i3,
+     &         1x, 'I:', i3, 1x, 'IS:', i3,
+     &         1x, 'IYLL,IYUR:', 2i5 )
+!        end if
+
+C 12/04 Use the xc and yc coords to compute the plume center grid position
+!                    IXC( I ) = ( IXLL( I ) + IXUR( I ) ) / 2
+!                    IYC( I ) = ( IYLL( I ) + IYUR( I ) ) / 2
+                     IXC( I ) = INT ( XC( I ) / XCELL3D ) + 1 - GRID_ISW
+                     IYC( I ) = INT ( YC( I ) / YCELL3D ) + 1 - GRID_JSW
+
+!     write( logdev,3021 ) I, CDATE, CTIME, IXLL(I), IYLL(I), IXC(I), IYC(I),
+!    &                        IXUR(I), IYUR(I), XC(I), YC(I) 
+3021  format( 1x, i4, 2(1x, i8), 2x, 6(i3, 1x), 2(f10.0) )
+
+C Determine if plume section I belongs to this processor and get the processor
+C ID (PEC)
+
+                     MY_REGION( I ) =
+     &                          SUBST_MY_REGION ( IXC( I ), IYC( I ), PEC( I ) )
+
+                     IF ( MY_REGION( I ) ) THEN
+
+                        CALL SUBST_GLOBAL_TO_LOCAL_COORD ( IXLL( I ), IYLL( I ),
+     &                                               MY_IXLL( I ), MY_IYLL( I ),
+     &                                                  GHOST )
+                        CALL SUBST_GLOBAL_TO_LOCAL_COORD ( IXUR( I ), IYUR( I ),
+     &                                               MY_IXUR( I ), MY_IYUR( I ),
+     &                                                  GHOST )
+
+                        CALL SUBST_GLOBAL_TO_LOCAL_COORD ( IXC( I ), IYC( I ),
+     &                                               MY_IXC( I ), MY_IYC( I ),
+     &                                                  GHOST )
+
+                        MY_NPLUMES = MY_NPLUMES + 1
+                        MY_PLUMEPTR( MY_NPLUMES ) = I
+
+C protect PDMFLAG previously set locally (plume moved out of subdomain or pe)
+                        IF ( FLAG_SUB ) THEN
+                           PDMFLAG( I ) = IVARF( J,K )
+
+                           IF ( IXC( I ) .LE. 1 .AND.
+     &                           XC( IP ) .LT. XC0( IP ) ) THEN
+                              PDMFLAG( I ) = -21
+                              WRITE( LOGDEV,1005 ) I, 'west'
+                           ELSE IF ( IYC( I ) .LE. 1 .AND.
+     &                                YC( IP ) .LT. YC0( IP ) ) THEN
+                              PDMFLAG( I ) = -22
+                              WRITE( LOGDEV,1005 ) I, 'south'
+                           ELSE IF ( IXC( I ) .GE. GL_NCOLS .AND.
+     &                                XC( IP ) .GT. XC0( IP ) ) THEN
+                              PDMFLAG( I ) = 21
+                              WRITE( LOGDEV,1005 ) I, 'east'
+                           ELSE IF ( IYC( I ) .GE. GL_NROWS .AND.
+     &                                YC( IP ) .GT. YC0( IP ) ) THEN
+                              PDMFLAG( I ) = 22
+                              WRITE( LOGDEV,1005 ) I, 'north'
+                           END IF
+
+                        END IF
+
+!     write( logdev,3033 ) I, IS, MY_PLUMEPTR( MY_NPLUMES ),
+!    &                     PEC( I ), OLDPEC( I ),
+!    &                     MY_IXC( I ), MY_IYC( I ),
+!    &                     IP, XC( IP ), YC( IP ), XC0( IP ), YC0( IP )
+3033  format(  1x, '>+> In my_region -- plume:', i3, 2x, 'source:', i3,
+     &         2x, 'my_plumeptr:', i3,
+     &       / 1x, '>=> pec,oldpec:', 2i5,
+     &         3x, 'MY_IXC,MY_IYC:', 2i3,
+     &       / 1x, '>~> IP, XC,YC:', i3, 1x, 2f12.3,
+     &         3x, 'XC0,YC0:', 2f12.3 )
+
+                        XC0( IP ) = XC( IP )
+                        YC0( IP ) = YC( IP )
+
+                        END IF   ! MY_REGION
+
+                     END IF   ! plume still within subdomain
+
+                  END IF   ! source within subdomain
+
+               END DO   ! J
+
+            END DO   ! K
+
+         DEALLOCATE ( IVARF )
+         DEALLOCATE ( IVAR )
+         DEALLOCATE ( RVAR )
+         DEALLOCATE ( XC )
+         DEALLOCATE ( YC )
+
+         RETURN
+
+1003     FORMAT( 5X, 'Plume', I4, ' is out of subdomain ', A )
+1005     FORMAT( 5X, 'Plume', I4, ' has moved out of subdomain ', A )
+
+         CONTAINS
+
+            SUBROUTINE MAP1TO3 ( POINT, NX, X, NY, Y, Z )
+
+            INTEGER, INTENT( IN )  :: POINT, NX, NY
+            INTEGER, INTENT( OUT ) :: X, Y, Z
+            INTEGER :: NXNY, T
+
+            NXNY = NX * NY
+            T = 1 + MOD( POINT - 1, NXNY )
+            Z = 1 + ( POINT - T ) / NXNY
+            X = 1 + MOD( T - 1, NX )
+            Y = 1 + ( T - X ) / NX
+
+!           Z = 1 + ( POINT - 1 ) / NXNY   ! Alternate method
+!           T = POINT - NXNY * ( Z - 1 )   ! Alternate method
+!           Y = 1 + ( T - 1 ) / NX         ! Alternate method
+!           X = T - NX * ( Y - 1 )         ! Alternate method
+
+            RETURN
+
+            END SUBROUTINE MAP1TO3
+
+         END SUBROUTINE PLUME_COORD
+
+      END MODULE PLUME_LOC
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

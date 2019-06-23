@@ -1,0 +1,901 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/driver/pdm/pdmmain.F,v 1.16 2005/08/29 20:31:12 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+      SUBROUTINE PDMMAIN( JDATE, JTIME, IDTSEC, NHRS, IHRM, DX, DY,
+     &                    MMS, FACTC, DDIRC, DSPDC, INITC, NREL,
+     &                    NOA, MTE, IRT )
+
+C This PDM code has the ability to treat multiple releases of 
+C multiple sources simultaneously. 
+C This program is the combination of PDMV5 and parameterization of
+C lateral dispersion(sigmaY) ; MM input
+C Its dynamic steps:
+C 1. First , determine plume rise by PR, and initial vertical
+C    plume spread(top & bottom) by PRSPRD , take them as initial conditions,
+C 2. Then , in sequential time steps of IDTSEC , calculations are done
+C    for
+C       - vertical spread by VSPRD
+C       - plume travel distance by MOVE
+C       - horizontal spread by YPARAM 
+C Related information
+C 1.  Vertical dispersion is from an empirical parameterization(Gillani)
+C 2.  Horizontal dispersion is dervied from empirical/statistical formulas
+C 3.  Input meteorological data are from MCIP2 output files.
+
+C ...............................................................
+C -- NLAYS : vertical data levels,                             .
+C -- MMS   : total # of MEPSEs
+C -- MT    : number of simulation hours >= MTSIM                  . 
+C ...............................................................
+
+      USE HGRD_DEFN             ! horizontal domain specifications
+      USE VGRD_DEFN
+      
+      IMPLICIT NONE
+
+C  Include files
+
+!     INCLUDE SUBST_HGRD_ID
+!     INCLUDE SUBST_VGRD_ID
+      INCLUDE SUBST_IOPARMS
+      INCLUDE SUBST_IOFDESC
+      INCLUDE SUBST_IODECL
+      INCLUDE SUBST_CONST
+      INCLUDE 'PLUME.EXT'
+      
+C  Arguments
+      INTEGER JDATE, JTIME, IDTSEC, NHRS, IHRM
+      INTEGER MMS, NREL, NOA, MTE, IRT( 25 )
+      REAL DX, DY, FACTC, DDIRC, DSPDC, INITC
+
+C  Declare the arrays and variables.
+      CHARACTER( 96 ) :: XMSG = ' '
+      CHARACTER( 16 ) :: PNAME = 'PDMMAIN'
+        
+      INTEGER SEC2TIME
+      INTEGER NS, IT, IR, JFLAG, K, MTSIM, ITT
+      INTEGER ALLOCSTAT
+
+      REAL, ALLOCATABLE :: XCN    ( :,: )
+      REAL, ALLOCATABLE :: YCN    ( :,: )
+      REAL, ALLOCATABLE :: ZCN    ( :,: )
+      REAL, ALLOCATABLE :: SIGY   ( :,: )
+      REAL, ALLOCATABLE :: XDIST  ( :,: )
+      REAL, ALLOCATABLE :: TOP    ( :,: )
+      REAL, ALLOCATABLE :: BOT    ( :,: )
+      REAL, ALLOCATABLE :: ANGL   ( :,: )
+      REAL, ALLOCATABLE :: DELBOT ( :,: )
+      REAL, ALLOCATABLE :: DELMIX ( :,: )
+      REAL, ALLOCATABLE :: SIGY0  ( :,: )
+      REAL, ALLOCATABLE :: SIGZ0  ( :,: )
+      REAL, ALLOCATABLE :: WDTH   ( :,: )
+      REAL, ALLOCATABLE :: DPTH   ( :,: )
+      REAL, ALLOCATABLE :: UI     ( :,: )
+      REAL, ALLOCATABLE :: DDIR   ( :,: )
+      REAL, ALLOCATABLE :: DSPD   ( :,: )
+      REAL, ALLOCATABLE :: SIGYT  ( :,: )
+      REAL, ALLOCATABLE :: SIGYSH ( :,: )
+      REAL, ALLOCATABLE :: ZL3    ( :,:,: )
+      REAL, ALLOCATABLE :: RELSTEP( :,: )
+      REAL, ALLOCATABLE :: TLAG   ( :,: )
+      REAL, ALLOCATABLE :: XCNO   ( :,: )
+      REAL, ALLOCATABLE :: YCNO   ( :,: )
+      REAL, ALLOCATABLE :: WDTHDT ( :,: )
+      REAL, ALLOCATABLE :: DPTHDT ( :,: )
+      REAL, ALLOCATABLE :: DMIXDT ( :,: )
+      
+      REAL SPRFAC( MS ), SZ0FAC( MS )
+      REAL VM( NROWS,NLAYS+4,10,NCOLS ), CRO_LAT( NCOLS,NROWS )
+      REAL PSFC( NCOLS,NROWS ), TSFC( NCOLS,NROWS ), GAREA
+      REAL ZL2( MS,NLAYS ), ZF( MS,0:NLAYS )
+      REAL WDTHCRT, TSTEP, DELZ
+      REAL BASECL, WATRCL, HTMIX, PAREA, HSIZE
+
+C  Arrays for the previous PDM file data arrays
+      REAL, ALLOCATABLE    :: PDMDATA(  :,:,: )
+      INTEGER, ALLOCATABLE :: IPDMDATA(  :,:,: )
+        
+C  Allocate arrays for the current simulation PDM data
+      REAL, ALLOCATABLE :: PDMOUT( :,:,: )
+
+      INTEGER, ALLOCATABLE :: IPDMOUT( :,:,: )
+      INTEGER, ALLOCATABLE :: PLMID  ( :,: )
+      INTEGER, ALLOCATABLE :: ITOP   ( :,: )
+      INTEGER, ALLOCATABLE :: IBOT   ( :,: )
+      INTEGER, ALLOCATABLE :: IPLUM  ( :,: )
+      INTEGER, ALLOCATABLE :: JPLUM  ( :,: )
+      INTEGER, ALLOCATABLE :: IPLMFLG( :,: )
+      INTEGER, ALLOCATABLE :: IDLL   ( :,: )
+      INTEGER, ALLOCATABLE :: IDRU   ( :,: )
+      
+      INTEGER NRINT
+      INTEGER ISTKFLG( MS )
+      INTEGER IDTIME, MT1, IRB, IRE, ITB, NN
+      INTEGER NNS, ISTACK( MS ), JSTACK( MS ), MGRID( MS )
+      INTEGER LOGDEV
+C .................................................................
+!     COMMON /MET/ CRO_LAT, PSFC, TSFC
+
+      INTEGER MEPS( MS )
+      REAL    DS( MS ), TS( MS ), VS( MS ), HS( MS ), QS( MS )
+      COMMON /STK/ MEPS, DS, TS, VS, HS, QS
+
+      INTEGER IMETHD, IDPLUM, IPARTFLG, IOLDFIL
+      COMMON /MTH/ IMETHD, IDPLUM, IPARTFLG, IOLDFIL
+
+      INTEGER ICHUST, ICHUSY, ISHEAR
+      COMMON /SIG/ ICHUST, ICHUSY, ISHEAR
+C .................................................................
+
+C-----------------------------------------------------------------------
+      LOGDEV = INIT3()
+
+C  ALLOCATE arrays
+      ALLOCATE ( PDMDATA( MMS,NREL,NVARPDM ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating PDMDATA'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( IPDMDATA( MMS,NREL,7 ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating IPDMDATA'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      ALLOCATE ( PDMOUT( MMS,MTE,NVARPDM ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating PDMOUT'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( IPDMOUT( MMS,MTE,4 ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating IPDMOUT'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      
+      ALLOCATE ( XCN( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating XCN'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( YCN( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating YCN'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( ZCN( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating ZCN'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( SIGY( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating SIGY'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( XDIST( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating XDIST'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( TOP( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating TOP'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( BOT( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating BOT'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( ANGL( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating ANGL'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( DELBOT( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating DELBOT'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( DELMIX( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating DELMIX'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( SIGY0( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating SIGY0'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( SIGZ0( MS,MTE ), STAT = ALLOCSTAT )
+      IF (ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating SIGZ0'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( WDTH( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating WDTH'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( DPTH( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating DPTH'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( UI( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating UI'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( DDIR( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating DDIR'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( DSPD( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating DSPD'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( SIGYT( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating SIGYT'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( SIGYSH( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating SIGYSH'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( ZL3( MS,MTE,NLAYS ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating ZL3'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( RELSTEP( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating RELSTEP'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( TLAG( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating TLAG'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( XCNO( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating XCNO'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( YCNO( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating YCNO'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( WDTHDT( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating WDTHDT'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( DPTHDT( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating DPTHDT'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( DMIXDT( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating DMIXDT'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( PLMID( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating PLMID'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( ITOP( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating ITOP'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( IBOT( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating IBOT'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( IPLUM( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating IPLUM'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( JPLUM( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating JPLUM'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( IPLMFLG( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating IPLMFLG'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( IDLL( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating IDLL'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      ALLOCATE ( IDRU( MS,MTE ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating IDRU'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      MTSIM = NHRS * NSTEP + 1
+      WDTHCRT = FACTC * DX
+      GAREA = DX * DY
+      
+C  Retrieve the previous PDM file data if continuation case.
+      IF ( IOLDFIL .EQ. 1 ) THEN
+         CALL PDMGETDAT( JDATE, JTIME, MMS, NREL, IPDMDATA, PDMDATA )
+      END IF
+      
+      MT1 = NOA + 1
+      
+      WRITE( LOGDEV,91001 ) MMS, NOA, MTE
+      WRITE( LOGDEV,* ) ( IRT( NN ), NN = 1, NOA )
+
+C  Initialize output arrays.
+      PDMOUT = 0.0
+      IPDMOUT = 0.0
+
+C  Get stack data and determine initial stack/plume locations.
+
+      CALL STACKIN ( JDATE, JTIME, SPRFAC, SZ0FAC, HSIZE, XCN, YCN,
+     &               IPLUM, JPLUM, MT1, MTE, PLMID )
+
+C  Set MEPSE stack location grid indices.
+      DO NS = 1, MMS
+         ISTACK( NS ) = IPLUM( NS,MT1 )
+         JSTACK( NS ) = JPLUM( NS,MT1 )
+         MGRID( NS ) = NS
+         IF ( NS .GT. 1 ) THEN
+            IF ( ISTACK( NS ) .EQ. ISTACK( NS-1 ) .AND.
+     &           JSTACK( NS ) .EQ. JSTACK( NS-1 ) ) THEN
+               MGRID( NS ) = MGRID( NS-1 )
+               WRITE( LOGDEV,* ) ' MEPSES in same grid cell:', NS, NS-1,
+     &                       ISTACK( NS ), JSTACK( NS )
+            END IF
+         END IF
+         WRITE( LOGDEV,* ) 'NS, MGRID( NS ) = ', NS, MGRID( NS )
+      END DO
+
+C  Set the parameters for previous plume sections of each mepse
+      IF ( IOLDFIL .EQ. 1 ) THEN
+         IRB = IRT( 1 )
+         IRE = IRT( NOA )
+         ITB = 0
+      
+         DO 93 IT = IRB, IRE
+            ITB = ITB + 1
+         
+            DO 91 NS = 1, MMS
+               XCN    ( NS,ITB ) = PDMDATA( NS,IT,1 ) * 0.001      ! m to km
+               YCN    ( NS,ITB ) = PDMDATA( NS,IT,2 ) * 0.001
+               XCNO   ( NS,ITB ) = XCN( NS,ITB )
+               YCNO   ( NS,ITB ) = YCN( NS,ITB )
+C  Determine the grid index positions of the plume section.
+               IPLUM  ( NS,ITB ) = INT( XCN( NS,ITB ) / ( DX * 0.001 ) ) + 1
+               JPLUM  ( NS,ITB ) = INT( YCN( NS,ITB ) / ( DY * 0.001 ) ) + 1
+               ZCN    ( NS,ITB ) = PDMDATA( NS,IT,3 )
+               WDTH   ( NS,ITB ) = PDMDATA( NS,IT,4 )
+               SIGY   ( NS,ITB ) = PDMDATA( NS,IT,4 ) / SZ0FAC( NS )
+               IF ( IT .EQ. IRE ) SIGY0( NS,ITB ) = SIGY( NS,ITB )
+               DPTH   ( NS,ITB ) = PDMDATA( NS,IT,5 )
+!              HTMIX  ( NS,ITB ) = PDMDATA( NS,IT,6 )
+               ANGL   ( NS,ITB ) = PDMDATA( NS,IT,7 )
+               WDTHDT ( NS,ITB ) = PDMDATA( NS,IT,8 )
+               DPTHDT ( NS,ITB ) = PDMDATA( NS,IT,9 )
+               DMIXDT ( NS,ITB ) = PDMDATA( NS,IT,10 )
+               DDIR   ( NS,ITB ) = PDMDATA( NS,IT,11 )
+               DSPD   ( NS,ITB ) = PDMDATA( NS,IT,12 )
+               UI     ( NS,ITB ) = PDMDATA( NS,IT,13 )
+               RELSTEP( NS,ITB ) = PDMDATA( NS,IT,14 )
+               TLAG   ( NS,ITB ) = PDMDATA( NS,IT,15 )
+               XDIST  ( NS,ITB ) = PDMDATA( NS,IT,16 )
+               TOP    ( NS,ITB ) = ZCN( NS,ITB ) + 0.5 * DPTH( NS,ITB )
+               BOT    ( NS,ITB ) = ZCN( NS,ITB ) - 0.5 * DPTH( NS,ITB )
+! 12/03        IF ( IT .EQ. IRE ) SIGZ0( NS,ITB ) = ( TOP( NS,ITB ) - BOT( NS,ITB ) ) / SZ0FAC( NS )
+               SIGZ0  ( NS,ITB ) = ( TOP( NS,ITB ) - BOT( NS,ITB ) ) / SZ0FAC( NS ) ! all need SIGZ0!
+               DELMIX ( NS,ITB ) = 0.0      !  Set to zero for now
+               WRITE( LOGDEV,* ) 'Old Segs:', ITB, NS, IPLUM( NS,ITB ), JPLUM( NS,ITB ),
+     &                                        XDIST( NS,ITB ), BOT( NS,ITB ), TOP( NS,ITB ),
+     &                                        SIGZ0( NS,ITB ), TLAG( NS,ITB )
+               PLMID  ( NS,ITB ) = IPDMDATA( NS,IT,1 )
+               IDLL   ( NS,ITB ) = IPDMDATA( NS,IT,2 )
+               IDRU   ( NS,ITB ) = IPDMDATA( NS,IT,3 )
+               IPLMFLG( NS,ITB ) = IPDMDATA( NS,IT,4 )
+               IPDMOUT( NS,ITB,1 ) = PLMID( NS,ITB )
+               IPDMOUT( NS,ITB,2 ) = IPLMFLG( NS,ITB )
+               IPDMOUT( NS,ITB,3 ) = IDLL( NS,ITB )
+               IPDMOUT( NS,ITB,4 ) = IDRU( NS,ITB )
+91          CONTINUE
+93       CONTINUE
+
+      END IF   ! IOLDFIL = 1
+
+C  ------- Initialize values -------
+
+      DO NS = 1, MMS
+C SET ISTKFLG flag indicator of relative plume position on grid.
+C-- stack out of X range   : ISTKFLG( NS ) = -21,21
+C-- stack out of Y range   : ISTKFLG( NS ) = -22,22
+C-- else, normal case      : ISTKFLG( NS ) = 0
+         ISTKFLG( NS ) = 0
+         IF ( IPLUM( NS,MT1 ) .GT. NCOLS ) ISTKFLG( NS ) =  21
+         IF ( IPLUM( NS,MT1 ) .LE. 0 )     ISTKFLG( NS ) = -21
+         IF ( JPLUM( NS,MT1 ) .GT. NROWS ) ISTKFLG( NS ) =  22
+         IF ( JPLUM( NS,MT1 ) .LE. 0 )     ISTKFLG( NS ) = -22
+      END DO
+
+      DO IT = MT1, MTE
+         DO NS = 1, MMS
+!           IPLMFLG( NS,IT ) = ISTKFLG( NS )
+            IPLMFLG( NS,IT ) = -100 ! plume flag value before plume is released
+            WDTH   ( NS,IT ) = 0.0
+            DPTH   ( NS,IT ) = 0.0
+            XDIST  ( NS,IT ) = 0.0
+            DELMIX ( NS,IT ) = 0.0
+            SIGY   ( NS,IT ) = 0.0
+            SIGZ0  ( NS,IT ) = 0.0
+            WDTHDT ( NS,IT ) = 0.0
+            DPTHDT ( NS,IT ) = 0.0
+            DMIXDT ( NS,IT ) = 0.0 
+            TOP    ( NS,IT ) = HS( NS )
+            BOT    ( NS,IT ) = HS( NS )
+            IDLL   ( NS,IT ) = 0
+            IDRU   ( NS,IT ) = 0
+            XCNO   ( NS,IT ) = XCN( NS,IT )
+            YCNO   ( NS,IT ) = YCN( NS,IT )
+            ZCN    ( NS,IT ) = -1.0
+            ANGL   ( NS,IT ) = 0.0
+            DDIR   ( NS,IT ) = -99.0
+            DSPD   ( NS,IT ) = -99.0
+            UI     ( NS,IT ) = 0.0
+            TLAG   ( NS,IT ) = -1.0
+            RELSTEP( NS,IT ) = 0.0
+            IPDMOUT( NS,IT,1 ) = 0
+            IPDMOUT( NS,IT,2 ) = -100
+            IPDMOUT( NS,IT,3 ) = 0
+            IPDMOUT( NS,IT,4 ) = 0
+         END DO
+      END DO
+
+      IDTIME = SEC2TIME( IDTSEC )
+
+C  Determine interval of releases relative to time steps per hour
+      NRINT = NSTEP / NRRATE
+      WRITE( LOGDEV,* ) 'NRINT = ', NRINT,' NSTEP = ',NSTEP, ' NRRATE = ', NRRATE
+
+C--------------------------Main Loop---------------------------
+      DO 540 ITT = 1, MTSIM
+
+         IF ( IOLDFIL .EQ. 0 ) THEN
+!old        IT = ( ITT - 1 ) / NSTEP + 1
+            IT = ( ITT - 1 ) / NRINT + 1
+         ELSE
+!old        IT = ( ITT - 1 ) / NSTEP + NOA
+            IT = ( ITT - 1 ) / NRINT + NOA
+         END IF
+         WRITE( LOGDEV,* ) '--- New Time Step: ITT, IT, NOA =', ITT, IT, NOA
+
+C  Set the plume flag for the new released plume sections,
+C  except for those from the previous file where flag already set
+
+         IF ( ITT .EQ. 1 .AND. IOLDFIL .EQ. 1 ) GO TO 201 
+!old     IF ( MOD( ITT,NSTEP ) .EQ. 1 .OR. NSTEP .EQ. 1 ) THEN
+         IF ( MOD( ITT,NRINT ) .EQ. 1 .OR. NRINT .EQ. 1 ) THEN
+            DO NS = 1, MMS
+               IPLMFLG( NS,IT ) = ISTKFLG( NS )
+            END DO
+         END IF
+201      CONTINUE
+
+C  Retrieve the meteorological data for sub-hour time.
+!        CALL METIN( MMS, JDATE, JTIME, IDTSEC, -IHRM, VM, IT, ZF,
+!    &               IPLUM, JPLUM, ZL3, DELMIX, IPLMFLG, ITT, MTE)
+C  Retrieve met data at current time for now 
+         CALL METIN( MMS, JDATE, JTIME, IDTSEC, 0, VM, IT, ZF,
+     &               IPLUM, JPLUM, ZL3, DELMIX, IPLMFLG, ITT, MTE,
+     &               PSFC, TSFC, CRO_LAT )
+
+C-- Set up the initial relation of plume height and mixing height.
+C   for the active plume releases.   ( plume inside or outside PBL )
+         IF ( IOLDFIL .EQ. 1 ) THEN
+            IF ( ITT .EQ. 1 ) THEN
+               DO IR = 1, NOA
+                  CALL MLIN( IR, MMS, IPLUM, JPLUM, VM, TOP, BOT, ITOP, IBOT,
+     &                       IPLMFLG, MTE )
+               END DO
+            END IF
+         END IF
+
+         IF ( ITT .GT. 1 .OR. IOLDFIL .EQ. 0 ) THEN 
+!old        IF ( MOD( ITT,NSTEP ) .EQ. 1 .OR. NSTEP .EQ. 1 ) THEN
+C  Determine IF this is a new release, if so, do plume rise.
+            IF ( MOD( ITT,NRINT ) .EQ. 1 .OR. NRINT .EQ. 1 ) THEN
+C  Retrieve the meteorological data for current time.
+!              CALL METIN( MMS, JDATE, JTIME, IDTSEC, 0, VM, IT, ZF,
+!     &                    IPLUM, JPLUM, ZL3, DELMIX, IPLMFLG, ITT, MTE )
+
+C  Transfer height array values for use in plume rise.
+               DO NS = 1, MMS
+                  DO K = 1, NLAYS
+                     ZL2( NS,K )  = ZL3( NS,IT,K )
+                  END DO
+               END DO
+
+C  --------- Plume rise -----------
+
+               CALL PR( JDATE, JTIME, 25, MMS, VM, PSFC, TSFC, IPLUM( 1,IT ),
+     &                  JPLUM( 1,IT ), IT, ZF, ZL2, TOP( 1,IT ), BOT( 1,IT ),
+     &                  ZCN( 1,IT ), JFLAG, ISTKFLG, SZ0FAC, SPRFAC, UI( 1,IT ) )
+
+C  Compute the bouyancy-induced,horizontal sigma value
+               DO NS = 1, MMS
+                  SIGY0( NS,IT ) = ( ZCN( NS,IT ) - HS( NS ) ) / 3.5
+                  IF ( HSIZE .NE. 0.0 ) SIGY0( NS,IT ) = HSIZE / SZ0FAC( NS )
+                  SIGY( NS,IT ) = SIGY0( NS,IT )
+                  WDTH( NS,IT ) = SIGY( NS,IT ) * SZ0FAC( NS )
+               END DO
+
+C  ------- Set initial vertical plume-related parameters --------
+!               WRITE( LOGDEV,92001 )
+               DO NS = 1, MMS
+                  DELBOT( NS,IT ) = 1.0
+                  DELZ = TOP( NS,IT ) - BOT( NS,IT )
+                  SIGZ0( NS,IT ) = DELZ / SZ0FAC( NS )
+                  DPTH( NS,IT ) = DELZ
+
+!                 WRITE( LOGDEV,* ) 'SIGS/main: ', NS, ITT, IT, SIGZ0( NS,IT ),
+!                  WRITE( LOGDEV,92011 ) NS, ITT, IT, SIGZ0( NS,IT ),
+!     &                                  DELZ, WDTH( NS,IT )
+!                 DELMIX( NS,IT ) = 0.0         ! performed in METIN above
+                  IPLMFLG( NS,IT ) = ISTKFLG( NS )
+               END DO
+
+C  Set up the initial relation of plume height and mixing height.
+C       ( plume inside or outside PBL )
+
+               CALL MLIN( IT, MMS, IPLUM, JPLUM, VM, TOP, BOT, ITOP, IBOT,
+     &                    IPLMFLG, MTE )
+
+            END IF
+
+         END IF
+
+C  ---------- Treatment for Dispersion and trajectory ------------
+
+C  Skip over the pre-existing releases on initial time step
+         IF ( ITT .EQ. 1 ) GO TO 400
+C  Loop over all releases
+         DO 360  IR = 1, IT
+C  Loop over all MEPSE sources
+            DO 350 NS = 1, MMS
+
+               IF ( IR .LT. MT1 ) THEN
+                  TSTEP = RELSTEP( NS,IR ) + FLOAT( ITT-1 )
+               ELSE
+!                 IF ( IOLDFIL .EQ. 1 ) TSTEP = FLOAT( ITT ) - FLOAT( ( IR - NOA ) * NSTEP )
+!                 IF ( IOLDFIL .EQ. 0 ) TSTEP = FLOAT( ITT ) - FLOAT( ( IR - 1 ) * NSTEP )
+                  IF ( IOLDFIL .EQ. 1 ) TSTEP = FLOAT( ITT ) - FLOAT( ( IR - NOA ) * NRINT )
+                  IF ( IOLDFIL .EQ. 0 ) TSTEP = FLOAT( ITT ) - FLOAT( ( IR - 1 ) * NRINT )
+                  RELSTEP( NS,IR ) = TSTEP
+               END IF
+!              write( LOGDEV,* ) 'NS, IR, ITT, TSTEP, RELSTEP, IPLMFLG:',
+!     &                           NS, IR, ITT, TSTEP, RELSTEP( NS,IR ), IPLMFLG( NS,IR )
+ 
+C  Skip the new released plume section on first time step
+!              IF ( ( MOD( ITT,NSTEP ) .EQ. 1 ) .AND. ( IR .EQ. IT ) ) GO TO 350
+!              IF ( ( NSTEP .EQ. 1) .AND. ( IR .EQ. IT ) )             GO TO 350
+!old           IF ( ( MOD( ITT,NSTEP ) .EQ. 1 ) .AND. ( IR .EQ. IT ) ) GO TO 311
+               IF ( ( MOD( ITT,NRINT ) .EQ. 1 ) .AND. ( IR .EQ. IT ) ) GO TO 311
+               IF ( ( NRINT .EQ. 1 ) .AND. ( IR .EQ. IT ) )            GO TO 311
+
+C  Set the new release plumes (IPLMFLG = 0) to 1 this time. 
+               IF ( IPLMFLG( NS,IR ) .EQ. 0 ) IPLMFLG( NS,IR ) = 1
+
+C  Skip any MEPSE located outside this domain or flagged otherwise.
+               IF ( IPLMFLG( NS,IR ) .LT. 0 .OR. IPLMFLG( NS,IR ) .GE. 10 ) GO TO 331
+
+C  Set the plume flag value for active plume section.
+               IF ( IPLMFLG( NS,IR ) .EQ. 2 ) IPLMFLG( NS,IR ) = 3
+               IF ( IPLMFLG( NS,IR ) .EQ. 4 ) IPLMFLG( NS,IR ) = 3
+
+               CALL PDM ( IR, NS, IPLUM( NS,IR ), JPLUM( NS,IR ), VM, CRO_LAT,
+     &                    XCN( NS,IR ), YCN( NS,IR ), ANGL( NS,IR ), XDIST( NS,IR ),
+     &                    SIGY( NS,IR ), TOP( NS,IR ), BOT( NS,IR ), DELBOT( NS,IR ),
+     &                    ZCN( NS,IR ), ITOP( NS,IR ), IBOT( NS,IR ), SIGZ0( NS,IR ),
+     &                    SIGY0( NS,IR ), SZ0FAC( NS ), TSTEP, IDTSEC, SIGYT( NS,IR ),
+     &                    SIGYSH( NS,IR ), ZL3, ZF, DELMIX( NS,IR ), DDIR( NS,IR ),
+     &                    DSPD( NS,IR ), IPLMFLG( NS,IR ), DSPDC, TLAG( NS,IR ),
+     &                    NOA, MTE )
+
+               IPLUM( NS,IR ) = INT( XCN( NS,IR ) / ( XCELL3D * 0.001 ) ) + 1
+               JPLUM( NS,IR ) = INT( YCN( NS,IR ) / ( YCELL3D * 0.001 ) ) + 1
+!              write( logdev,* ) 'After pdm:', IPLUM( NS,IR ), JPLUM( NS,IR ), IPLMFLG( NS,IR ),
+!            &                                 XCN( NS,IR ), YCN( NS,IR )
+
+C  Flag values for plume section extent if out of domain
+C-- plume going out of X column range : IPLMFLG( NS ) = 21, -21
+C-- plume going out of Y  row   range : IPLMFLG( NS ) = 22, -22
+
+C  More logic to treat mepses in border cells, if moving into interior of domain
+
+311            CONTINUE
+C  If last time of simulation, omit changes to IPDMFLAG
+               IF ( ITT .LT. MTSIM ) THEN
+
+                  IF ( IPLUM( NS,IR ) .GE. NCOLS. AND. XCN( NS,IR ) .GT. XCNO( NS,IR ) )
+     &               IPLMFLG( NS,IR ) =  21
+                  IF ( IPLUM( NS,IR ) .LE. 1     .AND. XCN( NS,IR ) .LT. XCNO( NS,IR ) )
+     &               IPLMFLG( NS,IR ) = -21
+                  IF ( JPLUM( NS,IR ) .GE. NROWS .AND. YCN( NS,IR ) .GT. YCNO( NS,IR ) )
+     &               IPLMFLG( NS,IR ) =  22
+                  IF ( JPLUM( NS,IR ) .LE. 1     .AND. YCN( NS,IR ) .LT. YCNO( NS,IR ) )
+     &               IPLMFLG( NS,IR ) = -22
+
+                  IF ( ABS( IPLMFLG( NS,IR ) ) .LT. 20 ) THEN  
+
+                     IF ( IPLMFLG( NS,IR ) .LT. 2 .AND. SIGY( NS,IR ) * SZ0FAC( NS ) .GE. INITC )
+     &                  IPLMFLG( NS,IR ) = 2
+
+C  If plume not initialized yet, no need to test other criteria below. 
+                     IF ( IPLMFLG( NS,IR ) .EQ. 1 .OR. IPLMFLG( NS,IR ) .EQ. 2 ) GO TO 321
+C  No Directional shear criterion for now.
+!                    IF ( DDIR( NS,IR ) .GT. DDIRC ) IPLMFLG( NS,IR ) = 11
+
+C  Check if plume in cloud
+                     BASECL = VM( JPLUM( NS,IR ),7,5,IPLUM( NS,IR ) )
+                     WATRCL = VM( JPLUM( NS,IR ),10,5,IPLUM( NS,IR ) )
+                     IF ( NLAYS .GE. 12 .AND. BASECL .LE. TOP( NS,IR ) .AND.
+     &                    WATRCL .GT. 0.55 ) THEN
+!                        write( logdev,* ) 'In pdmmain: BASECL, TOP, WATRCL =',
+!     &                                            BASECL, TOP( NS,IR ), WATRCL
+                        IPLMFLG( NS,IR ) = 14
+                     END IF
+
+C  Also, dump plume sections afternoon when PBL drops below TOP, so
+C  restrict time to later in day since do not allow before/near sunrise
+C  for relatively new plume releases.
+                     HTMIX = VM( JPLUM( NS,IR ),6,5,IPLUM( NS,IR ) )    
+                     IF ( BOT( NS,IR ) .EQ. 0.0 .AND.
+     &                    HTMIX .LT. 0.50 * TOP( NS,IR ) .AND.
+     &                    JTIME .GT. 230000 ) IPLMFLG( NS,IR ) = 10
+
+C  When plume widths grid cell width, set handover flag
+C  Also, if plume section area reaches grid cell area, then dump.
+C  ( the latter criterion may occur more often at smaller grid sizes)
+C  Check if timestep is just prior to on-the-hour for dumping to occur.
+C  Use MOD to determine the desired time for handover and check size.
+!                     IF ( SIGY( NS,IR ) * SZ0FAC( NS ) .GT. WDTHCRT ) IPLMFLG( NS,IR ) = 13
+                      IF( SIGY(NS,IR) * SZ0FAC(NS) .GE. WDTHCRT .AND.
+     &                   MOD(ITT,NSTEP) .EQ. 0 ) THEN
+                         IPLMFLG(NS,IR) = 13
+!                         WRITE(*,*) 'PLUME HANDOVER : ',JDATE, JTIME,NS,IR,ITT,
+!     &                   SIGY(NS,IR)*SZ0FAC(NS)
+      ENDIF
+C.  Also, dump the plume if it's area exceeds the grid cell area.
+                     PAREA = ( SIGY( NS,IR ) * SZ0FAC( NS ) * UI( NS,IR ) * FLOAT( IDTSEC ) )
+                     IF ( PAREA .GT. GAREA ) THEN
+                        IPLMFLG( NS,IR ) = 13
+                        WRITE( LOGDEV,* ) 'PAREA > GAREA for;', NS, IR, PAREA,
+     &                                    GAREA, UI( NS,IR ), SIGY( NS,IR ) * SZ0FAC( NS )
+                        write( logdev,* ) ' SIGY, SZ0FAC: ', sigy( ns,ir ), sz0fac( ns )
+                     END IF 
+
+C  Do not allow 'younger' plume seg to dump prior to an 'older' plume seg.
+!                    IF ( IR .GT. 1 ) THEN
+!                       IF ( IPLMFLG( NS,IR ) .GE. 10 .AND.
+!    &                       IPLMFLG( NS,IR ) .LE. 14 .AND.
+!    &                       IPLMFLG( NS,IR-1 ) .EQ. 3 ) THEN
+C Reset the plume flag for now.
+!                          IPLMFLG( NS,IR ) = 3
+!                       END IF
+!                    END IF
+
+                  END IF   ! plume in domain
+      
+321               CONTINUE
+
+C  Check for long-active plumes sections near end of simulation.
+C  Plumes sections older than 4 hours will be dumped for now before
+C  end of simulation.
+                  IF ( ITT .EQ. ( MTSIM - 1 ) ) THEN
+!old                 IF ( IR .LE. ( MT-4 ) .AND. IPLMFLG( NS,IR ) .EQ. 3 ) THEN
+C  12/03  Revised from MT to MTE in next line.
+                     IF ( IR .LE. ( ( ( MTE-1 ) / NRRATE ) - 4 ) .AND.
+     &                    IPLMFLG( NS,IR ) .EQ. 3 ) THEN
+                        IPLMFLG( NS,IR ) = 13
+                        write( logdev,* ) 'pdmmain: "old" active plume flagged to dump:', NS, IR 
+                     END IF
+                  END IF
+         
+!                 WRITE( LOGDEV,* ) 'IN pdmmain:', IR, TSTEP, IPLUM( NS,IR ), JPLUM( NS,IR ),
+!    &                                             TOP( NS,IR ), BOT( NS,IR ),
+!    &                                             ITOP( NS,IR ), IBOT( NS,IR ),
+!    &                                             DELBOT( NS,IR ), ZCN( NS,IR ), IPLMFLG( NS,IR )
+
+               END IF   ! ITT < MTSIM
+
+C  Find cases where 'active' mepse plume section is located in different
+C  mepse stack grid cell, and flag it to dump even though it is still active.
+!               IF ( IPLMFLG( NS,IR ) .NE. 3 ) GO TO 331
+!
+!               DO NNS = 1, MMS
+!                  IF ( NNS .NE. NS ) THEN
+C  Check the mepse grid cell indices, and if plume bottom is in PBL.
+C  IF the two MEPSE stacks IN SAME GRID CELL, do not dump plume sections
+C  for now
+!                     IF ( MGRID( NS ) .NE. MGRID( NNS ) ) THEN 
+!                        IF ( IPLUM( NS,IR ) .EQ. ISTACK( NNS ) .AND.
+!     &                       JPLUM( NS,IR ) .EQ. JSTACK( NNS ) .AND.
+!     &                       RELSTEP( NS,IR ) .GE. 4 .AND.
+!     &                       BOT( NS,IR ) .LT. VM( JPLUM( NNS,IR ),6,5,IPLUM( NNS,IR ) ) ) THEN
+!                           IPLMFLG( NS,IR ) = 15
+!                          WRITE( LOGDEV,* ) 'PDMMAIN TEST:', IR, NS, NNS, TSTEP,
+!    &                                       IPLUM( NS,IR ), JPLUM( NS,IR ), WDTH( NS,IR ),
+!    &                                       TOP( NS,IR ), ZCN( NS,IR ), BOT( NS,IR ),
+!    &                                       ITOP( NS,IR ), IBOT( NS,IR ), IPLMFLG( NS,IR ),
+!    &                                       MGRID( NS ), MGRID( NNS )
+!                          WRITE( LOGDEV,* ) 'PDMMAIN TEST - IR, NS, NNS, TSTEP, IPLUM, JPLUM:',
+!    &                                        IR, NS, NNS, TSTEP, IPLUM( NS,IR ), JPLUM( NS,IR )
+!    &                                       '             - WDTH, TOP, ZCN, BOT:',
+!    &                                        WDTH( NS,IR ), TOP( NS,IR ), ZCN( NS,IR ), BOT( NS,IR )
+!    &                                       '             - ITOP, IBOT, IPLMFLG, MGRID(NS), MGRID(NNS):',
+!    &                                       ITOP( NS,IR ), IBOT( NS,IR ), IPLMFLG( NS,IR ),
+!    &                                       MGRID( NS ), MGRID( NNS )
+!                           WRITE( LOGDEV,91101) IR, NS, NNS, TSTEP, IPLUM( NS,IR ), JPLUM( NS,IR ),
+!     &                                          WDTH( NS,IR ), TOP( NS,IR ), ZCN( NS,IR ), BOT( NS,IR ),
+!     &                                          ITOP( NS,IR ), IBOT( NS,IR ), IPLMFLG( NS,IR ),
+!     &                                          MGRID( NS ), MGRID( NNS )
+!                        END IF
+!                     END IF
+!
+!                  END IF
+!               END DO
+!
+331         CONTINUE
+
+350        CONTINUE
+360      CONTINUE
+
+C       --------------Outputs------------------
+400      CONTINUE
+
+         CALL OUTP( ITT, IT, IDTSEC, VM, XCN, YCN, ANGL, TOP, BOT, ZCN,
+     &              SZ0FAC, SIGY, XDIST, WDTH, DPTH, SIGYT, SIGYSH, ZL3,
+     &              IPLMFLG, IPLUM, JPLUM, JDATE, JTIME, DELMIX,
+     &              PLMID, DDIR, DSPD, UI, DX, DY, MMS, IDLL, IDRU,
+     &              PDMOUT, IPDMOUT, RELSTEP, TLAG, NREL, MTE, WDTHDT,
+     &              DPTHDT, DMIXDT )
+     
+C  Increment the Date/TIME based on IDTIME, which is from input 
+
+         CALL NEXTIME( JDATE, JTIME, IDTIME )
+
+540   CONTINUE
+
+C --------------------------------------------------------------------
+C End of simulation.
+
+      DEALLOCATE ( PDMOUT )
+      DEALLOCATE ( IPDMOUT )
+      DEALLOCATE ( PDMDATA )
+      DEALLOCATE ( IPDMDATA )
+      DEALLOCATE ( XCN )
+      DEALLOCATE ( YCN )
+      DEALLOCATE ( ZCN )
+      DEALLOCATE ( SIGY )
+      DEALLOCATE ( XDIST )
+      DEALLOCATE ( TOP )
+      DEALLOCATE ( BOT )
+      DEALLOCATE ( ANGL )
+      DEALLOCATE ( DELBOT )
+      DEALLOCATE ( DELMIX )
+      DEALLOCATE ( SIGY0 )
+      DEALLOCATE ( SIGZ0 )
+      DEALLOCATE ( WDTH )
+      DEALLOCATE ( DPTH )
+      DEALLOCATE ( UI )
+      DEALLOCATE ( DDIR )
+      DEALLOCATE ( DSPD )
+      DEALLOCATE ( SIGYT )
+      DEALLOCATE ( SIGYSH )
+      DEALLOCATE ( ZL3 )
+      DEALLOCATE ( PLMID )
+      DEALLOCATE ( ITOP )
+      DEALLOCATE ( IBOT )
+      DEALLOCATE ( IPLUM )
+      DEALLOCATE ( JPLUM )
+      DEALLOCATE ( IPLMFLG )
+      DEALLOCATE ( IDLL )
+      DEALLOCATE ( IDRU )
+      DEALLOCATE ( RELSTEP )
+      DEALLOCATE ( TLAG )
+      DEALLOCATE ( XCNO )
+      DEALLOCATE ( YCNO )
+      DEALLOCATE ( WDTHDT )
+      DEALLOCATE ( DPTHDT )
+      DEALLOCATE ( DMIXDT )
+      
+      RETURN
+
+91001 FORMAT(  1X, 'In PDMMAIN: No. of MEPSES:', I3 /
+     &        12X, 'No. of old active releases:', I3 /
+     &        12X, 'Max. No. of releases (including old active): ', I3 )
+!91101 FORMAT( 'PDMMAIN TEST - IR, NS, NNS, TSTEP, IPLUM, JPLUM:', 3I3, F7.3, 2I3 /
+!     &        '             - WDTH, TOP, ZCN, BOT:', 4F10.3 /
+!     &        '             - ITOP, IBOT, IPLMFLG, MGRID(NS), MGRID(NNS):', 5I3 )
+!92001 FORMAT( /3X, 'NS', 1X, 'ITT', 1X, 'IT', 9X, 'SIGZ0', 6X, 'DELZ', 8X, 'WDTH' )
+!92011 FORMAT( 3I4, 2X, 3F12.3 )
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

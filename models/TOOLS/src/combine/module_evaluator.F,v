@@ -1,0 +1,380 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.36.07;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.36.07;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/TOOLS/src/combine/module_evaluator.F,v 1.1 2005/08/16 18:38:20 showard Exp $
+
+C***********************************************************************
+C
+C  MODULE:  evaluates species expressions
+C             
+C***********************************************************************
+      MODULE evaluator
+
+      Real, Private, Allocatable :: parseBuffer(:,:)
+
+      Integer, Private :: idate
+      Integer, Private :: itime  
+      Integer, Private :: ilayer
+      Integer, Private :: isize 
+
+      CONTAINS
+
+
+C  subroutine to evaluate species expression
+      Subroutine evaluate(expression,jdate,jtime,jlayer,jsize,buffer)
+
+      IMPLICIT NONE
+
+      ! arguments
+      Character*(*) expression
+      Integer jdate, jtime
+      Integer jlayer
+      Integer jsize
+      Real    buffer(jsize)
+
+      ! local variables
+      Character*(512) expresscp
+      Character*(512) express
+      Integer nparen
+      Integer depth, maxdepth
+      Integer i, n, pos1, pos2
+      Character*(5) nstring
+
+      ! set module variables
+      idate = jdate
+      itime = jtime
+      ilayer = jlayer
+      isize = jsize
+    
+      ! find number of parentheses and depth
+      nparen = 0 
+      depth = 0
+      maxdepth = 0
+      Do i=1,len_trim(expression)
+        if( expression(i:i).eq.'(' ) then
+          nparen = nparen + 1
+          depth = depth + 1
+          endif
+
+        if( expression(i:i).eq.')' ) then
+          depth = depth - 1
+          endif
+        
+        if( depth.gt.maxdepth ) maxdepth = depth
+        enddo
+
+      ! allocate memory for parseBuffer if needed
+      if( nparen.gt.0 ) then
+        if( Allocated(parseBuffer) .and.
+     &      SIZE(parseBuffer,DIM=2).lt.nparen ) then
+          deAllocate(parseBuffer)
+          endif
+
+        if( .NOT.Allocated(parseBuffer) ) then
+          Allocate( parseBuffer(isize,nparen) )
+          endif
+
+        parseBuffer = 0.0
+        endif
+       
+      ! make copy of expression to modify
+      expresscp = expression
+
+      depth = maxDepth 
+      Do n=1,nparen
+
+        ! build buffer number as string
+        write(nstring, '(i5)') n
+        Call leftTrim(nstring)
+
+        ! try to find parentheses at depth
+        Call findDepth( expresscp, depth, pos1, pos2 )
+            
+        if( pos1.eq.0 ) then
+          depth = depth - 1
+          Call findDepth( expresscp, depth, pos1, pos2 )
+          endif
+
+        ! if parentheses found, evaluate sub expression
+        if( pos1.gt.0 ) then
+
+          ! extract expression within parentheses and
+          ! evaluate to parsebuffer(1:isize,n)
+          express = expresscp(pos1+1:pos2-1)
+          call eval(express, parsebuffer(1:isize,n) )
+
+          ! replace expression within parentheses with "buffer[n]"
+          express = ''
+          if( pos1.gt.1 ) express = expresscp(1:pos1-1)
+          express = TRIM(express) // 'buffer[' // TRIM(nstring) //
+     &              ']' // TRIM(expresscp(pos2+1:))
+          expresscp = express 
+          endif 
+    
+        enddo
+
+      call eval(expresscp, buffer)
+      
+      end Subroutine evaluate
+
+
+C  subroutine to find location of parentheses depth
+      Subroutine findDepth(expression, depth, pos1, pos2)
+
+      IMPLICIT NONE
+
+      Character*(*) expression
+      Integer depth, pos1, pos2
+
+      Integer i, dep
+
+      pos1 = 0
+      pos2 = 0
+      dep = 0
+
+      ! try to find parentheses at depth
+      Do i = 1, len_trim(expression)  
+        if( expression(i:i).eq.'(' ) then
+            dep = dep+1
+            if(dep.eq.depth) pos1 = i
+            endif
+
+          if( expression(i:i).eq.')' ) then
+            if(dep.eq.depth) then
+              pos2 = i
+              return
+              endif
+            dep = dep-1
+            endif           
+         enddo
+
+      return
+      end Subroutine findDepth
+
+
+C  subroutine to return buffer array value
+      Subroutine getBuffer(field, buffer)
+      IMPLICIT NONE
+
+      Character*(*) field
+      Real buffer(isize)
+      Integer pos1, pos2, nbuf
+      Character*(10) string
+
+      ! parse field to find buffer number
+      pos1 = index(field, '[') 
+      pos2 = index(field, ']') 
+
+      string = field(pos1+1:pos2-1)
+      read(string,'(i10)') nbuf      
+
+      buffer = parsebuffer(1:isize,nbuf)      
+
+      return
+      end Subroutine getBuffer
+
+
+C  subroutine to evaluate species expression
+      Subroutine eval(expression, buffer)
+
+      IMPLICIT NONE
+
+      ! arguments
+      Character*(*) expression
+      Real    buffer(isize)
+
+      ! functions
+      Integer getFldCount
+ 
+      ! local variables
+      Real value(isize)
+      Character*(512) field
+      Character operator
+      Integer nmajor
+      Integer n
+
+      buffer = 0.0
+
+      ! parse major fields (+-)
+      nmajor = getFldCount(expression, '+-')
+
+      ! loop thru and parse each major field and evaluate
+      do n=1,nmajor
+
+        call getFld( expression, '+-', n, operator, field ) 
+        call evalfld( field, value)
+
+        if( operator.eq.'+' ) then
+          buffer = buffer + value
+         else
+          buffer = buffer - value
+          endif
+
+        enddo
+
+      return
+      end Subroutine eval
+
+
+C  routine to compute a field of the expression
+      Subroutine evalfld(expression, value)
+      
+      IMPLICIT NONE
+
+      ! arguments
+      
+      CHARACTER*(*) expression
+      Real value(isize)
+
+      ! local variables
+      Real specValue(isize)
+      Integer getFldCount
+      Character*(512) field
+      Character      operator   
+      Integer n, nflds, status
+      real constant
+
+      nflds = getFldCount(trim(expression), '*/')
+      value = 1.0
+         
+      do n=1,nflds
+        call getFld( trim(expression), '*/', n, operator, field ) 
+
+        ! check for buffer array
+        if( index(field,'buffer[') .gt.0 ) then
+          Call getBuffer(field, specValue)
+          if( operator.eq.'*' ) then
+            value = value * specValue
+           else
+            value = value / specValue
+            endif          
+          cycle
+          endif
+   
+        ! check for species variable
+        if( index(field,'[') .gt.0 ) then
+          Call readSpecies(field, specValue)
+          if( operator.eq.'*' ) then
+            value = value * specValue
+           else
+            value = value / specValue
+            endif
+          cycle
+          endif
+
+        !try to read field as number
+        read(field,'(f20.0)',iostat=status) constant
+        if( status.eq.0 ) then
+          if( operator.eq.'*' ) then
+            value = value * constant
+           else
+            value = value / constant
+            endif
+          else
+           Write(*,'(''**Error** Invalid field encountered:'',a)') field
+           stop 
+           endif                         
+
+        enddo
+
+      return
+      end Subroutine evalfld
+
+
+C  Routine to read species value array for given date and time
+      Subroutine readSpecies( field, specValue)
+
+      USE M3FILES
+
+      IMPLICIT NONE
+
+      ! INCLUDE FILES:
+      INCLUDE SUBST_IOPARMS     ! IOAPI parameters
+      INCLUDE SUBST_IOFDESC     ! IOAPI file description
+      INCLUDE SUBST_IODECL      ! IOAPI declarations
+
+      ! arguments
+      Character*(*) field
+      Real specValue(isize)
+
+      ! local variables
+      Integer pos1, pos2, status
+      Character*(16) specName
+      Character*(16) fileName 
+      Logical KSWIT
+
+
+      ! parse field into species name and file number
+      pos1 = index(field, '[') 
+      pos2 = index(field, ']') 
+
+      specName = field(1:pos1-1)
+      fileName = 'INFILE' // field(pos1+1:pos2-1)
+
+      Call ReadValues( fileName, specName, ilayer, idate, itime, isize, 
+     &                 specValue, status)
+      if( status.ne.0 ) then
+        Write(*,'(''**ERROR** Cannot read '',a,'' from '',a)')
+     &          trim(specName), trim(fileName)
+        KSWIT = SHUT3()
+        stop 
+        endif  
+
+      return
+      end Subroutine readSpecies  
+
+      END MODULE evaluator
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

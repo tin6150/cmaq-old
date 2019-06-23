@@ -1,0 +1,84 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2006.03.13.19.36.07;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.36.07;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/ variable definitions for wet deposition evaluation extractions
+/
+/ RCS file, release, date & time of last delta, author, state, [and locker]
+/ $Header: /project/work/rep/TOOLS/src/combine/spec_def.dep,v 1.2 2005/08/16 19:40:46 showard Exp $
+/
+/#start   2001141     10000
+/#end     2001152         0
+#layer         1
+/
+/new species    ,units     ,expression
+
+WDEP_ASO4T      ,kg/ha     , ASO4I[1]) + ASO4J[1]
+
+DDEP_ASO4T      ,kg/ha     , ASO4I[2]) + ASO4J[2]
+
+WDEP_ANO3T      ,kg/ha     , ANO3I[1] + ANO3J[1]
+
+DDEP_ANO3T      ,kg/ha     , ANO3I[2] + ANO3J[2]
+
+WDEP_ANH4T      ,kg/ha     , ANH4I[1]) + ANH4J[1]
+
+DDEP_ANH4T      ,kg/ha     , ANH4I[2] + ANH4J[2]
+
+WDEP_SO2        ,kg/ha     , SO2[1]
+
+DDEP_SO2        ,kg/ha     , SO2[2]
+
+WDEP_HNO3       ,kg/ha     , HNO3[1]
+
+DDEP_HNO3       ,kg/ha     , HNO3[2]
+
+WDEP_NH3        ,kg/ha     , NH3[1]
+
+DDEP_NH3        ,kg/ha     , NH3[2]
+
+WDEP_HPLUS      ,kg/ha     , HPLUS[1]
+
+RT              ,cm        , RN[3] + RC[3]
+
+WDEP_TNO3       ,kg/ha     , ANO3I[1] + ANO3J[1] + 0.984*HNO3[1]
+
+DDEP_TNO3       ,kg/ha     , ANO3I[2] + ANO3J[2] + 0.984*HNO3[2]
+
+WDEP_NHX        ,kg/ha     , ANH4I[1] + ANH4J[1] + NH3[1]
+
+DDEP_NHX        ,kg/ha     , ANH4I[2] + ANH4J[2] + NH3[2]
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

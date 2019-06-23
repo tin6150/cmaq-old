@@ -1,0 +1,108 @@
+                     ADVECTION_DIFFUSION - 15 Sep 2005
+
+
+1) Compiling for optional advection schemes
+
+   You have a choice of using the Piecewise Parabolic Method (ppm) 
+   advection scheme or the new global mass-conserving scheme (yamo) that is 
+   similar to the one used in the air quality forecasting version of CMAQ. 
+   Inspired by discussions with Robert Yamartino, the method uses the ppm scheme 
+   for horizontal advection, deriving a vertical velocity component at each 
+   grid cell that satisfies the continuity equation using the driving 
+   meteorology model's density.  This scheme (yamo) is the default 
+   specified in the release bldit script.
+   
+   To switch to the ppm advection scheme, you will need to make the
+   following changes to the bldit script.  
+   
+      61,62c61,62
+      < #set ModDriver = ( module ctm                $Revision; )
+      <  set ModDriver = ( module ctm_yamo           $Revision; )
+      ---
+      >  set ModDriver = ( module ctm                $Revision; )
+      > #set ModDriver = ( module ctm_yamo           $Revision; )
+      70,71c70,71
+      < #set ModInit   = ( module init               $Revision; )
+      <  set ModInit   = ( module init_yamo          $Revision; )
+      ---
+      >  set ModInit   = ( module init               $Revision; )
+      > #set ModInit   = ( module init_yamo          $Revision; )
+      74,75c74,75
+      < #set ModAdjc   = ( module denrate            $Revision; )
+      <  set ModAdjc   = ( // yamo option does not need denrate )
+      ---
+      >  set ModAdjc   = ( module denrate            $Revision; )
+      > #set ModAdjc   = ( // yamo option does not need denrate )
+      80,81c80,81
+      < #set ModHadv   = ( module hppm               $Revision; )
+      <  set ModHadv   = ( module hyamo              $Revision; )
+      ---
+      >  set ModHadv   = ( module hppm               $Revision; )
+      > #set ModHadv   = ( module hyamo              $Revision; )
+      84,85c84,85
+      < #set ModVadv   = ( module vppm               $Revision; )
+      <  set ModVadv   = ( module vyamo             $Revision; )
+      ---
+      >  set ModVadv   = ( module vppm               $Revision; )
+      > #set ModVadv   = ( module vyamo             $Revision; )
+   
+   If you want to use no-op for horizontal or vertical advection or both
+   you have to compile for ppm, modifying the bldit script as necessary.
+   We have not developed no-ops for the yamo scheme.
+
+2) Minimum Eddy Diffusivity Option (KZMIN)
+
+   The minimum value for the eddy diffusivity (Kz) has an important impact
+   on nighttime concentrations.  Traditionally in CMAQ, the minimum value
+   for Kz has been set to a somewhat high value (Kzmin = 1.0 m2/s).
+   However, meteorology models generally use lower values for minimum Kz
+   (often 0.1 - 0.5 m2/s). When CMAQ had been tested with minimum Kz values
+   set similarly to what is used in the meteorology models, unrealistically
+   high concentrations of primary species were simulated in areas of high
+   emissions (e.g., urban areas).  On the other hand, using a somewhat high
+   Kzmin in CMAQ led to overpredictions of ozone at night in more rural
+   areas.
+
+   To allow the mixing to better respond to the land-use characteristics, a
+   new option for the minimum eddy diffusivity (Kzmin) is introduced in
+   CMAQv4.5. This option considers the fraction of urban area within a
+   given grid cell, and it scales the Kzmin value in each cell according
+   to:
+
+	Kzmin = (0.5 * (1.0 - Furban)) + (2.0 * Furban)
+
+   where "Furban" is the fraction of urban area in the grid cell (0.0 -
+   1.0).
+
+   Using this formula, Kzmin can now vary between 0.5 m2/s (in grid cells
+   with no urban area) to 2.0 m2/s (in grid cells that are 100% urban based
+   on land-use classification).
+
+   The new Kzmin formulation relies on a new 2D field that defines Furban.
+   This field is called "PURB" (percentage of urban area), and it can
+   appear in the MCIP output file GRIDCRO2D if users provide fractional
+   land-use information as input to MCIP.  Fractional land-use fields are
+   not currently available in the "standard" MM5 or WRF output files.  For
+   MM5, the fractional land-use fields are found in output from the
+   preprocessing programs (e.g., TERRAIN), and MCIP has been modified to
+   read those files to make fractional land-use available in the output.
+   At this time, no fractional land-use fields are available for WRF, and
+   the new Kzmin formulation cannot be used with WRF output.
+
+   Users who want to take advantage of the new Kzmin formulation but have
+   already prepared meteorology with MCIP and emissions with SMOKE can do
+   so by running MCIPv3.0 for one hour with the appropriate input files
+   (MMOUT and TERRAIN) to create a new GRIDCRO2D file that contains PURB,
+   which can be used with CMAQv4.5.
+
+   CMAQv4.5 is set up to use the new Kzmin formulation as the default.
+   Users can set up CMAQv4.5 to use the "old" Kzmin formulation (1.0 m2/s
+   at all grid cells) by setting the environment variable "KZMIN" in the
+   CMAQ script, run.cctm.
+
+	setenv KZMIN T    <---  use Kzmin formulation based on Furban in cell
+        setenv KZMIN F    <---  use Kzmin of 1.0 m2/s at all grid cells
+
+   If the new Kzmin formulation is selected by the user (either as the
+   default or by setting the KZMIN enviroment variable) and if PURB is not
+   available in GRIDCRO2D, CMAQv4.5 will issue an error message and stop.

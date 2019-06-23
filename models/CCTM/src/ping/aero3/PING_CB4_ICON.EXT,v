@@ -1,0 +1,215 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2006.03.15.20.43.51;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.51;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/aero3/PING_CB4_ICON.EXT,v 1.1 2004/09/28 17:37:49 yoj Exp $
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C Mechanism Name: CB4_AE3_AQ
+
+      INTEGER, PARAMETER :: NSIGL = 7
+      INTEGER, PARAMETER :: N_SPC_IC = 40
+
+      CHARACTER( 16 ) :: PING_IC_SPC( N_SPC_IC )
+      REAL PING_IC_CONC ( N_SPC_IC,NSIGL-1 )
+
+      REAL, SAVE :: FSIGL( NSIGL ) = ( / 1.00, 0.98, 0.93, 0.84,
+     &                                   0.60, 0.30, 0.00 / )
+
+      DATA PING_IC_SPC (  1 )  / 'NO2             ' /
+      DATA PING_IC_CONC(  1,: ) / 0.167E-03, 0.167E-03, 0.084E-03,
+     &                            0.000E+00, 0.000E+00, 0.000E+00 /
+
+      DATA PING_IC_SPC (  2 )  / 'NO              ' /
+      DATA PING_IC_CONC(  2,: ) / 0.083E-03, 0.083E-03, 0.042E-03,
+     &                            0.000E+00, 0.000E+00, 0.000E+00 /
+
+      DATA PING_IC_SPC (  3 )  / 'O3              ' /
+      DATA PING_IC_CONC(  3,: ) / 0.350E-01, 0.350E-01, 0.400E-01,
+     &                            0.500E-01, 0.600E-01, 0.700E-01 /
+
+      DATA PING_IC_SPC (  4 )  / 'NO3             ' /
+      DATA PING_IC_CONC(  4,: ) / 0.000E+00, 0.000E+00, 0.000E+00,
+     &                            0.000E+00, 0.000E+00, 0.000E+00 /
+
+      DATA PING_IC_SPC (  5 )  / 'OH              ' /
+      DATA PING_IC_CONC(  5,: ) / 0.000E+00, 0.000E+00, 0.000E+00,
+     &                            0.000E+00, 0.000E+00, 0.000E+00 /
+
+      DATA PING_IC_SPC (  6 )  / 'HO2             ' /
+      DATA PING_IC_CONC(  6,: ) / 0.000E+00, 0.000E+00, 0.000E+00,
+     &                            0.000E+00, 0.000E+00, 0.000E+00 /
+
+      DATA PING_IC_SPC (  7 )  / 'N2O5            ' /
+      DATA PING_IC_CONC(  7,: ) / 0.000E+00, 0.000E+00, 0.000E+00,
+     &                            0.000E+00, 0.000E+00, 0.000E+00 /
+
+      DATA PING_IC_SPC (  8 )  / 'HNO3            ' /
+      DATA PING_IC_CONC(  8,: ) / 0.500E-04, 0.500E-04, 0.500E-04,
+     &                            0.500E-04, 0.700E-04, 0.100E-03 /
+
+      DATA PING_IC_SPC (  9 )  / 'HONO            ' /
+      DATA PING_IC_CONC(  9,: ) / 0.100E-08, 0.100E-08, 0.100E-08,
+     &                            0.100E-08, 0.100E-08, 0.100E-08 /
+
+      DATA PING_IC_SPC ( 10 )  / 'PNA             ' /
+      DATA PING_IC_CONC( 10,: ) / 0.200E-08, 0.200E-08, 0.200E-08,
+     &                            0.200E-08, 0.200E-08, 0.200E-08 /
+
+      DATA PING_IC_SPC ( 11 )  / 'H2O2            ' /
+      DATA PING_IC_CONC( 11,: ) / 0.100E-02, 0.100E-02, 0.150E-02,
+     &                            0.100E-02, 0.800E-03, 0.200E-03 /
+
+      DATA PING_IC_SPC ( 12 )  / 'CO              ' /
+      DATA PING_IC_CONC( 12,: ) / 0.800E-01, 0.800E-01, 0.800E-01,
+     &                            0.700E-01, 0.650E-01, 0.500E-01 /
+
+      DATA PING_IC_SPC ( 13 )  / 'FORM            ' /
+      DATA PING_IC_CONC( 13,: ) / 2.50025E-04, 2.5025E-04, 2.5025E-04,
+     &                            2.002E-04, 1.001E-04, 5.005E-05 /
+
+      DATA PING_IC_SPC ( 14 )  / 'ALD2            ' /
+      DATA PING_IC_CONC( 14,: ) / 0.302E-04, 0.352E-04, 0.300E-04,
+     &                            0.200E-04, 0.200E-04, 0.100E-04 /
+
+      DATA PING_IC_SPC ( 15 )  / 'PAN             ' /
+      DATA PING_IC_CONC( 15,: ) / 0.200E-04, 0.200E-04, 0.100E-04,
+     &                            0.100E-04, 0.100E-04, 0.000E+00 /
+
+      DATA PING_IC_SPC ( 16 )  / 'PACD            ' /
+      DATA PING_IC_CONC( 16,: ) / 0.300E-04, 0.300E-04, 0.300E-04,
+     &                            0.250E-04, 0.200E-04, 0.150E-04 /
+
+      DATA PING_IC_SPC ( 17 )  / 'PAR             ' /
+      DATA PING_IC_CONC( 17,: ) / 2.45624E-03, 2.65624E-03, 2.36288E-03,
+     &                            1.4685E-03, 1.3493E-03, 6.533E-04 /
+
+      DATA PING_IC_SPC ( 18 )  / 'OLE             ' /
+      DATA PING_IC_CONC( 18,: ) / 0.380E-06, 0.380E-06, 0.190E-06,
+     &                            0.000E+00, 0.000E+00, 0.000E+00 /
+
+      DATA PING_IC_SPC ( 19 )  / 'FACD            ' /
+      DATA PING_IC_CONC( 19,: ) / 0.100E-05, 0.100E-05, 0.500E-06,
+     &                            0.500E-06, 0.500E-06, 0.000E+00 /
+
+      DATA PING_IC_SPC ( 20 )  / 'AACD            ' /
+      DATA PING_IC_CONC( 20,: ) / 0.100E-05, 0.100E-05, 0.500E-06,
+     &                            0.500E-06, 0.500E-06, 0.000E+00 /
+
+      DATA PING_IC_SPC ( 21 )  / 'ETH             ' /
+      DATA PING_IC_CONC( 21,: ) / 0.500E-05, 0.300E-05, 0.200E-05,
+     &                            0.100E-05, 0.100E-05, 0.000E+00 /
+
+      DATA PING_IC_SPC ( 22 )  / 'TOL             ' /
+      DATA PING_IC_CONC( 22,: ) / 0.100E-05, 0.100E-05, 0.100E-05,
+     &                            0.100E-05, 0.000E+00, 0.000E+00 /
+
+      DATA PING_IC_SPC ( 23 )  / 'CRES            ' /
+      DATA PING_IC_CONC( 23,: ) / 0.100E-08, 0.100E-08, 0.100E-08,
+     &                            0.100E-08, 0.100E-08, 0.100E-08 /
+
+      DATA PING_IC_SPC ( 24 )  / 'OPEN            ' /
+      DATA PING_IC_CONC( 24,: ) / 0.250E-06, 0.250E-06, 0.250E-06,
+     &                            0.200E-06, 0.100E-06, 0.500E-07 /
+
+      DATA PING_IC_SPC ( 25 )  / 'XYL             ' /
+      DATA PING_IC_CONC( 25,: ) / 0.200E-06, 0.200E-06, 0.100E-06,
+     &                            0.000E+00, 0.000E+00, 0.000E+00 /
+
+      DATA PING_IC_SPC ( 26 )  / 'MGLY            ' /
+      DATA PING_IC_CONC( 26,: ) / 0.250E-06, 0.250E-06, 0.250E-06,
+     &                            0.200E-06, 0.100E-06, 0.500E-07 /
+
+      DATA PING_IC_SPC ( 27 )  / 'ISOP            ' /
+      DATA PING_IC_CONC( 27,: ) / 0.150E-03, 0.150E-03, 0.000E+00,
+     &                            0.000E+00, 0.000E+00, 0.000E+00 /
+
+      DATA PING_IC_SPC ( 28 )  / 'SO2             ' /
+      DATA PING_IC_CONC( 28,: ) / 0.300E-03, 0.200E-03, 0.100E-03,
+     &                            0.100E-03, 0.200E-04, 0.100E-04 /
+
+      DATA PING_IC_SPC ( 29 )  / 'SULF            ' /
+      DATA PING_IC_CONC( 29,: ) / 1.000E-30, 1.000E-30, 1.000E-30,
+     &                            1.000E-30, 1.000E-30, 1.000E-30 /
+
+      DATA PING_IC_SPC ( 30 )  / 'UMHP            ' /
+      DATA PING_IC_CONC( 30,: ) / 0.250E-06, 0.250E-06, 0.250E-06,
+     &                            0.200E-06, 0.100E-06, 0.500E-07 /
+
+      DATA PING_IC_SPC ( 31 )  / 'TERP            ' /
+      DATA PING_IC_CONC( 31,: ) / 0.375E-04, 0.375E-04, 0.000E+00,
+     &                            0.000E+00, 0.000E+00, 0.000E+00 /
+
+      DATA PING_IC_SPC ( 32 )  / 'ASO4J           ' /
+      DATA PING_IC_CONC( 32,: ) / 5.964E-01, 5.964E-01, 3.976E-01,
+     &                            3.976E-01, 7.952E-02, 3.976E-02 /
+
+      DATA PING_IC_SPC ( 33 )  / 'ASO4I           ' /
+      DATA PING_IC_CONC( 33,: ) / 4.810E-03, 4.810E-03, 3.207E-03,
+     &                            3.207E-03, 6.413E-04, 3.207E-04 /
+
+      DATA PING_IC_SPC ( 34 )  / 'ASOIL           ' /
+      DATA PING_IC_CONC( 34,: ) / 1.890E-05, 1.890E-05, 1.890E-05,
+     &                            1.890E-05, 1.890E-05, 1.890E-05 /
+
+      DATA PING_IC_SPC ( 35 )  / 'NUMATKN         ' /
+      DATA PING_IC_CONC( 35,: ) / 1.437E+09, 1.437E+09, 9.583E+08,
+     &                            9.583E+08, 1.917E+08, 9.583E+07 /
+
+      DATA PING_IC_SPC ( 36 )  / 'NUMACC          ' /
+      DATA PING_IC_CONC( 36,: ) / 2.123E+08, 2.123E+08, 1.416E+08,
+     &                            1.416E+08, 2.831E+07, 1.416E+07 /
+
+      DATA PING_IC_SPC ( 37 )  / 'NUMCOR          ' /
+      DATA PING_IC_CONC( 37,: ) / 1.000E+00, 1.000E+00, 1.000E+00,
+     &                            1.000E+00, 1.000E+00, 1.000E+00 /
+
+      DATA PING_IC_SPC ( 38 )  / 'SRFATKN         ' /
+      DATA PING_IC_CONC( 38,: ) / 7.931E-07, 7.931E-07, 5.287E-07,
+     &                            5.287E-07, 1.057E-07, 5.287E-08 /
+
+      DATA PING_IC_SPC ( 39 )  / 'SRFACC          ' /
+      DATA PING_IC_CONC( 39,: ) / 8.544E-06, 8.544E-06, 5.696E-06,
+     &                            5.696E-06, 1.139E-06, 5.696E-07 /
+
+      DATA PING_IC_SPC ( 40 )  / 'NH3             ' /
+      DATA PING_IC_CONC( 40,: ) / 0.100E-03, 0.100E-03, 0.300E-04,
+     &                            0.200E-04, 0.200E-04, 0.100E-04 /
+
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

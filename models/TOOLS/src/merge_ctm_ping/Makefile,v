@@ -1,0 +1,71 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2006.03.13.19.36.07;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.36.07;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@ EXEC       = MERGE_PING_CTM_L1
+ FC         = /share/linux/pgi/linux86/5.0/bin/pgf90
+ IOAPI      = /project/wind1/yoj/lib/ioapi_22
+ NTCDF      = /project/wind1/yoj/lib/netCDF/Linux
+ F_FLAGS    = -Mfixed -Mextend -O2 -I.
+ LINK_FLAGS = -Bstatic
+
+
+CPP_FLAGS = 
+
+LIBRARIES = \
+ -L$(IOAPI)/Linux2_x86pg -lioapi \
+ -L$(NTCDF) -lnetcdf
+
+INCLUDES = \
+ -DSUBST_IOPARMS=\"$(IOAPI)/fixed_src/PARMS3.EXT\" \
+ -DSUBST_IOFDESC=\"$(IOAPI)/fixed_src/FDESC3.EXT\" \
+ -DSUBST_IODECL=\"$(IOAPI)/fixed_src/IODECL3.EXT\"
+
+OBJECTS =\
+ merge_ping_ctm.o
+  
+.SUFFIXES: .F
+
+
+$(EXEC): $(OBJECTS)
+	$(FC) $(LINK_FLAGS) $(OBJECTS) $(LIBRARIES) -o $@@
+
+.F.o:
+	$(FC) -c $(F_FLAGS) $(CPP_FLAGS) $(INCLUDES) $<
+
+
+
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

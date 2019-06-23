@@ -1,0 +1,39 @@
+                     PARALLEL_NOTES - 14 Sep 2005
+
+
+ The following are some observations related to running the CMAQ CCTM in a 
+ Linux MPICH cluster environment where the various computational nodes are 
+ connected via Network File System (NFS).
+
+ Running the CCTM for the first day of the 32km tutorial in a parallel 
+ cluster with 8 processors took 2.3 minutes wall time, whereas running it 
+ on a single processor took 4.1 minutes.  The reason for the poor scaling 
+ of the parallel run has to do with the size of the problem (domain) in 
+ relation to the proportion of I/O processing, which is inherently serial. 
+ In addition, the relative inefficiency of NFS in sending internet packets 
+ across the local network fast enough to keep the CPUs on the participating 
+ nodes busy may contribute.
+
+ Clusters that have local high-bandwidth interconnects or are isolated from 
+ general network traffic (e.g. Scyld Beowulf) will not suffer this problem 
+ as much.  That is, even relatively small problem sizes will still go 
+ faster in parallel than in serial.
+
+ We infrequently experienced the situation where a run on 8 processors (one 
+ local, 3 remote dual cpu Intel XEON boxes) would start and hang.  But re-
+ launching the run succeeded.  This may be due to network latency problems.
+
+ We had difficulties running in the MPICH cluster associated with the 
+ standard practice of automouting directories.  It was necessary to "hard 
+ mount" the data directory to which we wrote the CMAQ outputs.
+
+ To make our MPICH linux cluster work, we had to put all the machines that 
+ we wanted to use in the ~/.rhosts file.  Otherwise, we would get a 
+ "permission denied" when you launch mpirun.
+
+ One operational note: In addition to the main log file, produced by the 
+ "processor 0" task, the runs produce ancillary log files for each of the 
+ other tasks.  If you re-execute a particular run that intends to write to 
+ logs that have the same name as these ancillary files, the run will 
+ probably hang.  You must dispose of these ancillary log files first.
+

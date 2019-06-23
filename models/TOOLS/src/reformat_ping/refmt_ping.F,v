@@ -1,0 +1,261 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.36.08;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.36.08;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/TOOLS/src/reformat_ping/refmt_ping.F,v 1.1 2004/10/04 17:37:07 sjr Exp $
+
+C:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+      PROGRAM REFMT_PING
+
+C Function: reformat ping output conc file
+ 
+C Preconditions: None
+ 
+C Subroutines/Functions Called: None
+ 
+C Revision History: Prototype created by
+
+      IMPLICIT NONE
+
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+
+      CHARACTER( 16 ) :: INFILE = 'BASE_FILE'
+      CHARACTER( 16 ) :: PDMFILE = 'PDM_FILE'
+      CHARACTER( 16 ) :: OUTFILE = 'REFMT_FILE'
+      CHARACTER( 16 ) :: PNAME = 'REFMT_PING'
+      CHARACTER( 96 ) :: XMSG = ' '
+
+      INTEGER :: JDATE  = 0   ! current date, format YYYYDDD
+      INTEGER :: JTIME  = 0   ! current time, format HHMMSS
+      INTEGER :: TSTEP  = 0   ! timestep, format HHMMSS
+
+      REAL, ALLOCATABLE :: GDATA( :,:,: )
+      REAL, ALLOCATABLE :: DUMP( :,:,:,: )
+
+      INTEGER NPLUMTOT, NPILLARS, ALLCONC, N_RLEASES, N_MEPSES
+
+      INTEGER, EXTERNAL :: ENVINT, TRIMLEN
+      INTEGER LOGDEV, INDX, ISTEP, IERR
+      INTEGER I, J, K, L, M
+
+      LOGDEV = INIT3()
+
+c open PDM file
+
+      IF ( .NOT. OPEN3( PDMFILE, FSREAD3, PNAME ) ) THEN
+         XMSG = 'Could not open ' // PDMFILE // ' file'
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+ 
+      IF ( .NOT. DESC3( PDMFILE ) ) THEN
+         XMSG = 'Could not get ' // PDMFILE // ' file description'
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      N_MEPSES  = NCOLS3D
+
+c open input IOAPI file
+
+      IF ( .NOT. OPEN3( INFILE, FSREAD3, PNAME ) ) THEN
+         XMSG = 'Could not open ' // INFILE // ' file'
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+ 
+      IF ( .NOT. DESC3( INFILE ) ) THEN
+         XMSG = 'Could not get ' // INFILE // ' file description'
+         CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+      WRITE( LOGDEV,'(3X, "FTYPE3D ", I8)' ) FTYPE3D
+      WRITE( LOGDEV,'(3X, "CDATE3D ", I8)' ) CDATE3D
+      WRITE( LOGDEV,'(3X, "CTIME3D ", I8)' ) CTIME3D
+      WRITE( LOGDEV,'(3X, "WDATE3D ", I8)' ) WDATE3D
+      WRITE( LOGDEV,'(3X, "WTIME3D ", I8)' ) WTIME3D
+      WRITE( LOGDEV,'(3X, "SDATE3D ", I8)' ) SDATE3D
+      WRITE( LOGDEV,'(3X, "STIME3D ", I8)' ) STIME3D
+      WRITE( LOGDEV,'(3X, "TSTEP3D ", I8)' ) TSTEP3D
+      WRITE( LOGDEV,'(3X, "MXREC3D ", I8)' ) MXREC3D
+      WRITE( LOGDEV,'(3X, "NVARS3D ", I8)' ) NVARS3D
+      WRITE( LOGDEV,'(3X, "NCOLS3D ", I8)' ) NCOLS3D
+      WRITE( LOGDEV,'(3X, "NROWS3D ", I8)' ) NROWS3D
+      WRITE( LOGDEV,'(3X, "NLAYS3D ", I8)' ) NLAYS3D
+      WRITE( LOGDEV,'(3X, "NTHIK3D ", I8)' ) NTHIK3D
+      WRITE( LOGDEV,'(3X, "GDTYP3D ", I8)' ) GDTYP3D
+
+      WRITE( LOGDEV,'(3X, "P_ALP3D ", 1PD20.12)' ) P_ALP3D
+      WRITE( LOGDEV,'(3X, "P_BET3D ", 1PD20.12)' ) P_BET3D
+      WRITE( LOGDEV,'(3X, "P_GAM3D ", 1PD20.12)' ) P_GAM3D
+      WRITE( LOGDEV,'(3X, "XCENT3D ", 1PD20.12)' ) XCENT3D
+      WRITE( LOGDEV,'(3X, "YCENT3D ", 1PD20.12)' ) YCENT3D
+      WRITE( LOGDEV,'(3X, "XORIG3D ", 1PD20.12)' ) XORIG3D
+      WRITE( LOGDEV,'(3X, "YORIG3D ", 1PD20.12)' ) YORIG3D
+      WRITE( LOGDEV,'(3X, "XCELL3D ", 1PD20.12)' ) XCELL3D
+      WRITE( LOGDEV,'(3X, "YCELL3D ", 1PD20.12)' ) YCELL3D
+
+      WRITE( LOGDEV,'(3X, "VGTYP3D ", I8)' ) VGTYP3D
+      WRITE( LOGDEV,'(3X, "VGTOP3D ", 1PE13.6)' ) VGTOP3D
+      WRITE( LOGDEV,'(3X, "VGLVS3D")' )
+      DO INDX = 1, NLAYS3D + 1
+         WRITE( LOGDEV,'(I8, 2X, 1PE13.6)' ) INDX, VGLVS3D( INDX )
+         END DO
+
+      WRITE( LOGDEV,'(3X, "GDNAM3D ", A)' ) GDNAM3D
+      WRITE( LOGDEV,'(3X, "UPNAM3D ", A)' ) UPNAM3D
+      WRITE( LOGDEV,'(3X, "EXECN3D ", A)' ) EXECN3D
+
+      WRITE( LOGDEV,1005 ) 'Input'
+1005  FORMAT( /5X, A,
+     &        /10X, 'VNAME3D', 2X, 'VTYPE3D', 2X, 'UNITS3D', 4X, 'VDESC3D' )
+      DO INDX = 1, NVARS3D
+         WRITE( LOGDEV,1009 ) INDX,
+     &                        VNAME3D( INDX )( 1:TRIMLEN( VNAME3D( INDX ) ) ),
+     &                        VTYPE3D( INDX ),
+     &                        UNITS3D( INDX )( 1:TRIMLEN( UNITS3D( INDX ) ) ),
+     &                        VDESC3D( INDX )( 1:TRIMLEN( VDESC3D( INDX ) ) )
+         END DO
+
+1009  FORMAT( 3X, I4, 4X, A, 2X, I4, 2X, A, 2X, A )
+
+      WRITE( LOGDEV,'("FDESC3D")' )
+!     DO INDX = 1, MXDESC3
+      DO INDX = 1, 2
+         WRITE( LOGDEV,'(I8, 2X, A)' ) INDX, FDESC3D( INDX )
+         END DO
+
+      WRITE( LOGDEV,'("UPDSC3D")' )
+!     DO INDX = 1, MXDESC3
+      DO INDX = 1, 2
+         WRITE( LOGDEV,'(I8, 2X, A)' ) INDX, UPDSC3D( INDX )
+         END DO
+
+      JDATE = SDATE3D
+      JTIME = STIME3D
+      TSTEP = TSTEP3D
+
+      NPLUMTOT  = NCOLS3D
+      NPILLARS  = NROWS3D - 4
+      ALLCONC   = NVARS3D - 4
+      N_RLEASES = MXREC3D
+!     N_MEPSES  = NPLUMTOT / N_RLEASES
+
+      write( logdev,* ) 'N_MEPSES, N_RLEASES: ', n_mepses, n_rleases
+
+!     N_MEPSES = ENVINT ( 'N_SOURCES', 'no. of mepses', 47, IERR )
+!     IF ( IERR .NE. 0 ) THEN
+!        XMSG = 'ENVINT ERROR retrieving N_MEPSES'
+!        CALL M3EXIT( PNAME, SDATE3D, STIME3D, XMSG, XSTAT2 )
+!        END IF
+
+      N_RLEASES = NPLUMTOT / N_MEPSES
+
+      ALLOCATE ( GDATA( NPLUMTOT,NPILLARS+4,ALLCONC+4 ), STAT = IERR )
+      IF ( IERR .NE. 0 ) THEN
+         XMSG = 'ERROR allocating GDATA'
+         CALL M3EXIT( PNAME, SDATE3D, STIME3D, XMSG, XSTAT2 )
+         END IF
+
+      ALLOCATE ( DUMP( N_RLEASES,NPILLARS+4,N_MEPSES,ALLCONC+4 ), STAT = IERR )
+      IF ( IERR .NE. 0 ) THEN
+         XMSG = 'ERROR allocating DUMP'
+         CALL M3EXIT( PNAME, SDATE3D, STIME3D, XMSG, XSTAT2 )
+         END IF
+
+c open output file
+
+      NROWS3D = NPILLARS + 4
+      NCOLS3D = N_RLEASES
+      NLAYS3D = N_MEPSES
+
+      IF ( .NOT. OPEN3( OUTFILE, FSNEW3, PNAME ) ) THEN
+         XMSG = 'Could not open ' // OUTFILE // ' file'
+         CALL M3EXIT( PNAME, SDATE3D, STIME3D, XMSG, XSTAT1 )
+         END IF
+
+      DO ISTEP = 1, MXREC3D
+
+         IF ( .NOT. READ3 ( INFILE, ALLVAR3, ALLAYS3, JDATE, JTIME,
+     &                      GDATA ) ) THEN
+            XMSG = 'ERROR reading ' // INFILE
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+
+         DO K = 1, ALLCONC+4
+            DO I = 1, N_RLEASES
+               M = ( I - 1 ) * N_MEPSES
+               DO J = 1, NPILLARS+4
+                  DO L = 1, N_MEPSES
+                     DUMP( I,J,L,K ) = GDATA( L+M,J,K )
+                     END DO
+                  END DO
+               END DO
+            END DO
+
+         IF ( .NOT. WRITE3 ( OUTFILE, ALLVAR3, JDATE, JTIME,
+     &                       DUMP ) ) THEN
+         XMSG = 'ERROR writing ' // OUTFILE
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF
+
+         CALL NEXTIME( JDATE, JTIME, TSTEP3D )
+         END DO
+
+      WRITE( LOGDEV,'("Normal Completion of ", A)' ) PNAME
+
+      STOP
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

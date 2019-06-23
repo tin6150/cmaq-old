@@ -1,0 +1,38 @@
+                Information about SMOKE - 14 Sep 2005
+
+
+ The Sparse Matrix Operator Kernel Emission (SMOKE) model was developed by 
+ the Environmental Modeling Center at MCNC under cooperative research 
+ agreements and contracts with the U.S. Environmental Protection Agency 
+ (EPA).  Development of SMOKE continues at UNC-CEP and is partially 
+ supported by CMAS.
+
+ The emissions data for the tutorial of this release of CMAQ were prepared 
+ with SMOKE.
+
+ SMOKE code is open source Fortran90 code, and is consistent with the 
+ netCDF I/O API convention used by CMAQ.
+
+ Emission inventory data are accepted by SMOKE in the Inventory Data 
+ Analyzer (IDA) format (described in the SMOKE documentation).  Speciation 
+ for selected gas phase lumped species mechanisms is included.  Currently, 
+ lumping to accommodate the CB4, RADM2, SAPRC99 lumped species mechanisms 
+ is accomplished by SMOKE.  SMOKE also speciates fine particulate emissions 
+ (PM 2.5) to six particulate categories to support the aerosol chemistry 
+ portions of CMAQ. Hourly biogenic and on-road mobile emission data are 
+ modeled directly using BEIS 3.12 and Mobile 6, respectively, which are 
+ embedded in SMOKE.
+
+ The most recently released version of SMOKE (version 2.1) may be 
+ downloaded from the CMAS web site at
+
+ http://www.cmascenter.org/html/models.html
+
+ A user manual, including file formats, a separate test case (not the 
+ tutorial with this CMAQ release), and other relevant links are available 
+ on the SMOKE page.  Click on "Download SMOKE" to access the SMOKE code and 
+ specific installation instructions for your system. Additional inventory 
+ documentation and SMOKE datasets developed for the Clean Air Interstate 
+ Rule (CAIR) are available at 
+
+ http://www.epa.gov/air/interstateairquality/technical.html 

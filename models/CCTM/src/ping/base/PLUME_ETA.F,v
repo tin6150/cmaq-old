@@ -1,0 +1,138 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.51;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.51;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/base/PLUME_ETA.F,v 1.3 2002/04/05 18:23:21 yoj Exp $
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+      MODULE PLUME_ETA
+ 
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+C Pillar information
+ 
+C Left Invariant Normalized Pillar Coordinate
+      REAL, SAVE :: ETAL ( NPILLARS )
+C Right Invariant Normalized Pillar Coordinate
+      REAL, SAVE :: ETAR ( NPILLARS )
+C Delta (ETAL)
+      REAL, SAVE :: DETAL( NPILLARS )
+C Delta (ETAR)
+      REAL, SAVE :: DETAR( NPILLARS )
+
+!     COMMON / PINGR1 / ETAL, ETAR, DETAL, DETAR
+
+      CONTAINS
+
+         SUBROUTINE PING_ETA ()
+
+         INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+
+         CHARACTER( 16 ) :: PNAME = 'PING_ETA'
+
+         INTEGER I, J
+         INTEGER, SAVE :: LOGDEV
+         LOGICAL, SAVE :: FIRSTIME = .TRUE.
+
+         IF ( FIRSTIME ) THEN
+            FIRSTIME = .FALSE.
+            LOGDEV = INIT3 ()
+
+C check pillar parameters in PLUME_PARM
+
+            IF ( NLEFT + NRIGHT .NE. NPILLARS )
+     &         CALL M3ERR ( PNAME, -999, -999, 'Wrong Number of Pillars' ,
+     &                     .TRUE.)
+
+            END IF   ! FIRSTIME
+            
+C Initialize the function value
+
+         DO I = 1, NLEFT + 1
+            ETAL( I ) = ETALT( I )
+            END DO
+         ETAL( NLEFT+2 ) = ETAL( NLEFT+1 )
+     &                   + PING_XI * ( ETAL( NLEFT+1 ) - ETAL( NLEFT ) )
+         DO I = NLEFT + 3, NPILLARS
+            ETAL( I ) = 0.0
+            END DO
+         DO I = 1, NLEFT + 1
+            DETAL ( I ) = ETAL( I+1 ) - ETAL( I )
+            END DO
+
+         DO I = 1, NRIGHT + 1
+            ETAR( I ) = ETART( I )
+            END DO
+         ETAR( NRIGHT+2 ) = ETAR( NRIGHT+1 )
+     &                    + PING_XI * ( ETAR( NRIGHT+1 ) - ETAR( NRIGHT ) )
+         DO I = NRIGHT + 3, NPILLARS
+            ETAR( I ) = 0.0
+            END DO
+         DO I = 1, NRIGHT + 1
+            DETAR ( I ) = ETAR( I+1 ) - ETAR( I )
+            END DO
+
+         RETURN
+
+         END SUBROUTINE PING_ETA
+
+      END MODULE PLUME_ETA
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

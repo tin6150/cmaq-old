@@ -1,0 +1,111 @@
+                     SULFATE_TRACKING - 15 Sep 2005
+
+
+ CMAQv4.5 includes an optional diagnostic model configuration that provides 
+ detailed information on the modeled sulfur budget.  This model version, 
+ referred to as the CMAQ Sulfate Tracking Model, tracks sulfate production 
+ from the gas-phase and the five aqueous-phase chemical reactions, as well 
+ as contributions from direct emissions and initial and boundary 
+ conditions.  Each of the tracked species is advected, diffused, processed 
+ through clouds, and deposited (both wet and dry) individually.  The CMAQ 
+ sulfate tracking model is a valuable tool in examining the nonlinearities 
+ in the production of sulfate.
+ 
+ NOTE:  CURRENTLY, THE SULFATE TRACKING MODEL ONLY OPERATES WITH THE
+        "aero3" (AE3) AND "cloud_radm" MODULES.  WE PLAN TO EXTEND THE
+        SULFATE TRACKING CAPABILITY TO INCLUDE THE "aero4" (AE4) AND
+        "cloud_acm" MODULES IN THE NEXT RELEASE.
+ 
+ In order to build the sulfate tracking version of the CTM executable 
+ program, several modules and a different chemical mechanism must be 
+ specified in the model build script.  You can modify the bldit.cctm.linux 
+ script as follows and build the sulfate tracking version of the CCTM:
+ 
+      40c40
+      <  set APPL  = e2a
+      ---
+      >  set APPL  = se2a
+      91c91
+      <  set ModVdiff  = ( module eddy               $Revision; )
+      ---
+      >  set ModVdiff  = ( module eddy_sulf          $Revision; )
+      106,107c106,107
+      < #set ModAero   = ( module aero3              $Revision; )
+      <  set ModAero   = ( module aero4              $Revision; )
+      ---
+      >  set ModAero   = ( module aero3_sulf         $Revision; )
+      > #set ModAero   = ( module aero4              $Revision; )
+      110c110
+      <  set ModAdepv  = ( module aero_depv2         $Revision; )
+      ---
+      >  set ModAdepv  = ( module aero_depv2_sulf    $Revision; )
+      113,114c113,114
+      < #set ModCloud  = ( module cloud_radm         $Revision; )
+      <  set ModCloud  = ( module cloud_acm          $Revision; )
+      ---
+      >  set ModCloud  = ( module cloud_radm_sulf    $Revision; )
+      > #set ModCloud  = ( module cloud_acm          $Revision; )
+      124c124
+      <  set Mechanism = cb4_ae4_aq
+      ---
+      >  set Mechanism = cb4_ae3st_aq
+
+ Then modify the run.cctm script as follows:
+
+      19,20c19,20
+      <  set APPL     = e2a
+      <  set CFG      = e2a
+      ---
+      >  set APPL     = se2a
+      >  set CFG      = se2a
+
+ Note: You can change the default script by using the Unix "patch" 
+       utility. Cut the indented section listed above into a file, say 
+       "mod." Then type "patch run.cctm mod."
+
+ The sulfate tracking model will work with the existing IC file, BC file, 
+ and emissions files available for use with the standard CMAQ model.  No 
+ additional processing is required to prepare input data for this model 
+ version.
+
+ The output concentration & deposition files will include additional 
+ species beyond the normal species list.  These new output species are 
+ listed in Table 1 below.
+
+ 
+                 Table 1. Sulfate Tracking Species List
+ =========================================================================
+ species name     description
+ =========================================================================
+ ASO4AQH2O2J      ASO4J produced by aqueous-phase hydrogen peroxide
+                      oxidation reaction:  H2O2 + S(IV) -> S(VI) + H2O
+
+ ASO4AQO3J        ASO4J produced by aqueous-phase ozone oxidation
+                      reaction:  O3 + S(IV) -> S(VI) + O2
+
+ ASO4AQFEMNJ      ASO4J produced by aqueous-phase oxygen catalyzed
+                      by Fe+++ and Mn++ oxidation reaction:
+                      O2 + S(IV) -> S(VI) 
+
+ ASO4AQMHPJ       ASO4J produced by aqueous-phase methyl hydrogen
+                      peroxide oxidation reaction:  MHP + S(IV) -> S(VI)
+
+ ASO4AQPAAJ       ASO4J produced by aqueous-phase peroxyacetic acid
+                      oxidation reaction:  PAA + S(IV) -> S(VI)
+
+ ASO4GASI         ASO4I nucleated and/or condensed following
+                      gas-phase reaction:  OH + SO2 -> SULF + HO2
+
+ ASO4GASJ         ASO4J nucleated and/or condensed following
+                      gas-phase reaction:  OH + SO2 -> SULF + HO2
+
+ ASO4EMISJ        ASO4J from source emissions
+
+ ASO4ICBCI        ASO4I from boundary and initial conditions
+
+ ASO4ICBCJ        ASO4J from boundary and initial conditions
+
+ SULF_ICBC        Sulfuric acid vapor (SULF) from boundary and initial
+                      conditions
+ =========================================================================
+

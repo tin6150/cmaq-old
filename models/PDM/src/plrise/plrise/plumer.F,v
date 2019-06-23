@@ -1,0 +1,500 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/plrise/plrise/plumer.F,v 1.12 2005/08/29 20:33:54 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C *********************************************************************
+       SUBROUTINE PLUMER( ISRC, ZL, ZR, UL, TL, DTHDZ, HMIX, USTAR, HSTAR,
+     &   BFLUX, HS, DS, VS, TS, TREF, ZRUF, ZF, QL, PL, TSFC, PSFC, AMOL,
+     &   TOP, BOT, ISTAB, IPFLAG, JFLAG, PRH, UPR, NITER )
+C**********************************************************************
+
+C FUNCTION: Computes plume rise under all stability conditions
+C           using layer by layer approach and Briggs equations.
+C  Reference: Turner et al. (1991), Atmos. Environ.,25A,10,2187-2201 
+C* BDX 03/19/91 modified for M54 and RADM 2.6 system
+C* JSN 09/26/91 modified for UAM
+C* jmg 2/94  modified to apply Briggs unstable plume rise formula
+C* ywu 7/95  modified to skip those overlapped steps, and
+C            added a new subroutine for interpolating u and T
+C            for models with 15 or more layers in vertical 
+C  JUG 2/98  Momentum rise inserted; code readied for Models3 archive
+C **********************************************************************
+C INPUTS --
+C 
+C        ZL       R     ELEVATION OF VERTICAL LAYER WHERE UL, etc. ARE GIVEN
+C        ZR       R     ELEVATION OF LAYER FACE (ZR1=0, ZL1=.5*(ZR1+ZR2), ETC)
+C        UL       R     HORIZONTAL WIND SPEED AT ZL (M/S)
+C        DTHDZ    R     Pot. TEMP. GRAD. over THE LAYER ZF(K-1) TO ZF( K ) (K/M)
+C        HMIX     R     MIXED LAYER HEIGHT (M)
+C        USTAR    R     FRICTION VELOCITY (M/S)
+C        HSTAR    R     SURFACE HEAT FLUX SCALE (M**2/S**3) = G*HFX/TREF
+C        BFLUX    R     BUOYANCY FLUX (M**4/S**3)
+C        HS       R     PHYSICAL STACK HEIGHT (M)
+C        TS       R     STACK EXIT TEMPERATURE ( K )
+C        TREF     R     REFERENCE TEMPERATURE ( K )
+C        TL       R     LAYER TEMPERATURE  ( K )
+C        ZRUF     R     ROUGHNESS LENGH  (M)
+C        ZF       R     LAYER FACE HEIGHT  (M)
+C        QL       R     LAYER SPECIFIC HUMIDITY (G/G)
+C        PL       R     LAYER PRESSURE (MB)   
+C        TSFC     R     SURFACE AIR TEMPERATURE  ( K )
+C        PSFC     R     SURFACE PRESSURE (MB)
+C        AMOL     R     MONIN-OBUKHOV LENGTH 
+C
+C OUTPUT --
+C        TOP      R     TOP OF PLUME AT FINAL PLUME RISE HEIGHT
+C        BOT      R     BOTTOM OF PLUME AT FINAL PLUME RISE HEIGHT
+C        ISTAB    I     STABILITY PARAMETER for the layer where stack top
+C                       located
+C                        -1= UNSTABLE CASE
+C                         1= STABLE CASE
+C                         0= NEUTRAL
+C        IPFLAG           0 = FLAG FOR PARTIAL PENETRATION
+C                         2 = FLAG FOR STACK ABOVE MIXED LAYER
+C        JFLAG            ERROR FLAG
+C
+C LOCAL VARIABLES --
+C        ARG1     R       USED IN DETERMINING PARTIAL PENETRATION, as DH
+C        CRDIST   R       =200 M, a criteria distance between HMIX and HS
+C        DH       R       Plume rise 
+C        DHNEU    R       Plume rise for neutral case
+C        DHT      R       Top HEIGHT of plume
+C        HFXMIN   R       MINIMUM VALUE FOR SURFACE HEAT FLUX
+C        IQ       I       FLAG FOR EQUATION USED
+C        IQNEU    I       FLAG FOR EQUAITON USED WHEN CALLING NEUTRAL
+C        KMIX     I       INDEX FOR LEVEL OF MIXING HEIGHT
+C        KPR      I       INDEX FOR PLUME RISE LAYER
+C        KSTK     I       INDEX FOR LAYER OF STACK HEIGHT
+C        QPR      R       INTERPOLATED SPECIFIC HUMIDITY (G/G)
+C        RBFLUX   R       RESIDUAL BUOYANCY FLUX AT THE TOP OF THIS
+C                             LAYER (M**4/S**3)
+C        RPR      R       INTERPOLATED RELATIVE HUMIDITY (0-1.0)
+C        S        R       Static stability parameter
+C        SMALL    R       Criteria for stable stability
+C        TPR      R       INTERPOLATED TEMPERATURE ( K )
+C        UPR      R       INTERPOLATED WIND SPEED (M/S)
+C        ZB       R       DISTANCE FROM STACK TO THE LAYER BOTTOM
+C        ZERO     R       ZERO FOR REAL NUMBERS
+C        ZT       R       DISTANCE FROM STACK TO THE LAYER TOP
+C        ZTOP     R       HEIGHTS RELATIVE to STACK TOP
+C        NLAYS    I       MAXIMUM NUMBER OF LEVELS
+
+C ROUTINES CALLED
+C
+C        PBLPWR
+C        NEUTRAL
+C        RESBF
+
+C ERROR CONDITIONS
+
+C     -1  ERROR FOR UNSTABLE CASE RETURNED FROM SUBROUTINE PBLPWR
+C     -2  ERROR FOR STABLE CASE RETURNED FROM SUBROUTINE PBLPWR
+C     -3  ERROR FOR NEUTRAL CASE RETURNED FROM SUBROUTINE PBLPWR
+C     -4  ERROR FOR NEUTRAL(BOTTOM HEIGHT) RETURNED FROM SUBROUTINE PBLPWR
+C     -5  ERROR - WIND SPEED NEGATIVE
+
+      USE VGRD_DEFN
+      
+      IMPLICIT NONE
+
+C---- Declare variables
+
+!      INCLUDE SUBST_VGRD_ID
+!     INCLUDE SUBST_PARAM_ID
+      INCLUDE SUBST_IOPARMS
+      INCLUDE SUBST_IOFDESC
+      INCLUDE SUBST_CONST
+      INCLUDE 'PLUME.EXT'
+ 
+      INTEGER IPFLAG, IQ, IQNEU, ISTAB, K, KMIX, KPR, KSTK,JFLAG 
+      INTEGER IMETHD, IDPLUM, NITER, IPARTFLG, IOLDFIL, ISRC
+
+      REAL    AMOL, ARG1, BFLUX, BOT, CRDIST, DH, DHNEU, DHT, DS, VS,
+     &        TS, HFXMIN, HMIX, HS, HSTAR, PSFC, RBFLUX, DHSM,
+     &        S, SMALL, TOP, TPR, TREF, TSFC, UPR, USTAR, ZB, ZERO,
+     &        ZMIX, ZRUF, ZT, PRH, DELH, DHTNEU, DHM, USTK, UPRMIN 
+
+      REAL ZL( NLAYS ), ZR( NLAYS+1 ), UL( NLAYS ), DTHDZ( NLAYS )
+      REAL ZTOP( NLAYS ), TL( NLAYS ), ZF( 0:NLAYS ), QL( NLAYS ), PL( NLAYS )
+      REAL, PARAMETER :: D3      =  1.0 / 3.0
+      REAL, PARAMETER :: D6      =  1.0 / 6.0
+      REAL, PARAMETER :: TWOTHD  =  2.0 / 3.0
+
+      LOGICAL  IPRFLG
+
+      DATA ZERO / 0.0 /, SMALL / 0.00003 /, CRDIST / 200.0 /, HFXMIN / 0.0001 /
+      DATA UPRMIN / 1.0 /
+      SAVE ZERO, SMALL, CRDIST, HFXMIN, UPRMIN
+
+      COMMON /OPTN/ IPRFLG
+      COMMON /MTH/ IMETHD, IDPLUM, IPARTFLG, IOLDFIL
+
+C-----------------------------------------------------------------------
+
+      ISTAB =  0
+      IPFLAG = 0 ! FLAG FOR PARTIAL PENETRATION
+      IF (  UPR .LT. 1.0 ) UPR = UPRMIN
+      USTK = UPR
+
+C---- Compute the momentum plume rise ONLY ----------
+C under this condition of BFLUX < 0.
+      DHM = 3.0 * DS * VS / USTK
+
+C----  Check for case of zero bouyancy flux, use momentum rise and go below.
+      IF ( BFLUX .LE. 0.0 ) THEN
+         DH = DHM
+         DHT = 1.5 * DH
+         IQ = 4
+         GO TO 401
+      END IF
+  
+C---- Find layer number where the stack top is located
+
+      DO K = 1, NLAYS
+         IF (  HS .LT. ZF( K ) ) THEN
+            KSTK = K
+            GO TO 101
+         END IF
+      END DO
+      KSTK = NLAYS
+101   CONTINUE
+
+C---- Find the distances relative to stack top height.
+      DO K = 1, NLAYS
+        ZTOP( K ) = ZF( K ) - HS
+      END DO
+
+C---- Find layer number for PBL height
+      DO K = 1, NLAYS - 1
+         IF ( HMIX .LT. ZF( K ) ) THEN
+             KMIX = K
+             GO TO 201
+         END IF
+      END DO
+      KMIX = NLAYS - 1
+201   CONTINUE
+
+      KPR = KSTK             ! Index for plume rise layer
+      ZT  = ZTOP( KSTK )     ! Distance from stack to the layer top
+      IF ( KSTK .EQ. 1 ) THEN
+         ZB = 0.0
+      ELSE
+         ZB = ZTOP( KSTK-1 ) ! Distance from stack to the layer bottom
+      END IF
+
+C---- 1st time thru at stack level 
+
+C---- UNSTABLE CASE if positive heat flux greater than threshold.
+      IF ( HSTAR .GT. ( 0.03 * HFXMIN ) ) THEN
+         ISTAB = -1
+         ZMIX = HMIX - HS
+
+C---- Now check if stack height is above or below the mixing height.
+         IF ( ZMIX .LE. 0.0 ) THEN
+
+C---- Stack above mixing height
+            IPFLAG = 2                   ! Flag for stack above mixed layer
+!           KPR = MIN( NLAYS-1, KMIX+1 ) ! Let KPR = KSTK from above
+            IF ( KPR .NE. KSTK ) THEN
+C---- Get UPR at ZL(KPR) 
+               UPR = MAX( UL( KPR ), UPRMIN )
+            END IF 
+            IF ( DTHDZ( KPR ) .GT. 0.001 ) THEN
+C---- Compute the stable momentum rise, for layer of the stack
+               DHSM = 0.646 * ( VS * VS * DS * DS / ( TS * UPR ) ) ** D3
+     &              * SQRT( TS ) / ( DTHDZ( KPR ) ** D6 )
+!              write( *,* ) 'DHSM ', DHSM
+            ELSE
+               DHSM = DHM         ! Set it to DHM, if the grad too small
+            END IF
+            DHM = MIN( DHSM, DHM )
+
+            S = MAX( ( GRAV * DTHDZ( KPR ) / TREF ), SMALL )
+!           write( 25,* ) 'S, etc:', S, UPR, DTHDZ(KPR), KPR
+!           IF ( S .LE. 3.0 * SMALL ) THEN
+               CALL NEUTRAL( HS, BFLUX, UPR, USTAR, DHNEU, IQ )
+!           ELSE
+               DH = 2.6 * ( BFLUX / ( UPR * S ) ) ** D3
+!              write( 25,* ) DH, BFLUX, UPR, S
+               IQ = 3
+!           END IF
+            IF ( DHNEU .LT. DH ) THEN  ! Take the minimum of neutral and stable
+               IQ = 2
+               DH = DHNEU
+            ELSE 
+               IQ = 3 
+            END IF
+
+C---- Set the larger of momentum and bouyancy rise heights
+!jmg       write( 25,* ) 'DH ETC:', DH, BFLUX, DHM
+            IF ( DHM .GT. DH .AND. UPR .GT. UPRMIN ) THEN
+               DH = DHM
+               IQ = 4
+            END IF
+
+            DHT = 1.5 * DH
+
+            IF ( IPRFLG ) THEN
+               WRITE( 25,* ) 'ISTAB,IQ,IPFLAG,DHM,DH =',
+     &                        ISTAB, IQ, IPFLAG, DHM, DH
+            END IF
+C---- IF momentum rise higher, omit iteration loop and jump to end
+            IF ( IQ .EQ. 4 ) GO TO 401
+
+            ELSE
+C---- UNSTABLE RISE
+C     1. Use Briggs forms  (Turner,1985)
+C     2. ALSO Compute NEUTRAL rise
+C        Compare 1. and 2., chose the smaller one
+            DH = 30.0*(BFLUX/UPR)**0.6
+            IQ = 1
+            IF ( IPRFLG) WRITE( 25,*) 'UNSTAB : ', IQ, BFLUX, UPR, DH
+            CALL NEUTRAL(HS, BFLUX, UPR, USTAR, DHNEU, IQNEU)
+
+            IF ( DHNEU.LT.DH) THEN
+               DH = DHNEU
+               IQ = IQNEU
+            END IF
+
+C---- Compare unstable momentum and bouyancy rises, and select the larger
+            IF ( DHM .GT. DH .AND. UPR .GT. UPRMIN ) DH = DHM 
+            DHT = 1.5 * DH
+
+         END IF   ! ZMIX <= 0
+
+         IF ( IPRFLG ) THEN
+               WRITE( 25,*) ' ISTAB, IQ, DHM, DH=',ISTAB,IQ,DHM,DH
+         END IF
+
+C---- STABLE case 
+      ELSE IF ( HSTAR .LT. ( -0.03 * HFXMIN ) ) THEN
+         ISTAB = 1
+         S = MAX( GRAV * DTHDZ( KPR ) / TREF, SMALL )
+         DH = 2.6 * ( BFLUX / ( UPR * S ) ) ** D3
+         DHT = 1.5 * DH
+         IQ = 3
+C---- Compute the momentum rise also
+         DHM = 3.0 * DS * VS / USTK
+         IF ( DHM .GT. DH. AND. UPR .GT. UPRMIN ) THEN
+            DH = DHM 
+            DHT = 1.5 * DH
+            IQ = 4
+         END IF
+         IF ( IPRFLG ) WRITE( 25,* ) 'STABLE:', ISTAB, IQ, DH, BFLUX, UPR, S
+
+         CALL NEUTRAL( HS, BFLUX, UPR, USTAR, DHNEU, IQNEU )
+
+C---- Select minimum DH of NEUTRAL and STABLE case
+         IF ( DHNEU .LT. DH ) THEN
+            DH = DHNEU
+            IQ = IQNEU             ! Flag for equation used
+            DHT = 1.5 * DH         ! For plume top
+            IF ( IPRFLG)  WRITE( 25,*) 'NEUTRAL SELECTED;',IQ,DH  
+         END IF
+
+C---- NEUTRAL case
+      ELSE
+
+          CALL NEUTRAL( HS, BFLUX, UPR, USTAR, DH, IQ)
+
+      DHT = 1.5 * DH
+
+      END IF ! of all stability cases in 1st time thru
+
+C-----------------------------------------------------------------------
+C---- Check if HS+DH reaches above the layer top 
+C     Iterate over layers to reach final rise for different stability,
+C     except if momentum rise selected, IQ = 4
+      NITER = 0
+      IF ( IQ .EQ. 4 ) GO TO 401     
+      RBFLUX = BFLUX
+!     DHT = DHT + ZB          ! Omit ZB on first time
+!     DH = DH + ZB            ! Omit ZB on first time.
+!     write( *,* ) 'At stack :', IQ, DHT, ZB, RBFLUX, S, UPR, DTHDZ(KPR), KPR
+
+301   CONTINUE
+      IF ( DHT .LE. ZTOP( KPR ) ) GO TO 401
+
+C---- PLUME RISE overshoot to upper layer
+C---- Compute residual buoyancy flux
+      NITER = NITER + 1
+
+      CALL RESBF1( DH, DHT, ZT, IQ, UPR, HS, USTAR, S, RBFLUX )
+!     write( *,* ) 'After RESBF1 :', IQ, DHT, ZT, UPR, USTAR, S, RBFLUX
+C---- Compute new plume rise due to remaining buoyancy
+
+      IF ( KPR .LE. NLAYS ) THEN
+         KPR = KPR + 1   ! Above layer
+      END IF
+      ZT = ZTOP( KPR )
+      ZB = ZTOP( KPR-1 )
+
+C---- Get new Met data
+C---- note***  ZL(KPR-1) ! height of the layer bottom
+      UPR = MAX( UL( KPR ), UPRMIN )
+      TPR = TL( KPR )
+
+      IF ( UPR .LE. 0.0 ) GO TO 998
+
+C---- Compute new stability parameter for the layer
+
+!     S = MAX( SMALL, ( GRAV * DTHDZ( KPR ) / TPR ) )
+      S = GRAV * DTHDZ( KPR ) / TPR
+
+C---- STABLE
+
+      IF ( S .GT. SMALL ) THEN    ! Stable
+
+         DH = 2.6 * ( RBFLUX / ( UPR * S ) ) ** D3
+         DHT = 1.5 * DH + ZB
+         DH = DH + ZB
+         IQ = 3
+
+         CALL NEUTRAL( HS, RBFLUX, UPR, USTAR, DHNEU, IQNEU )
+         DHTNEU = 1.5 * DHNEU + ZB
+         DHNEU = DHNEU + ZB
+
+C---- Select Minimum DH of Neutral and Stable  for STABLE case
+
+         IF ( DHNEU .LT. DH ) THEN
+            DH = DHNEU
+            IQ = IQNEU          ! Flag for equation used
+            DHT = DHTNEU        ! For plume top
+         END IF
+
+C---- NEUTRAL-UNSTABLE
+
+      ELSE      ! If upper layer is not stable
+C---- Unstable Briggs form and then neutral eqn.
+
+         DH = 30.0 * ( RBFLUX / UPR ) ** 0.6
+         IQ = 1
+
+         CALL NEUTRAL( HS, RBFLUX, UPR, USTAR, DELH, IQNEU )
+         IF ( DELH .LT. DH ) THEN
+            DH = DELH
+            IQ = IQNEU
+         END IF
+
+         DHT = 1.5 * DH + ZB
+         DH = DH + ZB
+      END IF              ! of upper layer stability cases
+
+C---- End of residual buoyancy computation
+
+      IF (  IPRFLG ) THEN
+         WRITE( 25,*) 'PLUMER:', NITER, IQ, DTHDZ( KPR ), S, RBFLUX,
+     &                DH, DHT, ZB, ZT, KPR
+      END IF
+
+      GO TO 301
+
+C---- Out of iteration loop
+
+401   CONTINUE
+
+C---- Check for DH < HS
+      IF ( ( HS + DHT ) .LE. HS ) THEN
+         WRITE( *,* ) 'DH<HS:', NITER, KPR, ISTAB, IQ, DTHDZ( KPR ),
+     &                HS, DH, ZB, ZT, RBFLUX
+         DHT = 2.0     ! Min value set (2 m) for plume rise in this case.
+                       ! just to determine TOP and BOT values wrt HS
+      END IF
+
+C---- Specify the plume top, bottom, and plume centerline heights after rise
+      TOP = HS + DHT
+      DH  = TWOTHD * DHT
+      PRH = HS + DH
+      BOT = HS + 0.5 * DH
+ 
+C---- write out the various results of plume rise calcs.
+      IF ( IPRFLG ) THEN
+         WRITE( 25,* ) NITER, ISTAB, IQ, DTHDZ( KPR ),
+     &                 HS, DH, PRH, BOT, TOP
+      END IF
+
+      GO TO 999
+
+998   CONTINUE
+      JFLAG = -5
+      WRITE ( *,1500 ) ' JFLAG1500=', JFLAG
+      RETURN
+999   CONTINUE
+
+      RETURN
+
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+
+C FORMATS
+
+1100  FORMAT( 'ERROR for unstable case in PLUMER ', I4,
+     &        ' Was returned from SUBROUTINE PBLPWR')
+1200  FORMAT( 'ERROR for stable case in PLUMER ', I4,
+     &        ' Was returned from SUBROUTINE PBLPWR')
+1300  FORMAT( 'ERROR for neutral case in PLUMER ', I4,
+     &        ' Was returned from SUBROUTINE PBLPWR')
+1400  FORMAT( 'ERROR for neutral (bottom height) in PLUMER ', I4,
+     &        ' Was returned from SUBROUTINE PBLPWR' )
+1500  FORMAT( 'ERROR in PLUMER - wind speed negative' /
+     &        'ERROR return flag = ', I4 )
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

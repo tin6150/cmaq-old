@@ -1,0 +1,243 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/pldyn/pldyn/pdm.F,v 1.12 2005/08/29 20:32:58 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C ******************************************************************
+      SUBROUTINE PDM ( IR, NS, IP, JP, VM, CRO_LAT, XCN, YCN, ANGL,
+     &                 XDIST, SIGY, TOP, BOT, DELBOT, CEFSTK,
+     &                 ITOP, IBOT, SIGZ0, SIGY0, SZ0FAC,
+     &                 TSTEP, IDTSEC, DSIGYT, DSIGYSH, ZL3, ZF, DELMIX,
+     &                 DDIR, DSPD, IPLMFLG, DSPDC, TL, NOA, MTE )
+
+C ********************** PDM package ******************************
+C  FUNCTION :  Determine the horizontal and vertical dimensions of
+C              individual plume sections at travel times after release.     
+
+      USE HGRD_DEFN             ! horizontal domain specifications
+      USE VGRD_DEFN
+      
+      IMPLICIT NONE
+      
+C Include files.
+!     INCLUDE SUBST_HGRD_ID          ! horizontal grid dimensions
+!     INCLUDE SUBST_VGRD_ID          ! vertical layer dimension
+      INCLUDE SUBST_IOPARMS          ! IOAPI parameters
+      INCLUDE SUBST_IOFDESC          ! IOAPI file description
+      INCLUDE SUBST_IODECL           ! IOAPI declarations
+      INCLUDE SUBST_CONST            ! constants file
+      INCLUDE 'PLUME.EXT'            ! plume parameters
+
+C arguments
+      INTEGER IR, NS, IP, JP, ITOP, IBOT, IDTSEC, IPLMFLG, NOA, MTE
+      REAL    VM( NROWS,NLAYS+4,10,NCOLS )
+      REAL    CRO_LAT( NCOLS,NROWS )
+      REAL    XCN, YCN, ANGL, XDIST, SIGY, TOP, BOT, DELBOT, CEFSTK
+      REAL    SIGZ0, SIGY0, SZ0FAC, TSTEP, DSIGYT, DSIGYSH
+      REAL    ZL3( MS,MTE,NLAYS )
+      REAL    ZF( MS,0:NLAYS )
+      REAL    DELMIX, DDIR, DSPD, DSPDC, TL
+
+C local variables
+      INTEGER ILO, IHI, ILOP1, IHIM1, K
+      REAL    ZL( NLAYS ), UP( NLAYS ), VP( NLAYS )
+      REAL    HTMIX, USTAR, WSTAR, TURBL, FCOR, XCO, YCO,
+     &        SUMX, SUMY, THT, BHT , DSIGY, XDDEL, BOTM, HTPM, TOPM,
+     &        HTMM, SIGZ, DTHR, DZBELO, DZABOV, AWNDSP
+      REAL    ZFA( 0:NLAYS )
+      INTEGER, SAVE :: LOGDEV
+      LOGICAL, SAVE :: LFIRST = .TRUE.
+      
+      INTEGER ICHUST, ICHUSY, ISHEAR  
+      COMMON /SIG/ ICHUST, ICHUSY, ISHEAR
+!     COMMON /MET/ CRO_LAT, PSFC, TSFC
+
+C-----------------------------------------------------------------------
+      IF ( LFIRST ) THEN
+         LFIRST = .FALSE.
+         LOGDEV = INIT3()
+      END IF
+
+      DTHR = FLOAT( IDTSEC ) / 3600.0
+      ILO = 1 
+      IHI  = NLAYS 
+      XCO  = XCN
+      YCO  = YCN
+
+C  Transfer met values from VM array to local variables
+      USTAR = VM( JP,4,5,IP )
+      TURBL = VM( JP,5,5,IP )
+      HTMIX = VM( JP,6,5,IP )
+      WSTAR = VM( JP,1,5,IP )
+      FCOR = 4.0 * PI * SIN( CRO_LAT( IP,JP ) * PI180 ) / 86400.0
+
+C  Compute vertical plume spread.
+C  Find the indices of layers spanned currently by the plume
+      DO K = 1, NLAYS
+         ZL( K ) = ZL3( NS,IR,K )
+         ZFA( K ) = ZF( NS,K )
+         IF ( BOT .GE. ZL( K ) ) ILO = K
+         IF ( TOP .GT. ZL( K ) ) IHI = K + 1
+      END DO
+      ZFA( 0 ) = ZF( NS,0 )
+      
+!     write( logdev,* ) 'IN PDM: ', NS, IR, ILO, IHI, HTMIX, BOT, TOP
+      
+      CALL VSPRD( TSTEP, IP, JP, SIGZ0, SZ0FAC, ITOP, IBOT, TOP, BOT, 
+     &            CEFSTK, VM, DTHR, SIGZ, DZABOV, DZBELO, ILO, IHI, ZL )
+
+C Compute and determine the relative positions of plume top & bottom to
+C the mixing height.
+
+      CALL MNEW ( ITOP, TOP, DZABOV, HTMIX, DELMIX, DZBELO,
+     &            IBOT, BOT, DELBOT, THT, BHT, TURBL, IPLMFLG )
+
+C Update to get new top and bottom heights of plume.
+
+      CALL MUPD ( THT, BHT, DELBOT, TOP, BOT )
+
+C IHI is the data level just above plume top;
+C ILO is the data level just below the plume bottom.
+C i.e. plume is sandwiched by levels IHI & ILO
+      ILO = 0
+      IHI = 0
+
+      DO K = 1, NLAYS
+         ZL( K ) = ZL3( NS,IR,K )
+         UP( K ) = VM( JP,K,1,IP )
+         VP( K ) = VM( JP,K,2,IP )
+!        IF ( BOT .GE. ZL( K ) ) ILO = K
+!        IF ( TOP .GT. ZL( K ) ) IHI  = K + 1
+         IF ( BOT .GE. ZFA( K-1 ) .AND. BOT .LT. ZFA( K ) ) ILO = K
+         IF ( TOP .GE. ZFA( K-1 ) .AND. TOP .LT. ZFA( K ) ) IHI = K 
+      END DO
+
+      IF ( ILO .LE. 0 ) ILO = 1
+      IF ( IHI .GT. NLAYS ) THEN
+         CALL M3ERR( 'PDM', 0, 0,
+     &               'Plume top over vertical model domain', .TRUE. )
+      END IF
+
+      ILOP1 = ILO + 1
+      IHIM1 = IHI - 1
+      IF ( IHIM1 .LE. 0 ) THEN
+         WRITE( LOGDEV,* ) 'IN PDM: NS, IR, ILO, IHI, IP,JP =',
+     &                      NS, IR, ILO, IHI, IP, JP, IPLMFLG
+!        IHIM1 = 1
+         CALL M3ERR( 'PDM', 0, 0,
+     &               'Plume base below lowest model layer', .TRUE. )
+         END IF  
+!     write( logdev,* ) 'LATER IN PDM: ', NS, IR, ILO, IHI, HTMIX, BOT, TOP
+
+      BOTM = BOT - ZL( ILO )
+      HTPM = ZL( ILOP1 ) - ZL( ILO )
+      TOPM = TOP - ZL( IHIM1 )
+      HTMM = ZL( IHI ) - ZL( IHIM1 )
+      UP( ILO ) = UP( ILO )   + ( UP( ILOP1 ) - UP( ILO ) )   * BOTM / HTPM
+      UP( IHI ) = UP( IHIM1 ) + ( UP( IHI )   - UP( IHIM1 ) ) * TOPM / HTMM
+      VP( ILO ) = VP( ILO )   + ( VP( ILOP1 ) - VP( ILO ) )   * BOTM / HTPM
+      VP( IHI)  = VP( IHIM1 ) + ( VP( IHI )   - VP( IHIM1 ) ) * TOPM / HTMM
+
+!     if ( abs( up( ilo ) ) .gt. 1.0e+30 .or.
+!    &     abs( up( ihi ) ) .gt. 1.0e+30 .or.
+!    &     abs( vp( ilO ) ) .gt. 1.0e+30 .or.
+!    &     abs( vp( ihi ) ) .gt. 1.0e+30 ) then
+!        write( logdev,* ) '>>> ilO, ihi, bot, top, htpm, htmm, up, vp: ',
+!    &                          ilO, ihi, bot, top, htpm, htmm,
+!    &                          up( ilO ), up( ihi ), vp( ilO ), vp( ihi )
+!        write( logdev,* ) '>>> ir, ns : ', ir, ns
+!        do k = 1, nlays
+!           write( logdev,* ) '>>> k, zl: ', k, zl( k )
+!        end do
+!     end if
+
+C Wind speed shear.
+
+      CALL DIFFSPD( UP, VP, DSPD, IHI, ILO, NLAYS )
+
+C Compute plume travel distance.
+
+      CALL MOVE( IHI, ILO, IDTSEC, SUMX, SUMY, XDDEL, UP, VP, ZFA, AWNDSP )
+
+      XCN = XCO + SUMX
+      YCN = YCO + SUMY
+
+C  Check on speed shear, if too great then set plume flag.
+      IF ( DSPD * DSPDC .GE. AWNDSP ) IPLMFLG = 12
+!     write( logdev,* ) 'AFTER MOVE;', DSPD, DSPDC, AWNDSP, XCO, XCN, YCO, YCN 
+
+C  Keep track of the total distance traveled 
+      XDIST = XDIST + XDDEL
+        
+C** Compute the angle between the trajectory and the original coord.
+
+      CALL PHAI( ANGL, XCO, YCO, XCN, YCN )
+
+C** SigmaY parameterization.
+C   (Horizontal plume dispersion method)
+
+      CALL YPARAM( IR, NS, USTAR, WSTAR, TURBL, HTMIX, TOP, BOT, XDIST, 
+     &             XDDEL, FCOR, SZ0FAC, SIGY, DSIGY, TSTEP, IDTSEC, IHI, ILO, 
+     &             UP, VP, DSIGYT, DSIGYSH, DDIR, DTHR, SIGY0, TL, NOA)
+     
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

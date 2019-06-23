@@ -1,0 +1,1775 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/base/ping_handover.F,v 1.13 2005/09/07 17:55:16 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C=========================================================================
+C This file, ping_handover.F contains:
+C    SUBROUTINE PING_HANDOVER
+C    PING_FULL_HO
+C    PING_PARTIAL_HO
+C    FUNCTION PING_BG_EMIS
+C    FUNCTION PING_URBAN_EMIS
+C    FUNCTION PING_CMATURE_OX
+C=========================================================================
+
+C***********************************************************************
+
+!#    SUBROUTINE PING_HANDOVER ( CGRID, CPLUME, JDATE, JTIME )
+      SUBROUTINE PING_HANDOVER ( CPLUME, JDATE, JTIME )
+
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- replace NPLUMES with MY_NPLUMES to denote number of plumes in a
+C        processor
+C     -- use ifdef to distinguish implementation of CGRID between serial and
+C        parallel which requires a ghost cell region to accommodate the
+C        situation where the LL and UR of a plume can lie in two adjacent
+C        grid cells
+C     -- remove a redundant loop index J
+C     -- use MY_* variables for local processor
+C     -- use environment variable ALL_PE_SYNC_IO_MODE to denote whether
+C        all PEs or not will participate in pario reads
+C     -- in the log output, for instance on line 215 and 216, global grid point
+C        was written rather than local grid point so that cross check can be
+C        done with serial run
+C   11/30/99 Jim Godowich
+C      -- add dumping for plume exiting domain
+C      -- turn off precip. dumping of plume
+C   12/30/99 Jeff Young
+C      -- f90 memory mgmt
+C    24 Sep 01 J.Young
+C      -- dyn alloc - Use HGRD_DEFN
+C      -- remove ALL_PE_SYNC_IO_MODE
+C-----------------------------------------------------------------------
+ 
+!     USE HGRD_DEFN   ! horizontal domain specifications
+
+      USE PLUME_DYN   ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_MET   ! inherits PLUME_STATE, which inherits PLUME_LOC,
+                      ! which inherits PING_GLOBDIM
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+
+      INCLUDE SUBST_GC_EMIS   ! emissions name and mapping tables
+
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! I/O definitions and declarations
+ 
+C...............      Shared Arguments      ................
+ 
+!#    REAL :: CGRID( :,:,:,: ) ! Grid Model Concentration Array in PPM units
+ 
+      REAL :: CPLUME( :,:,: )
+ 
+      INTEGER JDATE         ! Current model date (Julian), YYYYDDD
+      INTEGER JTIME         ! Current model time, HHMMSS
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER ISOURCE             ! mepse pointer - used only for logging
+      INTEGER I, MY_I             ! Loop counters
+      LOGICAL PING_CMT            ! =PING_CMATURE or PING_CMATURE_OX
+
+C Plume chemical age criterion options : decided by (NOz/NOy) or (O3/Ox)
+C PING_CH_AGE=O3DOX_AGE ==> choose O3/Ox as chem age
+
+      INTEGER, PARAMETER :: PING_CH_AGE = 1   ! use 1 as default
+      INTEGER, PARAMETER :: O3DOX_AGE = 1
+
+C Precipitation critical rate (in cm/s) (0.00008cm/s ~0.29cm/hr)
+
+      REAL :: PING_HO_PRECIP = 0.00008  ! use 0.00008 as default
+
+C Variables to be saved
+ 
+      INTEGER, SAVE :: LOGDEV              !  FORTRAN unit number for log file
+
+      INTEGER, ALLOCATABLE, SAVE :: IZUR_OLD( : )
+      REAL,    ALLOCATABLE, SAVE :: HP_OLD( : )
+      INTEGER, SAVE :: NPLUMTOT
+      INTEGER       :: ALLOCSTAT
+      CHARACTER( 200 ) :: MSG
+
+      CHARACTER( 16 )  :: PNAME = 'PING_HANDOVER'
+
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+ 
+C...............      Global Variables      ................
+ 
+!      INCLUDE      'PING.COMMON'
+ 
+C Function definitions
+ 
+      LOGICAL PING_BG_EMIS      ! Func. checking background NOx emissions
+      LOGICAL PING_URBAN_EMIS   ! Func. checking for urban emissions
+!     LOGICAL PING_CMATURE_OX   ! Func. indicating plume chemical maturity
+                                ! (i.e., chemical age) by O3/Ox
+
+      INTERFACE
+         LOGICAL FUNCTION PING_CMATURE_OX ( CPLUME, IPLUME, JDATE, JTIME )
+            IMPLICIT NONE
+            REAL,    INTENT( IN )    :: CPLUME( :,:,: )
+            INTEGER, INTENT( IN )    :: IPLUME
+            INTEGER, INTENT( IN )    :: JDATE, JTIME
+         END FUNCTION PING_CMATURE_OX
+         SUBROUTINE PING_FULL_HO ( CPLUME, IPLUME, JDATE, JTIME )
+            IMPLICIT NONE
+            REAL,    INTENT( IN )    :: CPLUME( :,:,: )
+            INTEGER, INTENT( IN )    :: IPLUME
+            INTEGER, INTENT( IN )    :: JDATE, JTIME
+         END SUBROUTINE PING_FULL_HO
+         SUBROUTINE PING_PARTIAL_HO ( CPLUME, IPLUME, JDATE, JTIME,
+     &                                IZUR_OLD, HP_OLD )
+            IMPLICIT NONE
+            REAL,    INTENT( IN )    :: CPLUME( :,:,: )
+            INTEGER, INTENT( IN )    :: IPLUME
+            INTEGER, INTENT( IN )    :: JDATE, JTIME
+            INTEGER, INTENT( IN )    :: IZUR_OLD( : )
+            REAL,    INTENT( IN )    :: HP_OLD( : )
+         END SUBROUTINE PING_PARTIAL_HO
+      END INTERFACE
+ 
+C-----------------------------------------------------------------------
+ 
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+
+C get plume dimensions
+         CALL GET_NMEPSES ( )
+         NPLUMTOT = N_MEPSES * N_RLEASES
+
+         ALLOCATE ( IZUR_OLD( NPLUMTOT ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** IZUR_OLD Memory allocation failed'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+            END IF
+
+         IZUR_OLD = 0
+
+         ALLOCATE ( HP_OLD( NPLUMTOT ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** HP_OLD Memory allocation failed'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+            END IF
+
+         HP_OLD = 0.0
+
+         LOGDEV = INIT3 ()
+
+         END IF
+
+C End of First time block
+C-------------------------------
+ 
+C  Plume Flag Description:
+C      Value      Description
+C        0        non existence plume
+C        1        new inactive plume (released, but not initialized)
+C        2        new active plume   (to be initialized)
+C        3        old active plume   (has already been initialized)
+C        4        plume being handed over to the grid model
+C        5        dead plume (handed over)
+C       -5        active plume that has moved out of (possible) subdomain
+C        6        never activated plume that has moved out of subdomain
+
+C  PDMflag Description:
+C      Value      Description
+C        0        newly released plume (at the source, not active yet)
+C        1        new plume after plume rise (Wp, Hp > 0)
+C        2        plume has reached the critical width for initialization
+C        3        normal case (plume inside the domain, all conditions normal)
+C        4        Zi dramatically drops ( Partial Hand-over)
+C       10        night-time condition, total hand-over (night)
+C       11        wind directional shear is more than the critical level
+C       12        wind speed shear is above the critical level
+C       13        final width criterion met
+C      +21        out of domain (positive X-direction)
+C      +22        out of domain (positive Y-direction)
+C      -21        out of domain (negative X-direction)
+C      -22        out of domain (negative Y-direction)
+C     -100        plumes not released yet (initial setting)
+
+C============================================
+C Loop over all the plume sections - LOOP-1
+
+C Begin processor independent read region ...
+C (required for calls to OPEN3 and INTERP3 in PING_BG_EMIS and PING_URBAN_EMIS,
+C and for calls to OPEN3 in PING_FULL_HO and PING_PARTIAL_HO
+
+#ifdef parallel
+!     CALL PUTENVVAR ( 'ALL_PE_SYNC_IO_MODE', 'N' )
+#endif
+
+      DO I = 1, MY_NPLUMES
+         MY_I = MY_PLUMEPTR( I )
+         IF ( PFLAG( MY_I ) .EQ. 3 ) THEN
+
+            ISOURCE = MOD( MY_I - 1, N_MEPSES ) + 1
+ 
+C Check for chemical age (chemical maturity)
+ 
+C --- choosing NOz/NOy or O3/Ox as Chem age ----
+
+            IF ( PING_CH_AGE .EQ. O3DOX_AGE ) THEN
+               PING_CMT = PING_CMATURE_OX ( CPLUME, MY_I, JDATE, JTIME )
+               ELSE
+               WRITE( LOGDEV,* )
+               WRITE( LOGDEV,* ) '** Warning %$#$# ...'
+               WRITE( LOGDEV,* ) '** PING chemical age was not specified'
+               END IF
+
+            IF ( PING_CMT ) THEN
+               CALL SET_PFLAG ( MY_I, 4 )
+               WRITE( LOGDEV,91000 ) MY_I, ISOURCE
+               WRITE( LOGDEV,99000 ) IXC( MY_I ) ,IYC( MY_I ),
+     &                               IZLL( MY_I ), IZUR( MY_I ),
+     &                               JDATE, JTIME
+               END IF
+ 
+C Check the emissions in background, if they are more than the critical value,
+C then Hand-over the corresponding plumes
+ 
+            IF ( PING_BG_EMIS ( MY_I, JDATE, JTIME ) ) THEN
+               CALL SET_PFLAG ( MY_I, 4 )
+               WRITE( LOGDEV,91100 ) MY_I, ISOURCE
+               WRITE( LOGDEV,99000 ) IXC( MY_I ) ,IYC( MY_I ),
+     &                               IZLL( MY_I ), IZUR( MY_I ),
+     &                               JDATE, JTIME
+               END IF
+
+C Check the emissions at the surface, if they are more than the critical value,
+C then Hand-over the corresponding plumes.
+C Note: this condition is checked if the plume is in contact with the surface
+ 
+            IF ( PING_URBAN_EMIS ( MY_I, JDATE, JTIME ) ) THEN
+               CALL SET_PFLAG ( MY_I, 4 )
+               WRITE( LOGDEV,91200 ) MY_I, ISOURCE
+               WRITE( LOGDEV,99000 ) IXC( MY_I ) ,IYC( MY_I ),
+     &                               IZLL( MY_I ), IZUR( MY_I ),
+     &                               JDATE, JTIME
+               END IF
+
+C Check for precipitation
+C Don't allow dumping flag to be set due to precip for now
+ 
+            IF ( PRECIPNOW( MY_I ) .GE. PING_HO_PRECIP ) THEN
+!              CALL SET_PFLAG ( MY_I, 4 )
+               WRITE( LOGDEV,92000 ) MY_I, ISOURCE
+!              WRITE( LOGDEV,99000 ) IXC( MY_I ) ,IYC( MY_I ),
+!    &                               IZLL( MY_I ), IZUR( MY_I ),
+!    &                               JDATE, JTIME
+               END IF
+
+C Check to see if plume is exiting the domain
+ 
+            IF ( ABS( PDMFLAG( MY_I ) ) .EQ. 21 .OR.
+     &           ABS( PDMFLAG( MY_I ) ) .EQ. 22 ) THEN
+               CALL SET_PFLAG ( MY_I, 4 )
+               WRITE( LOGDEV,93000 ) MY_I, ISOURCE
+               WRITE( LOGDEV,99000 ) IXC( MY_I ) ,IYC( MY_I ),
+     &                               IZLL( MY_I ), IZUR( MY_I ),
+     &                               JDATE, JTIME
+               END IF
+
+C Check for:                      pdmflag:
+C  Night, total handover            10 
+C  Wind directional shear           11 
+C  Wind speed shear                 12 
+C  Width larger than grid size      13 
+C  Cloud cover                      14 
+C  Plume moved into other mepse i,j 15
+ 
+            IF ( PDMFLAG( MY_I ) .EQ. 10 ) THEN
+               CALL SET_PFLAG ( MY_I, 4 )
+               WRITE( LOGDEV,94000 ) MY_I, ISOURCE
+               WRITE( LOGDEV,99000 ) IXC( MY_I ) ,IYC( MY_I ),
+     &                               IZLL( MY_I ), IZUR( MY_I ),
+     &                               JDATE, JTIME
+               END IF
+
+            IF ( PDMFLAG( MY_I ) .EQ. 11 ) THEN
+               CALL SET_PFLAG ( MY_I, 4 )
+               WRITE( LOGDEV,95000 ) MY_I, ISOURCE
+               WRITE( LOGDEV,99000 ) IXC( MY_I ) ,IYC( MY_I ),
+     &                               IZLL( MY_I ), IZUR( MY_I ),
+     &                               JDATE, JTIME
+               END IF
+ 
+            IF ( PDMFLAG( MY_I ) .EQ. 12 ) THEN
+               CALL SET_PFLAG ( MY_I, 4 )
+               WRITE( LOGDEV,96000 ) MY_I, ISOURCE
+               WRITE( LOGDEV,99000 ) IXC( MY_I ) ,IYC( MY_I ),
+     &                               IZLL( MY_I ), IZUR( MY_I ),
+     &                               JDATE, JTIME
+               END IF
+  
+            IF ( PDMFLAG( MY_I ) .EQ. 13 ) THEN
+               CALL SET_PFLAG ( MY_I, 4 )
+               WRITE( LOGDEV,97000 ) MY_I, ISOURCE, WP( MY_I )
+               WRITE( LOGDEV,99000 ) IXC( MY_I ) ,IYC( MY_I ),
+     &                               IZLL( MY_I ), IZUR( MY_I ),
+     &                               JDATE, JTIME
+               END IF
+
+            IF ( PDMFLAG( MY_I ) .EQ. 14 ) THEN
+               CALL SET_PFLAG ( MY_I, 4 )
+               WRITE( LOGDEV,97100 ) MY_I, ISOURCE
+               WRITE( LOGDEV,99000 ) IXC( MY_I ) ,IYC( MY_I ),
+     &                               IZLL( MY_I ), IZUR( MY_I ),
+     &                               JDATE, JTIME
+               END IF
+
+C 3/04 New criterion, when plume section in grid cell of a different mepse.
+            IF ( PDMFLAG( MY_I ) .EQ. 15 ) THEN
+               CALL SET_PFLAG ( MY_I, 4 )
+               WRITE( LOGDEV,97200 ) MY_I, ISOURCE
+               WRITE( LOGDEV,99000 ) IXC( MY_I ) ,IYC( MY_I ),
+     &                               IZLL( MY_I ), IZUR( MY_I ),
+     &                               JDATE, JTIME
+               END IF
+
+            END IF   ! active plume (PFLAG = 3)
+
+         END DO
+
+C End of active plume loop
+C============================================ End of LOOP_1
+
+C LOOP_2
+C------------------------------------
+C full hand-over the plume if PFLAG=4
+C------------------------------------
+ 
+      DO I = 1, MY_NPLUMES
+         MY_I = MY_PLUMEPTR( I )
+
+         IF ( PFLAG( MY_I ) .EQ. 4 ) THEN
+!#          CALL PING_FULL_HO ( CGRID, CPLUME, MY_I, JDATE, JTIME )
+            CALL PING_FULL_HO ( CPLUME, MY_I, JDATE, JTIME )
+            CALL SET_PFLAG ( MY_I, 5 )
+            END IF
+
+C--------------------------------
+C Check for partial hand-over (PFLAG=3, PDMFLAG=4)
+C--------------------------------
+ 
+         IF ( PFLAG( MY_I ) .EQ. 3 .AND. PDMFLAG( MY_I ) .EQ. 4 ) THEN
+            IF ( HP_OLD( MY_I ) .GT. HP( MY_I ) ) THEN
+               CALL PING_PARTIAL_HO
+!#   &              ( CGRID, CPLUME, MY_I, JDATE, JTIME, IZUR_OLD, HP_OLD )
+     &              ( CPLUME, MY_I, JDATE, JTIME, IZUR_OLD, HP_OLD )
+               WRITE( LOGDEV,98000 ) MY_I, ISOURCE, HP_OLD( MY_I ) - HP( MY_I )
+               WRITE( LOGDEV,99000 ) IXC( MY_I ),IYC( MY_I ),
+     &                               IZUR( MY_I ), IZUR_OLD( MY_I ),
+     &                               JDATE, JTIME
+               END IF
+            END IF
+
+C Reset HP_OLD and IZUR_OLD and then end the loop
+ 
+         IZUR_OLD( MY_I ) = IZUR( MY_I )
+         HP_OLD  ( MY_I ) = HP( MY_I )
+ 
+C End of plume LOOP_2
+
+         END DO
+
+C End processor independent read region (restore to standard ParIO reads)
+#ifdef parallel
+!     CALL PUTENVVAR ( 'ALL_PE_SYNC_IO_MODE', 'Y' )
+#endif
+
+      RETURN
+
+91000 FORMAT (/ 10X, 'Plume Section', I5, ' (Source', I3, '),',
+     &           1X, 'has reached the critical age,' )
+91100 FORMAT (/ 10X, 'NOx emissions in the background for '
+     &        / 10X, 'Plume Section', I5, ' (Source', I3, '),',
+     &           1X, 'exceeds the critical value,' )
+91200 FORMAT (/ 10X, 'Plume Section', I5, ' (Source', I3, '),',
+     &           1X, 'is over an urban area,' )
+!1300 FORMAT (/ 10X, 'del_O3/del_OX for Plume Section', I5,
+!    &           1X, '(Source', I3, '),'
+!    &           1X, 'exceeds the critical value, ' )
+92000 FORMAT (/ 10X, 'Precip has reached a critical level',
+     &           1X, 'for Plume Section', I5, ' (Source', I3, ')' )
+93000 FORMAT (/ 10X, 'Plume Section', I5, ' (Source', I3, '),',
+     &           1X, 'is exiting the domain,' )
+94000 FORMAT (/ 10X, 'Night; total hand-over for Plume Section', I5,
+     &           1X,  '(Source', I3, '),' )
+95000 FORMAT (/ 10X, 'Directional shear at critical level',
+     &           1X, 'for Plume Section', I5, ' (Source', I3, '),' )
+96000 FORMAT (/ 10X, 'Speed shear at critical level',
+     &           1X, 'for Plume Section', I5, ' (Source', I3, '),' )
+97000 FORMAT (/ 10X, 'Plume Section', I5, ' (Source', I3, '),'
+     &        / 10X, 'has reached the width of ', 1PE11.4,
+     &           1X, 'meters,' )
+97100 FORMAT (/ 10X, 'Plume Section', I5, ' (Source', I3, '),',
+     &           1X, 'under condition of cloud cover,' )
+97200 FORMAT (/ 10X, 'Plume Section', I5, ' (Source', I3, '),',
+     &           1X, 'in another mepse stack grid cell,' )
+98000 FORMAT (/ 10X, 'Partial hand-over for Plume Section', I5, ',',
+     &           1X, '(Source', I3, '),'
+     &        / 10X, 'Drop in plume height (m): ', 1PE11.4, ',' )
+99000 FORMAT (  10X, 'released in COL:', I4, ',   ROW:', I4
+     &        / 10X, '       from LEV:', I4, ' to LEV:', I4
+     &        / 10X, 'Release Date & Time: ', I7, I7.6 / )
+
+      END SUBROUTINE PING_HANDOVER
+
+C=========================================================================
+ 
+!#    SUBROUTINE PING_FULL_HO ( CGRID, CPLUME, IPLUME, JDATE, JTIME )
+      SUBROUTINE PING_FULL_HO ( CPLUME, IPLUME, JDATE, JTIME )
+
+C    24 Sep 01 J.Young: dyn alloc
+C    02 Feb 05 J.Young: dyn alloc - establish both horizontal & vertical
+C                       domain specifications in one module
+C--------------------------------------------------------------------
+ 
+      USE PCGRID_DEFN ! inherits GRID_CONF and CGRID_SPCS
+      USE PLUME_DYN   ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_MET   ! inherits PLUME_STATE, which inherits PING_GLOBDIM
+      USE PLUME_BG    ! inherits PING_GLOBDIM
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+      USE AERO_INFO_AE3  ! replaces aero include files
+      
+C Define variables
+ 
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC      ! aerosol species table
+      INCLUDE SUBST_NR_SPC      ! non-reactive species table
+      INCLUDE SUBST_TR_SPC      ! tracer species table
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! I/O definitions and declarations
+!     INCLUDE SUBST_XSTAT     ! M3EXIT status codes
+      
+C...............      Shared Arguments      ................
+
+      INTEGER, EXTERNAL :: INDEX1 
+       
+!#    REAL :: CGRID( :,:,:,: ) ! Grid Model concentration array
+ 
+      REAL :: CPLUME( :,:,: )  ! Plume concentration array
+
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD + N_AE_SPC + N_NR_SPC + N_TR_SPC
+
+      INTEGER IPLUME        ! Plume to be handed-over
+      INTEGER JDATE         ! Current model date (Julian), YYYYDDD
+      INTEGER JTIME         ! Current model time, HHMMSS
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER I             ! Plume section number
+      INTEGER J,K, N, KK    ! Loop counters
+      INTEGER C, R, LVL     ! Loop counters
+      INTEGER KLEV          ! LAYER for vertical extent of plume handover
+
+      REAL    ZDIFF         ! Top of the plume in the model domain
+      REAL    FRACTION      ! Volume ratio: V_plume/V-grid_cell
+      REAL    SUM           ! Work scaler
+      REAL    PAVCONC       ! Work scaler (plume average concentration)
+      REAL    BAVCONC       ! Work scaler (background average concentration)
+      REAL    GVOL, PVOL    ! Cumulative grid cell col volume, plume volume
+
+      REAL, PARAMETER :: CONMIN = 1.0E-30
+C minimum aerosol sulfate concentration for acccumulation mode
+      REAL, PARAMETER :: AEROCONCMIN_AC = 1.0E-6  ! 1 pg
+                                       ! [ ug/m**3 ] ! changed 12/13/99 by FSB
+C *** This value is smaller than any reported tropospheric concentrations.
+C minimum aerosol sulfate concentration for the Aitken mode
+      REAL, PARAMETER :: AEROCONCMIN_AT = 1.0E-6 * AEROCONCMIN_AC
+C minimum  aerosol concentration for coarse mode
+      REAL,PARAMETER :: AEROCONCMIN_CO = 1.890E-5
+ 
+      CHARACTER( 16 )  :: PNAME = 'PING_FULL_HO'
+      CHARACTER( 16 )  :: ANAME        ! variable name
+      CHARACTER( 200 ) :: MSG
+      CHARACTER( 200 ) :: XMSG         ! message holder
+      LOGICAL :: OK
+
+C Saved variables
+ 
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.           ! First time indicator
+      INTEGER, SAVE :: XCELL, YCELL
+
+      INTEGER, SAVE :: IVAT0
+      INTEGER, SAVE :: IVAC0
+      INTEGER, SAVE :: IVCOR0
+ 
+      REAL, SAVE :: XXLSGAT           ! temp variable
+      REAL, SAVE :: XXLSGAC           ! temp variable
+      REAL          XXLSGCOA          ! avoid name comflict w/ AERO_INFO_AE3.f
+      REAL, SAVE :: ESC36A            ! avoid name comflict w/ AERO_INFO_AE3.f
+
+C--------------------------------------------------------------------
+ 
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+
+C Get grid cell resolution from MET_CRO_3D:
+
+         OK = OPEN3 ( MET_CRO_3D, FSREAD3, PNAME )
+         IF ( .NOT. OK ) THEN
+            MSG = 'Error opening ' // MET_CRO_3D
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+            END IF
+
+         OK = DESC3 ( MET_CRO_3D )
+         IF ( .NOT. OK ) THEN
+            MSG = 'Error getting header of ' // MET_CRO_3D
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+            END IF
+
+         XCELL = XCELL3D
+         YCELL = YCELL3D
+
+         IF ( N_AE_SPC .GT. 0 ) THEN
+
+            ANAME = 'NUMATKN'
+            N = INDEX1( ANAME, N_AE_SPC, AE_SPC )
+            IF ( N .NE. 0 ) THEN
+               IVAT0 = N + N_GC_SPCD
+               ELSE
+               XMSG = 'Could not find ' // ANAME // 'in aerosol table'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT3 )
+               END IF
+
+            ANAME = 'NUMACC'
+            N = INDEX1( ANAME, N_AE_SPC, AE_SPC )
+            IF ( N .NE. 0 ) THEN
+               IVAC0 = N + N_GC_SPCD
+               ELSE
+               XMSG = 'Could not find ' // ANAME // 'in aerosol table'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT3 )
+               END IF
+
+            ANAME = 'NUMCOR'
+            N = INDEX1( ANAME, N_AE_SPC, AE_SPC )
+            IF ( N .NE. 0 ) THEN
+               IVCOR0 = N + N_GC_SPCD
+               ELSE
+               XMSG = 'Could not find ' // ANAME // 'in aerosol table'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT3 )
+               END IF
+
+            XXLSGAT = LOG( SGINIAT )
+            XXLSGAC = LOG( SGINIAC )
+            XXLSGCOA = LOG( SGINICO )
+            ESC36A = EXP( 4.5 * XXLSGCOA * XXLSGCOA )
+
+            END IF
+
+         END IF
+ 
+C End of first time block
+C..................................
+
+      I = IPLUME
+
+      IF ( MY_IZLL( I ) .GT. 1 ) THEN
+         ZDIFF = ZFNOW( I,MY_IZUR( I ) ) - ZFNOW( I,MY_IZLL( I ) - 1 )
+         ELSE
+         ZDIFF = ZFNOW( I,MY_IZUR( I ) )
+         END IF
+      FRACTION = ( WP( I )*HP( I )*UPLUME( I )*(3600.0/FLOAT(NRRATE)))
+     &         / ( XCELL * YCELL * ZDIFF )
+
+C  Revised method to release plume volume into comparable grid volume
+C composed of layers though the vertical column.
+      PVOL =  ( WP( I )*HP( I )*UPLUME( I )*(3600.0/FLOAT(NRRATE)))
+!      write(*,*) 'Inside FULL_HANDOVER :',
+!     &            jdate, jtime, WP(I), HP(I),UPLUME(I)
+!      write(*,*) 'I,izll,izur,PVOL :',
+!     &            I,MY_IZLL( I ),MY_IZUR( I ),PVOL*0.000000001
+
+C Compute the cumulative grid volume in the column upward starting
+C with the layer of the plume bottom.
+C Initialize the grid volume for the vertical column.
+      GVOL = 0.0
+      KLEV = MY_IZUR( I )
+            
+      DO KK = MY_IZLL( I ), MY_IZUR( I )
+        IF (KK .EQ. 1 ) THEN
+         GVOL =  XCELL * YCELL * ZFNOW( I, KK )
+        ELSE
+	 GVOL = GVOL + XCELL*YCELL*(ZFNOW(I,KK) - ZFNOW(I,KK-1))
+	ENDIF
+      IF ( GVOL .GE. PVOL ) KLEV = KK
+!      write(*,*) KK, ZFNOW(I, KK), GVOL*0.000000001
+      IF( GVOL .GE. PVOL ) GO TO 99
+      ENDDO
+C  Possible cases where PVOL may be slightly greater than GVOL due
+C  to PBL height (HP) greater than a layer height.
+99    CONTINUE 
+      IF( GVOL .LT. PVOL ) KLEV = MY_IZUR( I )
+
+      C = MY_IXC( I ); R = MY_IYC( I )
+!      write(*,*) 'Final KLEV for cell:', C, R, KLEV  
+C Loop over the species
+ 
+      DO K = 1, ALLSPC
+ 
+C Calculate plume average concentration
+ 
+         SUM = 0.0
+         DO J = 1, NPILLARS
+            SUM = SUM + CPLUME( K,J,I )
+            CPLUME( K,J,I ) = 0.0
+            END DO
+         PAVCONC = SUM / FLOAT( NPILLARS )
+ 
+C Calculate plume-background average concentration
+ 
+         BAVCONC = 0.5 * ( CLBG( K,I ) + CRBG( K,I ) )
+         CLBG( K,I ) = 0.0
+         CRBG( K,I ) = 0.0
+         CBBG( K,I ) = 0.0
+         CTBG( K,I ) = 0.0
+ 
+C Release the average conc. to a column over the center cell (for now)
+C         DO LVL = MY_IZLL( I ), MY_IZUR( I )           
+         DO LVL = MY_IZLL( I ), KLEV
+!#          CGRID( C,R,LVL,K ) =
+!#   &      MAX ( 0.0,
+!#   &            FRACTION * ( PAVCONC - BAVCONC )
+!#   &            + CGRID( C,R,LVL,K ) )
+C  Use fractional weighting when plume is subcell.
+        IF( MY_IZLL(I) .EQ. KLEV .OR. WP(I).LT.XCELL ) THEN
+!       IF( K.EQ.4) THEN
+!            WRITE(*,*) 'SUBCELL PLUME :',JDATE,JTIME,
+!     &                  I, lvl, klev, FRACTION, wp(i)
+!        ENDIF
+!        IF(K.EQ.4) WRITE(*,*) 'PCGRID before handover:', PCGRID( C,R,LVL,K )
+
+            PCGRID( C,R,LVL,K ) =
+     &      MAX ( 0.0,
+     &            FRACTION * ( PAVCONC - BAVCONC )
+     &            + PCGRID( C,R,LVL,K ) )
+!      IF(K.EQ.4 .AND. LVL.EQ.MY_IZLL( I )) write(*,*) 'O3 subplume handover:',
+!     &                         I,PAVCONC, BAVCONC, PCGRID( C,R,LVL,K )
+C  Actual plume-grid conc diff now applied into each vertical cell.
+          ELSE
+!      IF( K.EQ.4 .AND. LVL.EQ.MY_IZLL( I )) 
+!     &      WRITE(*,*) 'PCGRID before handover:', PCGRID( C,R,LVL,K )
+
+      PCGRID( C,R,LVL,K ) =
+     &      MAX ( 0.0,
+     &            ( PAVCONC - BAVCONC )
+     &            + PCGRID( C,R,LVL,K ) )
+          ENDIF
+
+!      IF(K.EQ.4 .AND. LVL.EQ.MY_IZLL( I )) write(*,*) 'O3 handover: ',
+!     &                         I,PAVCONC, BAVCONC, PCGRID( C,R,LVL,K )
+
+            IF ( N_AE_SPC .GT. 0 ) THEN
+
+C  Check for zero number for aerosol modes
+
+               IF ( K. GE. IVAT0 .AND. K. LE. IVCOR0 .AND.
+     &            PCGRID( C,R,LVL,K ) .LE. CONMIN ) THEN
+
+                  IF ( K .EQ. IVAT0 ) THEN
+                     PCGRID( C,R,LVL,K ) =
+     &                  SO4FAC * AEROCONCMIN_AT
+     &                  / ( DGINIAT ** 3 * EXP( 4.5 * XXLSGAT * XXLSGAT ) )
+                     END IF
+
+                  IF ( K .EQ. IVAC0 ) THEN
+                     PCGRID( C,R,LVL,K ) =
+     &                  SO4FAC * AEROCONCMIN_AC
+     &                  / ( DGINIAC ** 3 * EXP( 4.5 * XXLSGAC * XXLSGAC ) )
+                     END IF
+
+                  IF ( K .EQ. IVCOR0 ) THEN
+                     PCGRID( C,R,LVL,K ) =
+     &                  ANTHFAC * AEROCONCMIN_CO / ( DGINICO ** 3 * ESC36A )
+                     END IF
+                  END IF
+
+               END IF
+
+            END DO   ! LVL
+         END DO   ! End of species loop
+
+      RETURN
+      END SUBROUTINE PING_FULL_HO
+
+C=========================================================================
+ 
+      SUBROUTINE PING_PARTIAL_HO 
+!#   &           ( CGRID, CPLUME, IPLUME, JDATE, JTIME, IZUR_OLD, HP_OLD )
+     &           ( CPLUME, IPLUME, JDATE, JTIME, IZUR_OLD, HP_OLD )
+ 
+C    24 Sep 01 J.Young: dyn alloc
+C    02 Feb 05 J.Young: dyn alloc - establish both horizontal & vertical
+C                       domain specifications in one module
+C--------------------------------------------------------------------
+ 
+      USE PCGRID_DEFN ! inherits GRID_CONF and CGRID_SPCS
+      USE PLUME_DYN   ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_MET   ! inherits PLUME_STATE, which inherits PLUME_LOC,
+                      ! which inherits PING_GLOBDIM
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+ 
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC      ! aerosol species table
+      INCLUDE SUBST_NR_SPC      ! non-reactive species table
+      INCLUDE SUBST_TR_SPC      ! tracer species table
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! I/O definitions and declarations
+
+C...............      Shared Arguments      ................
+ 
+!#    REAL :: CGRID( :,:,:,: ) ! Grid Model concentration array
+ 
+      REAL :: CPLUME( :,:,: )  ! Plume concentration array
+
+      INTEGER, PARAMETER :: ALLSPC = N_GC_SPCD + N_AE_SPC + N_NR_SPC + N_TR_SPC
+      INTEGER IPLUME           ! Plume to be handed-over
+      INTEGER JDATE            ! Current model date (Julian), YYYYDDD
+      INTEGER JTIME            ! Current model time, HHMMSS
+ 
+      INTEGER :: IZUR_OLD( : ) ! IZUR from the last time
+      REAL    :: HP_OLD  ( : ) ! Plume height from the last time
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER I               ! Plume section number
+      INTEGER J, K            ! Loop counters
+      INTEGER LVL             ! Loop counters
+
+      REAL    CTM_ZDIFF       ! Height diff. betw. layers in grid model
+      REAL    PING_ZDIFF      ! Plume height drop in m
+      REAL    FRACTION        ! Volume ratio: V_plume/V-grid_cell
+      REAL    SUM             ! Work scaler
+      REAL    PAVCONC         ! Work scaler (plume average concentration)
+      REAL    BAVCONC         ! Work scaler (background average concentration)
+
+      CHARACTER( 200 ) :: MSG ! Temporary message holder
+      LOGICAL :: OK
+ 
+C Variables to be saved
+ 
+      CHARACTER( 16 ) :: PNAME = 'PING_PARTIAL_HO'
+
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.       ! First time indicator
+      INTEGER, SAVE :: XCELL, YCELL
+ 
+C-----------------------------------------------------------------------
+ 
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+
+C Get grid cell resolution from MET_CRO_3D:
+
+         OK = OPEN3 ( MET_CRO_3D, FSREAD3, PNAME )
+         IF ( .NOT. OK ) THEN
+            MSG = 'Error opening ' // MET_CRO_3D
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+            END IF
+
+         OK = DESC3 ( MET_CRO_3D )
+         IF ( .NOT. OK ) THEN
+            MSG = 'Error getting header of ' // MET_CRO_3D
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+            END IF
+
+         XCELL = XCELL3D
+         YCELL = YCELL3D
+
+         END IF
+ 
+C End of first time block
+C..................................
+
+      I = IPLUME
+ 
+C Calculate the plume drop, and calculate the volume ratio
+ 
+      IF ( HP_OLD( I ) .GT. HP( I ) ) THEN
+         PING_ZDIFF = HP_OLD( I ) - HP( I )
+         ELSE
+         MSG = 'HP_OLD is LT HP, check the PDM output'
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+         END IF
+
+      IF ( IZUR_OLD( I ) .GT. IZUR( I ) ) THEN
+         CTM_ZDIFF = ZFNOW( I,IZUR_OLD( I ) ) - ZFNOW( I,IZUR( I ) )
+         ELSE 
+         IF ( IZUR_OLD( I ) .EQ. IZUR( I ) ) THEN
+            CTM_ZDIFF = ZFNOW( I,IZUR( I ) ) - ZFNOW( I,IZUR( I )-1 )
+            ELSE
+            MSG = 'IZUR_OLD is LT IZUR, check the PDM output'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+            END IF
+         END IF
+
+      FRACTION = ( WP( I )*UPLUME( I )*PING_ZDIFF*(3600.0/FLOAT(NRRATE)))
+     &         / ( XCELL * YCELL * CTM_ZDIFF )
+
+      DO K = 1, ALLSPC
+ 
+C Calculate plume average concentration
+ 
+         SUM = 0.0
+         DO J = 1, NPILLARS
+            SUM = SUM + CPLUME( K,J,I )
+            END DO
+         PAVCONC = SUM / FLOAT( NPILLARS )
+ 
+C Calculate plume-background average concentration
+ 
+         SUM = 0.0
+         DO J = IZUR( I ), IZUR_OLD( I )
+!#          SUM = SUM + CGRID( MY_IXLL( I ),MY_IYLL( I ),J,K )
+!#   &          +       CGRID( MY_IXUR( I ),MY_IYUR( I ),J,K )
+            SUM = SUM + PCGRID( MY_IXLL( I ),MY_IYLL( I ),J,K )
+     &          +       PCGRID( MY_IXUR( I ),MY_IYUR( I ),J,K )
+            END DO
+         BAVCONC = 0.5 * SUM / FLOAT( IZUR_OLD( I ) - IZUR( I ) + 1 )
+ 
+C Release the average conc. to the cells over the center cell
+           
+         DO LVL = IZUR( I ), IZUR_OLD( I )
+!#          CGRID( MY_IXC( I ),MY_IYC( I ),LVL,K ) = MAX ( 0.0,
+!#   &                              ( PAVCONC - BAVCONC ) * FRACTION
+!#   &                              + CGRID( MY_IXC( I ),MY_IYC( I ),LVL,K ) )
+            PCGRID( MY_IXC( I ),MY_IYC( I ),LVL,K ) = MAX ( 0.0,
+     &                              ( PAVCONC - BAVCONC ) * FRACTION
+     &                              + PCGRID( MY_IXC( I ),MY_IYC( I ),LVL,K ) )
+            END DO
+
+C End of species loop
+         END DO
+
+C Return to PING_HANDOVER
+ 
+      RETURN
+      END SUBROUTINE PING_PARTIAL_HO
+ 
+C=========================================================================
+ 
+      LOGICAL FUNCTION PING_BG_EMIS ( IPLUME, JDATE, JTIME )
+ 
+C This function calculates the background NOx emissions (for a plume)
+ 
+C A plume will be handed over if the total NOx emissions in the 
+C background cells exceed PING_HO_BG_EMIS ( this value is set in
+C the PING_HO.EXT file)
+C Currently PING_HO_BG_EMIS = 2 ppb/10 min. = 3.33E-6 ppm/s
+ 
+C    24 Sep 01 J.Young: dyn alloc - INTERPX
+C    02 Feb 05 J.Young: dyn alloc - establish both horizontal & vertical
+C                       domain specifications in one module (GRID_CONF)
+C-----------------------------------------------------------------------
+ 
+      USE GRID_CONF   ! horizontal & vertical domain specifications
+      USE PLUME_MET   ! inherits PLUME_STATE, which inherits PLUME_LOC,
+                      ! which inherits PING_GLOBDIM
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_CONST     ! constants
+
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+!     INCLUDE SUBST_COORD_ID  ! coordinate & domain definitions (req IOPARMS)
+      INCLUDE SUBST_FILES_ID  ! I/O definitions and declarations
+
+C...............      Shared Arguments      ................
+ 
+      INTEGER IPLUME            ! Plume in question
+      INTEGER JDATE             ! Current model date (Julian), YYYYDDD
+      INTEGER JTIME             ! Current model time, HHMMSS
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER I, J, K, L, M     ! Loop counters
+      INTEGER IZTOP             ! MIN ( EMISLYRS, IZUR(IPLUME) )
+      INTEGER, SAVE :: EMISLYRS ! Number of emission layers
+      
+      REAL    BNOXL             ! Left  background NOx
+      REAL    BNOXR             ! Right background NOx
+
+      CHARACTER( 200 ) :: MSG   ! Temporary message holder
+
+      CHARACTER( 16 ) :: VNAME  ! Temporary variable name
+      LOGICAL OK, EMOK          ! Status indicators
+
+      REAL    DX, DY, DZ        ! grid-geometry constants
+      REAL    VOLUME            ! Grid-cell volume
+
+C Emission criterion for Major Elavated Point Sources (other than MEPSEs)
+C Plume will be handed-over if there are NOx emissions that will increase
+C the background NOx by more than 2 ppb/10 min.
+C This critical value translate to 3.33 x 10^-6 ppm/s
+
+      REAL :: PING_HO_BG_EMIS = 3.33E-6
+
+C The following are reserved symbols declared in this INCLUDE file:
+C   N_PING_NOX   = Number of species in NOx (=2, NO & NO2)
+C   N_PING_NOXD  = Dimension NOx species array(=N_PING_NOX)
+C   PING_NOX     = names of these NOx species in gas-chemistry 
+C   PING_NOX_MAP = Index of NOx species in gas chemistry species table
+
+      INTEGER, PARAMETER :: N_PING_NOX = 2
+
+      INTEGER, PARAMETER :: N_PING_NOXD = N_PING_NOX
+
+      CHARACTER( 16 ) :: PING_NOX( N_PING_NOXD )
+      INTEGER, SAVE :: PING_NOX_MAP( N_PING_NOXD )
+
+!     DATA PING_NOX( 1 ), PING_NOX_MAP( 1 )  / 'NO2             ',   1 /
+!     DATA PING_NOX( 2 ), PING_NOX_MAP( 2 )  / 'NO              ',   2 /
+      DATA PING_NOX( 1 ) / 'NO2' /
+      DATA PING_NOX( 2 ) / 'NO' /
+
+C Variables to be saved
+ 
+#ifdef parallel
+!     INTEGER, PARAMETER :: LCOL = 1-NTHIK
+!     INTEGER, PARAMETER :: HCOL = NCOLS+NTHIK
+!     INTEGER, PARAMETER :: LROW = 1-NTHIK
+!     INTEGER, PARAMETER :: HROW = NROWS+NTHIK
+!     REAL, SAVE :: RVAR3D( LCOL:HCOL,LROW:HROW,NLAYS,N_PING_NOX)
+!     REAL, SAVE :: DENS( LCOL:HCOL,LROW:HROW,NLAYS )
+#else
+!     REAL, SAVE :: RVAR3D( NCOLS,NROWS,NLAYS,N_PING_NOX )
+!     REAL, SAVE :: DENS( NCOLS,NROWS,NLAYS )
+#endif
+
+      REAL, ALLOCATABLE, SAVE :: RVAR3D( :,:,:,: )
+      REAL, ALLOCATABLE, SAVE :: DENS( :,:,: )
+
+      INTEGER ALLOCSTAT
+
+      INTEGER, SAVE :: LASTDATE  ! Last date this function was called
+      INTEGER, SAVE :: LASTTIME  ! Last time this function was called
+
+      REAL, SAVE ::    CAREA     ! Cell area in m**2 (del_x * del_y)
+      REAL, SAVE ::    CONVF     ! Conversion factor: MolWt(air)*Kg/g*ppmV/MLMR
+
+!     INTEGER, SAVE :: ESIZE     ! Array size (dimension) for INTERP3
+!     INTEGER, SAVE :: MSIZE     ! Array size (dimension) for INTERP3
+
+      INTEGER, SAVE :: LOGDEV    !  FORTRAN unit number for log file
+
+      CHARACTER( 16 ) :: PNAME = 'PING_BG_EMIS'
+
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+ 
+C Function definitions
+ 
+      INTEGER INDEXSPCS              ! locate a name in an array
+      INTEGER, EXTERNAL :: SECSDIFF  ! Returns the number of seconds 
+                                     ! in a time interval, starting
+                                     ! at ADATE:ATIME and ending
+                                     ! at ZDATE:ZTIME
+
+      INTEGER      GXOFF, GYOFF            ! global origin offset from file
+C for INTERPX
+      INTEGER, SAVE :: STRTCOLEM, ENDCOLEM, STRTROWEM, ENDROWEM
+      INTEGER, SAVE :: STRTCOLMC3, ENDCOLMC3, STRTROWMC3, ENDROWMC3
+ 
+      LOGICAL, SAVE :: COL_BNDY_LO_PE, COL_BNDY_HI_PE
+      LOGICAL, SAVE :: ROW_BNDY_LO_PE, ROW_BNDY_HI_PE
+      INTEGER MY_JXLL, MY_JXUR, MY_JYLL, MY_JYUR
+C-----------------------------------------------------------------------
+ 
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+
+         LASTDATE = JDATE
+         LASTTIME = JTIME
+         CALL NEXTIME ( LASTDATE, LASTTIME, -10 )
+
+C Note that INIT3() returns the FORTRAN
+C unit number for the program's log.
+
+         LOGDEV = INIT3 ()
+
+C Initialize the array of NOx species emissions.
+!        DO I = 1, N_PING_NOX
+!           DO L = 1, NLAYS
+!              DO K = 1, MY_NROWS
+!                 DO J= 1, MY_NCOLS
+!                    RVAR3D( J,K,L,I ) = 0.0
+!                    END DO
+!                 END DO
+!              END DO
+!           END DO
+
+C Open the met file and check for consistency
+ 
+!        OK = OPEN3 ( MET_CRO_3D, FSREAD3, PNAME )
+!        IF ( .NOT. OK ) THEN
+!           MSG = 'Cannot open '// MET_CRO_3D
+!           CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+!           END IF
+
+!        OK = DESC3 ( MET_CRO_3D )
+!        IF ( .NOT. OK ) THEN
+!           MSG = ' Cannot read description of '// MET_CRO_3D
+!           CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+!           END IF
+
+!        IF ( NCOLS3D*NROWS3D .NE. GL_NCOLS*GL_NROWS ) THEN
+!           MSG = 'Wrong domain for '// MET_CRO_3D
+!           CALL M3ERR( PNAME, JDATE, JTIME, MSG, .TRUE. )
+!           END IF
+
+C Open the emissions file and check for consistency
+ 
+         OK = OPEN3 ( EMIS_1, FSREAD3, PNAME )
+         IF ( .NOT. OK ) THEN
+            MSG = 'Cannot open '// EMIS_1
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+         OK = DESC3 ( EMIS_1 )
+         IF ( .NOT. OK ) THEN
+            MSG = 'Cannot read description of '// EMIS_1
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+!        IF ( EMISLYRS .NE. NLAYS3D ) THEN
+!           MSG = 'Expected number of emis. layers not in file'
+!           CALL M3ERR( PNAME, JDATE, JTIME, MSG, .TRUE. )
+!           END IF
+
+!        IF ( NCOLS3D*NROWS3D .NE. GL_NCOLS*GL_NROWS ) THEN
+!           MSG = 'Wrong domain for '// EMIS_1 
+!           CALL M3ERR( PNAME, JDATE, JTIME, MSG, .TRUE. )
+!           END IF
+
+         EMISLYRS = NLAYS3D
+
+         CALL SUBHFILE ( EMIS_1, GXOFF, GYOFF,
+     &                   STRTCOLEM, ENDCOLEM, STRTROWEM, ENDROWEM )
+         CALL SUBHFILE ( MET_CRO_3D, GXOFF, GYOFF,
+     &                   STRTCOLMC3, ENDCOLMC3, STRTROWMC3, ENDROWMC3 )
+
+#ifdef parallel
+C Need ghost region data
+!        ESIZE = ( MY_NCOLS + 2*NTHIK ) * ( MY_NROWS + 2*NTHIK ) * NLAYS3D
+!        MSIZE = ( MY_NCOLS + 2*NTHIK ) * ( MY_NROWS + 2*NTHIK ) * NLAYS
+!...... try something else
+!        STRTCOLEM  = STRTCOLEM  - NTHIK
+!        ENDCOLEM   = ENDCOLEM   + NTHIK
+!        STRTROWEM  = STRTROWEM  - NTHIK
+!        ENDROWEM   = ENDROWEM   + NTHIK
+!        STRTCOLMC3 = STRTCOLMC3 - NTHIK
+!        ENDCOLMC3  = ENDCOLMC3  + NTHIK
+!        STRTROWMC3 = STRTROWMC3 - NTHIK
+!        ENDROWMC3  = ENDROWMC3  + NTHIK
+!else
+!        ESIZE = MY_NCOLS * MY_NROWS * NLAYS3D
+!        MSIZE = MY_NCOLS * MY_NROWS * NLAYS
+#endif
+
+C Calculate the cell area
+
+         IF ( GDTYP3D .EQ. LATGRD3 ) THEN
+            DX = DG2M * XCELL_GD ! in m.
+            DY = DG2M * YCELL_GD
+     &         * COS( PI180*( YORIG_GD + YCELL_GD * FLOAT( GL_NROWS/2 ))) !in m.
+            ELSE
+            DX = XCELL_GD        ! in m.
+            DY = YCELL_GD        ! in m.
+            END IF
+
+         CAREA = DX * DY        ! in m**2
+
+         CONVF = MWAIR * 1.0E+03
+
+C Find NOx indices in species table
+
+         PING_NOX_MAP( 1 ) = INDEXSPCS( PING_NOX( 1 ), GC_SPC, N_GC_SPC ) ! NO2
+         PING_NOX_MAP( 2 ) = INDEXSPCS( PING_NOX( 2 ), GC_SPC, N_GC_SPC ) ! NO
+
+         CALL SUBST_HI_LO_BND_PE ( 'C', COL_BNDY_LO_PE, COL_BNDY_HI_PE )
+         CALL SUBST_HI_LO_BND_PE ( 'R', ROW_BNDY_LO_PE, ROW_BNDY_HI_PE )
+
+         ALLOCATE ( RVAR3D( MY_NCOLS,MY_NROWS,EMISLYRS,N_PING_NOX ),
+     &              STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = 'Failure allocating RVAR3D'
+            CALL M3ERR( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+         RVAR3D = 0.0
+
+         ALLOCATE ( DENS( MY_NCOLS,MY_NROWS,NLAYS ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = 'Failure allocating DENS'
+            CALL M3ERR( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+         DENS = 0.0
+
+         END IF
+
+C End of FIRST time block
+C...................................
+
+C Set the function variable to false (default, meaning not mature)
+ 
+      PING_BG_EMIS = .FALSE.
+ 
+C.....................................
+ 
+C First, read-in the emissions; only if the time is different from last-time
+C (This is necessary since the function is called for each plume)
+ 
+      IF ( SECSDIFF( LASTDATE, LASTTIME, JDATE, JTIME ) .GT. 0 ) THEN
+
+         LASTDATE = JDATE
+         LASTTIME = JTIME
+
+         EMOK = .TRUE.
+         DO I = 1, N_PING_NOX
+            VNAME = PING_NOX( I )
+#ifdef parallel
+!           OK = INTERP3( EMIS_1, VNAME, PNAME,
+!    &                    JDATE, JTIME, ESIZE, RVAR3D( 0,0,1,I ) )
+            OK = INTERPX( EMIS_1, VNAME, PNAME,
+     &                    STRTCOLEM,ENDCOLEM, STRTROWEM,ENDROWEM, 1,EMISLYRS,
+!    &                    JDATE, JTIME, RVAR3D( 0,0,1,I ) )
+     &                    JDATE, JTIME, RVAR3D( 1,1,1,I ) )
+#else
+!           OK = INTERP3( EMIS_1, VNAME, PNAME,
+!    &                    JDATE, JTIME, ESIZE, RVAR3D( 1,1,1,I ) )
+            OK = INTERPX( EMIS_1, VNAME, PNAME,
+     &                    STRTCOLEM,ENDCOLEM, STRTROWEM,ENDROWEM, 1,EMISLYRS,
+     &                    JDATE, JTIME, RVAR3D( 1,1,1,I ) )
+#endif
+            IF ( .NOT. OK ) THEN
+               EMOK = .FALSE.
+               MSG = 'Could not read the species ' // VNAME // ' in '
+     &             // EMIS_1 // ' emissions are set to zero'
+               CALL M3ERR( PNAME, JDATE, JTIME, MSG, .FALSE.)
+!              DO L = 1, EMISLYRS
+!                 DO K = 1, MY_NROWS
+!                    DO J= 1, MY_NCOLS
+!                       RVAR3D( J,K,L,I ) = 0.0
+!                       END DO
+!                    END DO
+!                 END DO
+               END IF
+            END DO
+ 
+!        IF ( .NOT. INTERP3( MET_CRO_3D, 'DENS', PNAME,
+!    &        JDATE, JTIME, MSIZE, DENS ) ) THEN
+         IF ( .NOT. INTERPX( MET_CRO_3D, 'DENS', PNAME,
+     &                       STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &                       JDATE, JTIME, DENS ) ) THEN
+            MSG = 'Could not read DENS from ' // MET_CRO_3D
+            IF ( EMOK ) THEN
+               CALL M3ERR( PNAME, JDATE, JTIME, MSG, .TRUE.)
+               ELSE
+               CALL M3ERR( PNAME, JDATE, JTIME, MSG, .FALSE.)
+               END IF
+            END IF
+
+         END IF  ! SECSDIFF
+
+C Calculate the maximum background NOx concentration increase 
+C due to NOx emissions (Take the max between the right bg and left bg).
+ 
+      I = IPLUME
+      BNOXL = 0.0
+      BNOXR = 0.0
+      IZTOP = MIN( EMISLYRS,MY_IZUR( I ) )
+      
+C If plume wings are outside processor domain, use plume center for RVAR3D and
+C DENS rather than trying to deal with a ghost region implementation.
+
+      MY_JXLL = MY_IXLL( I )
+      MY_JXUR = MY_IXUR( I )
+      MY_JYLL = MY_IYLL( I )
+      MY_JYUR = MY_IYUR( I )
+
+C 10/03  Use the logic below that was previously commented out.
+!     write( logdev,* ) 'In BG_EMIS: ', i, jtime,
+!    &                   my_jxll, my_jxur, my_jyll, my_jyur
+
+      IF ( MY_IXLL( I ) .LT. 1 ) THEN
+         MY_JXLL = MY_IXC( I )
+!        write( logdev,'( A, 3I4 )' ) ' Iplume, MY_IXLL -> MY_JXLL: ',
+!    &                                  I, MY_IXLL( I ), MY_JXLL
+         END IF
+      IF ( MY_IXUR( I ) .LT. 1 ) THEN
+         MY_JXUR = MY_IXC( I )
+!        write( logdev,'( A, 3I4 )' ) ' Iplume, MY_IXUR -> MY_JXUR: ',
+!    &                                  I, MY_IXUR( I ), MY_JXUR
+         END IF
+      IF ( MY_IXLL( I ) .GT. MY_NCOLS ) THEN
+         MY_JXLL = MY_IXC( I )
+!        write( logdev,'( A, 3I4 )' ) ' Iplume, MY_IXLL -> MY_JXLL: ',
+!    &                                  I, MY_IXLL( I ), MY_JXLL
+         END IF
+      IF ( MY_IXUR( I ) .GT. MY_NCOLS ) THEN
+         MY_JXUR = MY_IXC( I )
+!        write( logdev,'( A, 3I4 )' ) ' Iplume, MY_IXUR -> MY_JXUR: ',
+!    &                                  I, MY_IXUR( I ), MY_JXUR
+         END IF
+      IF ( MY_IYLL( I ) .LT. 1 ) THEN
+         MY_JYLL = MY_IYC( I )
+!        write( logdev,'( A, 3I4 )' ) ' Iplume, MY_IYLL -> MY_JYLL: ',
+!    &                                  I, MY_IYLL( I ), MY_JYLL
+         END IF
+      IF ( MY_IYUR( I ) .LT. 1 ) THEN
+         MY_JYUR = MY_IYC( I )
+!        write( logdev,'( A, 3I4 )' ) ' Iplume, MY_IYUR -> MY_JYUR: ',
+!    &                                  I, MY_IYUR( I ), MY_JYUR
+         END IF
+      IF ( MY_IYLL( I ) .GT. MY_NROWS ) THEN
+         MY_JYLL = MY_IYC( I )
+!        write( logdev,'( A, 3I4 )' ) ' Iplume, MY_IYLL -> MY_JYLL: ',
+!    &                                  I, MY_IYLL( I ), MY_JYLL
+         END IF
+      IF ( MY_IYUR( I ) .GT. MY_NROWS ) THEN
+         MY_JYUR = MY_IYC( I )
+!        write( logdev,'( A, 3I4 )' ) ' Iplume, MY_IYUR -> MY_JYUR: ',
+!    &                                  I, MY_IYUR( I ), MY_JYUR
+         END IF
+
+
+!     if ( MY_JYLL .gt. MY_NROWS .or. MY_JYUR .gt. MY_NROWS ) then
+!        write( logdev,3011 ) I, MY_JYLL, MY_JYUR
+3011     format( 2x, '~~~ ping_bgemis - plume, MY_JYLL, MY_JYUR: ', 3I4 )
+!        end if
+
+
+      DO L = MY_IZLL( I ), IZTOP
+ 
+C Calculate the grid volume (in m**3)
+C ZFNOW(IPLUME,L) is the height of layer L above surface for plume IPLUME
+C L is the CTM layer, and therefore (1 <= L <= NLAYS)
+ 
+         IF ( L .EQ. 1 ) THEN
+            DZ = ZFNOW( I,L )
+            ELSE
+            DZ = ZFNOW( I,L ) - ZFNOW( I,L-1 )
+            END IF
+         VOLUME = CAREA * DZ
+ 
+C Calculate the concentration rate increase (in ppm/s) and add it to the sum
+C Note: The emissions are in moles/s, so go to g/s, and volume is in m**3.
+C Note: The following loop needs ghost region data
+
+         DO M = 1, N_PING_NOX
+            K = PING_NOX_MAP( M )  ! NOT NEEDED, neither is PING_NOX_MAP
+
+            BNOXL = BNOXL
+     &            + RVAR3D( MY_JXLL,MY_JYLL,L,M ) * CONVF
+     &            / ( DENS( MY_JXLL,MY_JYLL,L ) * VOLUME )
+            BNOXR = BNOXR
+     &            + RVAR3D( MY_JXUR,MY_JYUR,L,M ) * CONVF
+     &            / ( DENS( MY_JXUR,MY_JYUR,L ) * VOLUME )
+
+            END DO  ! M
+
+         END DO  ! L
+ 
+C Check for handover criterion
+ 
+      IF ( BNOXL .GT. PING_HO_BG_EMIS .OR.
+     &     BNOXR .GT. PING_HO_BG_EMIS ) THEN
+     
+C Do NOT switch on this criterion for now. Just print values and check results.
+!        PING_BG_EMIS = .TRUE.
+
+         WRITE( LOGDEV,91000 ) IPLUME, BNOXL, BNOXR, PING_HO_BG_EMIS
+
+         END IF
+
+      RETURN
+
+91000 FORMAT (/ 10X, 'For Plume Section:', I5
+     &        / 10X, 'Left  b.g. total NOx emiss. = ', 1PE11.4
+     &        / 10X, 'Right b.g. total NOx emiss. = ', 1PE11.4
+     &        / 10X, 'Tolerated b.g. emission     = ', 1PE11.4 )
+
+      END FUNCTION PING_BG_EMIS
+
+C=========================================================================
+ 
+      LOGICAL FUNCTION PING_URBAN_EMIS ( IPLUME, JDATE, JTIME )
+
+C-----------------------------------------------------------------------
+C This function calculates surface emissions (for a plume)
+ 
+C A plume will be handed over if it is over urban area
+C The area is designated urban if:
+C    1) q(NOx) > 10**12 molecules/(cm**2 s)
+C       for a grid area of 20km by 20km, this number translates 
+C       to 305.5 g/s
+C    2) q(NMHC)/q(NOx) > 1 (by volume, C:N ratio)
+ 
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- use MY_* variables to identify local processor
+C     -- use GL_* variables for global dimensions
+C     -- calculate ISIZE according to local dimensions
+C   1/21/2000 Jeff
+C     -- memory mgmt
+C    24 Sep 01 J.Young: dyn alloc - INTERPX
+C-----------------------------------------------------------------------
+ 
+      USE PLUME_DYN   ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_MET   ! inherits PLUME_STATE, which inherits PLUME_LOC,
+                      ! which inherits PING_GLOBDIM
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+C.....Includes:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! I/O definitions and declarations
+
+ 
+C...............      Shared Arguments      ................
+ 
+      INTEGER IPLUME            ! Plume in question
+      INTEGER JDATE             ! Current model date (Julian), YYYYDDD
+      INTEGER JTIME             ! Current model time, HHMMSS
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER I, J, K, L        ! Loop counters
+      INTEGER, SAVE :: EMISLYRS  ! Number of emission layers
+
+      REAL QNOX_M               ! NOX emissions (mol/s)
+      REAL QNOX                 ! NOX emissions (g/s)
+
+      CHARACTER( 200 ) :: MSG   ! Temporary message holder
+
+      CHARACTER( 16 ) :: VNAME  ! Temporary variable name
+      LOGICAL OK                ! Status indicator
+
+C The following are reserved symbols declared in this INCLUDE file:
+C   N_PING_NOX   = Number of species in NOx (=2, NO & NO2)
+C   N_PING_NOXD  = Dimension NOx species array(=N_PING_NOX)
+C   PING_NOX     = names of these NOx species in gas-chemistry 
+C   PING_NOX_MAP = Index of NOx species in gas chemistry species table
+
+      INTEGER, PARAMETER :: N_PING_NOX = 2
+
+      INTEGER, SAVE :: PING_NOX_MAP( N_PING_NOX )
+!     DATA PING_NOX( 1 ), PING_NOX_MAP( 1 )  / 'NO2             ',   1 /
+!     DATA PING_NOX( 2 ), PING_NOX_MAP( 2 )  / 'NO              ',   2 /
+
+      CHARACTER( 16 ) :: PING_NOX( N_PING_NOX )
+      DATA PING_NOX( 1 ) / 'NO2' /
+      DATA PING_NOX( 2 ) / 'NO' /
+ 
+C Temporary storage arrays containing emissions (g/s)
+!     REAL :: RNOX( NCOLS,NROWS,NLAYS,N_PING_NOX )
+      REAL, ALLOCATABLE :: RNOX( :,:,: )  ! don't need NLAYS
+!     REAL :: RVOX( NCOLS,NROWS,NLAYS,N_PING_NOX )
+
+C Variables to be saved
+ 
+      INTEGER, SAVE :: LASTDATE        ! Last date this function was called
+      INTEGER, SAVE :: LASTTIME        ! Last time this function was called
+
+!     INTEGER, SAVE :: ISIZE           ! Array size (dimension) for INTERP3
+      INTEGER          ALLOCSTAT
+      INTEGER, SAVE :: LOGDEV          !  FORTRAN unit number for log file
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+      CHARACTER( 16 ) :: PNAME = 'PING_URBAN_EMIS'
+
+C Function definitions
+ 
+      INTEGER INDEXSPCS              ! locate a name in an array
+      INTEGER, EXTERNAL :: SECSDIFF  ! Returns the number of secnds 
+                                     ! in a time interval, starting
+                                     ! at ADATE:ATIME and ending
+                                     ! at ZDATE:ZTIME
+      INTEGER, EXTERNAL :: TRIMLEN
+ 
+      INTEGER      GXOFF, GYOFF            ! global origin offset from file
+C for INTERPX
+      INTEGER, SAVE :: STRTCOLEM, ENDCOLEM, STRTROWEM, ENDROWEM
+
+C-----------------------------------------------------------------------
+
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+
+         LASTDATE = JDATE
+         LASTTIME = JTIME
+         CALL NEXTIME ( LASTDATE, LASTTIME, -10 )
+
+C INIT3() returns the FORTRAN unit number for the program's log.
+
+         LOGDEV = INIT3 ()
+ 
+C Open the emissions file and check for consistency
+ 
+         OK = OPEN3 ( EMIS_1, FSREAD3, PNAME )
+!        OK = DESC3 ( EMIS_1 )
+         IF ( .NOT. OK ) THEN
+!           MSG = 'Cannot read description of '// EMIS_1 // ' file'
+            MSG = 'Cannot open '// EMIS_1 // ' file'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+!        IF (EMISLYRS .NE. NLAYS3D) THEN
+!           MSG = 'Expected number of emis. layers not in file'
+!           CALL M3ERR( PNAME, JDATE, JTIME, MSG, .TRUE. )
+!        END IF
+
+!        IF ( NCOLS3D*NROWS3D .NE. GL_NCOLS*GL_NROWS ) THEN
+!           MSG = 'Wrong domain for '// EMIS_1
+!           CALL M3ERR( PNAME, JDATE, JTIME, MSG, .TRUE. )
+!           END IF
+ 
+!        EMISLYRS = NLAYS3D
+!        ISIZE = NCOLS*NROWS*EMISLYRS
+ 
+C Find NOx indices in species table
+
+         PING_NOX_MAP( 1 ) = INDEXSPCS( PING_NOX( 1 ), GC_SPC, N_GC_SPC ) ! NO2
+         PING_NOX_MAP( 2 ) = INDEXSPCS( PING_NOX( 2 ), GC_SPC, N_GC_SPC ) ! NO
+
+         CALL SUBHFILE ( EMIS_1, GXOFF, GYOFF,
+     &                   STRTCOLEM, ENDCOLEM, STRTROWEM, ENDROWEM )
+
+         END IF
+
+C End of FIRST time block
+C...................................
+ 
+C Set the function variable to false (default, meaning not mature)
+ 
+      PING_URBAN_EMIS = .FALSE.
+ 
+C.....................................
+ 
+C Check to see if the plume is in contact with surface; if not, return.
+ 
+      IF ( ZBOT( IPLUME ) .GE. ZFNOW( IPLUME,1 ) ) RETURN
+
+C Read the emissions only if the time has changed
+C (this is necessary since the function is called for each plume)
+ 
+      IF ( SECSDIFF( LASTDATE, LASTTIME, JDATE, JTIME ) .GT. 0 ) THEN
+ 
+         ALLOCATE ( RNOX( MY_NCOLS,MY_NROWS,N_PING_NOX ),
+     &              STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = 'Failure allocating RNOX'
+            CALL M3ERR( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+         RNOX = 0.0
+
+C Read-in the NOx emissions (in mol/s)
+ 
+         DO I = 1, N_PING_NOX
+            VNAME = PING_NOX( I )
+!           OK = INTERP3( EMIS_1, VNAME, PNAME,
+!    &                    JDATE, JTIME, ISIZE, RNOX( 1,1,1,I ) )
+            OK = INTERPX( EMIS_1, VNAME, PNAME,
+     &                    STRTCOLEM,ENDCOLEM, STRTROWEM,ENDROWEM, 1,1,
+     &                    JDATE, JTIME, RNOX( 1,1,I ) )
+            IF ( .NOT. OK ) THEN
+               MSG = 'Could not read the species '
+     &             // VNAME( 1:TRIMLEN( VNAME ) ) // ' in '
+     &             // EMIS_1( 1:TRIMLEN( EMIS_1 ) )
+     &             // '. Emissions are set to zero'
+               CALL M3ERR( PNAME, JDATE, JTIME, MSG, .FALSE.)
+!              DO L = 1, 1
+!                 DO K = 1, MY_NROWS
+!                    DO J= 1, MY_NCOLS
+!                       RNOX( J,K,L,I ) = 0.0
+!                       END DO
+!                    END DO
+!                 END DO
+               END IF
+            END DO
+       
+         END IF
+ 
+C Calculate the total q(NOX) in g/s and g-mole/s
+C q(NOx) = [q / MW ]
+ 
+      I = IPLUME
+      QNOX   = 0.0
+      QNOX_M = 0.0
+      DO J = 1, N_PING_NOX
+C For emissions input in mol/s
+!        QNOX_M = QNOX_M + RNOX( MY_IXC( I ),MY_IYC( I ),1,J )
+!        QNOX   = QNOX   + RNOX( MY_IXC( I ),MY_IYC( I ),1,J ) 
+         QNOX_M = QNOX_M + RNOX( MY_IXC( I ),MY_IYC( I ),J )
+         QNOX   = QNOX   + RNOX( MY_IXC( I ),MY_IYC( I ),J ) 
+     &          * GC_MOLWT( PING_NOX_MAP( J ) )
+         END DO
+ 
+C Check for handover criteria (not specified in PING_HO.EXT)
+C If QNOX_M is greater than 305.5 g/s ( that is, 10E12 molecules/s for
+C a 20kmX20km grid )
+ 
+!     IF ( QNOX .GT. 305.5 .AND. RATIO .GT. 1.0 ) THEN
+      IF ( QNOX .GT. 305.5 ) THEN
+!        PING_URBAN_EMIS = .TRUE.
+         WRITE( LOGDEV,91000 ) IPLUME, QNOX, QNOX_M
+         END IF
+
+      IF ( ALLOCATED ( RNOX ) ) DEALLOCATE ( RNOX )
+
+      RETURN
+
+91000 FORMAT (/ 10X, 'For Plume Section:', I5, ','
+     &        / 10X, 'NOx Emissions = ', 1PE11.4, 1X, '(g/s),',
+     &           1X, 1PE11.4, 1X, '(mol/s)' )
+!    &        / 10X, 'NOx Emissions in g/s   = ', 1PE11.4
+!    &        / 10X, 'NOx Emissions in mol/s = ', 1PE11.4 )
+!    &        / 10X, 'q(NMHC) in mol/s = ', 1PE11.4
+!    &          10X, 'q(NMHC)/q(NOx)   = ', 1PE11.4 )
+
+      END FUNCTION PING_URBAN_EMIS
+ 
+C=========================================================================
+
+      LOGICAL FUNCTION PING_CMATURE_OX ( CPLUME, IPLUME, JDATE, JTIME )
+
+C-----------------------------------------------------------------------
+C This function indicates chemical maturity of a plume
+
+C A plume is chemically mature if (plume avg. O3)/(plume avg. Ox) >= f 
+C This means that the plume chemical age is slightly less than the background.
+
+C NOz:  is defined as everything with at least 1 N and 3 O's.
+C Ox : is defined as (O3+NO2)
+ 
+C-----------------------------------------------------------------------
+
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+C.....Includes:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+
+C...............      Shared Arguments      ................
+ 
+C Plume concentration array
+ 
+!     REAL    CPLUME( N_GC_SPC,NPILLARS,* )
+      REAL :: CPLUME( :,:,: )
+ 
+      INTEGER IPLUME            ! Plume in question
+      INTEGER JDATE             ! Current model date (Julian), YYYYDDD
+      INTEGER JTIME             ! Current model time, HHMMSS
+ 
+C...............      Local Variables            ................
+ 
+      INTEGER I, J, K, L        ! Loop counters
+      REAL    CRATIO            ! Critical ratio: f*(background age)
+      REAL    PO3S              ! Plume O3 (summed over all pillars)
+      REAL    POXS              ! Plume Ox (summed over all pillars)
+      REAL    PO3               ! Plume O3 (averaged over all pillars)
+      REAL    POX               ! Plume Ox (averaged over all pillars)
+      REAL    PAGE              ! Plume AGE 
+ 
+C Variables to be saved
+ 
+      CHARACTER( 16 ) :: PNAME = 'PING_CMATURE'
+
+      INTEGER, SAVE :: LOGDEV   !  FORTRAN unit number for log file
+
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+
+C Chemical AGE criterion 
+C (1) IF (plume avg O3/plume avg Ox) > PING_HO_AGE_F  then Hand-Over
+C (2) IF (plume avg (NOz/NOy))/(B/G (NOz/NOy)) > PING_HO_AGE_F  then Hand-Over
+
+      REAL :: PING_HO_AGE_F = 0.996    ! use 0.99 as default for (1)
+                                       ! use 0.98 as default for (2) 
+C The following are reserved symbols:
+C   N_PING_OX   = Number of species in Ox (=2, O3 & NO2)
+C   PING_OX     = Names of these Ox species in gas-chemistry (O3 & NO2) 
+C   PING_OX_MAP = Index of Ox species in gas chemistry species table
+
+      INTEGER, PARAMETER :: N_PING_OX = 2
+      CHARACTER( 16 ) :: PING_OX( N_PING_OX )
+      DATA         PING_OX( 1 ) / 'NO2' /
+      DATA         PING_OX( 2 ) / 'O3' /
+
+C The following are reserved symbols:
+C   PING_O3     = O3 Gas-Chemistry species name (=O3)
+C   PING_O3_MAP = Index of O3 in gas chemistry species table
+
+      CHARACTER( 16 ) :: PING_O3 = 'O3'
+
+C...............      Global Variables      ................
+ 
+C Function definitions
+ 
+      INTEGER INDEXSPCS       ! To locate a name in an array
+ 
+C-----------------------------------------------------------------------
+
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+
+C INIT3() returns the FORTRAN unit number for the program log.
+
+         LOGDEV = INIT3 ()
+
+         END IF
+C End of FIRST time block
+
+C Set the function variable to false (default, meaning not mature)
+ 
+      PING_CMATURE_OX = .FALSE.
+ 
+C calculate the average plume chemical age
+C That is, for each plume: (AGE)avg = (O3)avg/(Ox)avg
+ 
+      I = IPLUME
+      POXS = 0.0
+      PO3S = 0.0
+
+      DO J = 1, NPILLARS
+
+         POX = 0.0
+         DO L = 1, N_PING_OX
+            K = INDEXSPCS( PING_OX( L ), GC_SPC, N_GC_SPC )
+            POX = POX + CPLUME( K,J,I )      ! add up each species
+            END DO
+         POXS = POXS + POX                   ! add up each pillar amount
+ 
+         K = INDEXSPCS( PING_O3, GC_SPC, N_GC_SPC )
+         PO3S = PO3S + CPLUME( K,J,I )
+
+         END DO
+
+      PO3 = PO3S / FLOAT( NPILLARS )
+      POX = POXS / FLOAT( NPILLARS )
+      PAGE = PO3 / POX                       ! (avg O3)/(avg Ox)
+
+      CRATIO = PING_HO_AGE_F                 ! plume chemical age criteria
+ 
+C Check for handover criteria
+ 
+      IF ( PAGE .GE. CRATIO ) THEN
+!        PING_CMATURE_OX = .TRUE.
+         WRITE( LOGDEV,91000 ) IPLUME, PAGE
+         END IF
+
+      RETURN
+
+91000 FORMAT (/ 10X, '         Plume Section number  = ', I5
+!    &        / 10X, 'Plume avg chemical AGE (O3/Ox) = ', 1PE11.4 )
+     &        / 10X, 'Plume avg chemical AGE (O3/Ox) = ', 1PE11.4,
+     &           2X, '(but not released)' )
+
+      END FUNCTION PING_CMATURE_OX
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

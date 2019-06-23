@@ -1,0 +1,378 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.51;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.51;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/base/PING_GLOBDIM.F,v 1.3 2002/04/05 18:23:20 yoj Exp $
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+      MODULE PING_GLOBDIM
+
+C Change: NPTSPDM =  no. of mepses in PDM file 
+C N_MEPSES = no. of mepses in windowed domain (could be the same)
+
+      IMPLICIT NONE
+
+C Grid coordinates for computational domain measured in Meters from the
+C center of the met domain
+
+      REAL( 8 ), SAVE :: GRID_XSW  ! X for lower left of computational domain
+      REAL( 8 ), SAVE :: GRID_YSW  ! Y for lower left of computational domain
+      REAL( 8 ), SAVE :: GRID_XNE  ! X for upper right of computational domain
+      REAL( 8 ), SAVE :: GRID_YNE  ! Y for upper right of computational domain
+
+      INTEGER, SAVE :: NPTSPDM   = 0  ! no. of mepses in PDM file
+      INTEGER, SAVE :: N_MEPSES  = 0  ! Number of mepses in computational domain
+      INTEGER, SAVE :: N_RLEASES = 0  ! no. of plume sections from PDM file
+
+      REAL( 8 ), SAVE :: XORIG_PDM
+      REAL( 8 ), SAVE :: YORIG_PDM
+
+      INTEGER, SAVE :: PDM_SDATE = 0  ! PDM file
+      INTEGER, SAVE :: PDM_STIME = 0  ! initial
+      INTEGER, SAVE :: PDM_TSTEP = 0  ! timestamp
+
+      INTEGER, SAVE, ALLOCATABLE :: SUB_SOURCE( : )
+
+C  Plume Flag Description:
+C      Value      Description
+C        0        non-existent plume
+C        1        new inactive plume (released, but not initialized)
+C        2        new active plume   (to be initialized)
+C        3        old active plume   (has already been initialized)
+C        4        handing over plume
+C        5        dead plume
+C       -5        dead plume
+C        6        dead plume
+
+C  PDMflag Description:
+C      Value      Description
+C        0        newly released plume (at the source, not active yet)
+C        1        new plume after plume rise (Wp, Hp > 0)
+C        2        plume has reached the critical width for initialization
+C        3        normal case (plume inside the domain, all conditions normal)
+C        4        Zi dramatically drops ( Partial Hand-over)
+C        5
+C       10        night-time condition, total hand-over (night)
+C       11        wind directional shear is more than the critical level
+C       12        wind speed shear is above the critical level
+C       13        final width criterion met
+C       14        handover due to drop in mixing height
+C      +21        out of domain (positive X-direction)
+C      +22        out of domain (positive Y-direction)
+C      -21        out of domain (negative X-direction)
+C      -22        out of domain (negative Y-direction)
+C     -100        plumes not released yet (initial setting)
+
+      CONTAINS
+
+      SUBROUTINE GET_NMEPSES ( )
+
+         USE HGRD_DEFN           ! horizontal domain specifications
+         USE SUBST_MODULES              ! stenex
+!        USE SUBST_UTIL_MODULE          ! stenex
+
+!        INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+         INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+         INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+         INCLUDE SUBST_IOFDESC     ! file header data structure
+         INCLUDE SUBST_FILES_ID  ! file name parameters
+
+         CHARACTER( 200 ) :: MSG
+         CHARACTER( 16 )  :: PNAME = 'GET_NMEPSES'
+         CHARACTER( 16 )  :: VNAME
+
+         INTEGER, ALLOCATABLE :: IVAR( :,:,: )
+
+         INTEGER :: JDATE = 0
+         INTEGER :: JTIME = 0
+         INTEGER NPLUMESD, PDMFLAG, ALLOCSTAT
+         INTEGER I, J
+         INTEGER PXLL, PYLL, PZLL, PXUR, PYUR, PZUR
+         INTEGER GDTYP_PDM
+         REAL( 8 ) :: G_XLL, G_YLL, G_XUR, G_YUR, G_XC, G_YC
+         REAL( 8 ) :: XCENT_PDM, YCENT_PDM, XCELL_PDM, YCELL_PDM
+         REAL( 8 ) :: P_ALP_PDM, P_BET_PDM, P_GAM_PDM
+         INTEGER, SAVE :: MET_NCOLS = 0
+         INTEGER, SAVE :: MET_NROWS = 0
+
+         LOGICAL OK
+         INTEGER, SAVE :: LOGDEV
+         LOGICAL, SAVE :: FIRSTIME = .TRUE.
+         LOGICAL, SAVE :: WR_ONCE = .TRUE.
+         INTEGER NSOURCES
+
+C-----------------------------------------------------------------------
+
+         IF ( FIRSTIME ) THEN
+            FIRSTIME = .FALSE.
+            LOGDEV = INIT3 ()
+
+C Verify that PDM file belongs to this met domain
+
+            IF ( .NOT. OPEN3( PDM_PING_1, FSREAD3, PNAME ) ) THEN
+               MSG = 'Could not open PDM_PING_1'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+               END IF
+
+            IF ( .NOT. DESC3( PDM_PING_1 ) ) THEN
+               MSG = 'Could not get PDM_PING_1 header description'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+               END IF
+
+C Starting date & time and time step determined from PDM file:
+
+            PDM_SDATE = SDATE3D
+            PDM_STIME = STIME3D
+            PDM_TSTEP = TSTEP3D
+
+C Get the number of mepses and the total number of plume sections avaiable
+C (releases) according to the PDM file
+
+            NPTSPDM   = NCOLS3D
+            N_RLEASES = NROWS3D
+            NPLUMESD  = NPTSPDM * N_RLEASES
+
+            GDTYP_PDM = GDTYP3D
+            P_ALP_PDM = P_ALP3D
+            P_BET_PDM = P_BET3D
+            P_GAM_PDM = P_GAM3D
+            XCENT_PDM = XCENT3D
+            YCENT_PDM = YCENT3D
+            XCELL_PDM = XCELL3D
+            YCELL_PDM = YCELL3D
+
+            ALLOCATE ( SUB_SOURCE( NPTSPDM ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** SUB_SOURCE Memory allocation failed'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+               END IF
+            CALL SUBST_INIT_ARRAY( SUB_SOURCE, 0 )
+
+C Save PDM file origin (from met center point)
+
+            XORIG_PDM = XORIG3D
+            YORIG_PDM = YORIG3D
+
+            IF ( .NOT. OPEN3( MET_CRO_2D, FSREAD3, PNAME ) ) THEN
+               MSG = 'Could not open MET_CRO_2D'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+               END IF
+
+            IF ( .NOT. DESC3( MET_CRO_2D ) ) THEN
+               MSG = 'Could not get MET_CRO_2D header description'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+               END IF
+
+C Verify map projection, met domain center and horizontal resolution
+
+            IF ( GDTYP_PDM .NE. GDTYP3D .OR.
+     &           P_ALP_PDM .NE. P_ALP3D .OR.
+     &           P_BET_PDM .NE. P_BET3D .OR.
+     &           P_GAM_PDM .NE. P_GAM3D .OR.
+     &           XCENT_PDM .NE. XCENT3D .OR.
+     &           YCENT_PDM .NE. YCENT3D .OR.
+     &           XCELL_PDM .NE. XCELL3D .OR.
+     &           YCELL_PDM .NE. YCELL3D ) THEN
+              MSG = 'PDM_PING_1 does not correspond to met data'
+              CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+              END IF
+
+            IF ( XORIG_PDM .NE. XORIG3D .OR.
+     &           YORIG_PDM .NE. YORIG3D ) THEN
+               MSG = 'PDM_PING_1 origin does not correspond to met data'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .FALSE.)
+               WRITE( LOGDEV,1005 ) XORIG_PDM, YORIG_PDM, XORIG3D, YORIG3D
+1005           FORMAT( / 5X, 'PDM origin:', 2(1PE12.5),
+     &                   2X, 'MET origin:', 2(1PE12.5) )
+               END IF
+
+C Save met file horizontal grid dimensions
+
+            MET_NCOLS = NCOLS3D
+            MET_NROWS = NROWS3D
+
+C Set computational domain extents
+
+            GRID_XSW = XORIG_GD
+            GRID_YSW = YORIG_GD
+            GRID_XNE = GRID_XSW + XCELL3D * REAL ( GL_NCOLS, 8 )
+            GRID_YNE = GRID_YSW + YCELL3D * REAL ( GL_NROWS, 8 )
+
+            ALLOCATE ( IVAR( NPTSPDM,N_RLEASES,3 ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** IVAR Memory allocation failed'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+               END IF
+
+C Search for initalized plumes
+C K is the release number, J is the source number and I is the plume number
+
+            JDATE = PDM_SDATE
+            JTIME = PDM_STIME
+
+C The mepses that fall within a windowed subdomains are not known in advance.
+C Assume that the 1st record in the PDM file has each plume initialized
+C (PDMFLAG = 0). Find the position of each initialized plume. This position
+C is the location of the mepse. Increment the NSOURCES counter. If the mepse
+C also falls within the subdomain, add to the SUB_SOURCE list. Then, after all
+C the first record releases in the PDM file have been examined, the number of
+C mepses within the subdomain is the number added to the SUB_SOURCE list.
+
+C Read the plume ID, grid point for lower left corner of the plume,
+C the grid point for upper right corner of the plume, and the PDM plume flag
+
+            VNAME = 'PLUME_FLAG'
+            OK = READ3( PDM_PING_1, VNAME, ALLAYS3, JDATE, JTIME, IVAR( 1,1,1 ))
+            IF ( .NOT. OK ) CALL M3ERR( PNAME, JDATE, JTIME, VNAME, .TRUE. )
+
+            VNAME = 'ID_LL'
+            OK = READ3( PDM_PING_1, VNAME, ALLAYS3, JDATE, JTIME, IVAR( 1,1,2 ))
+            IF ( .NOT. OK ) CALL M3ERR( PNAME, JDATE, JTIME, VNAME, .TRUE. )
+
+            VNAME = 'ID_RU'
+            OK = READ3( PDM_PING_1, VNAME, ALLAYS3, JDATE, JTIME, IVAR( 1,1,3 ))
+            IF ( .NOT. OK ) CALL M3ERR( PNAME, JDATE, JTIME, VNAME, .TRUE. )
+
+            N_MEPSES = 0
+            NSOURCES = 0
+            DO 109 I = 1, NPTSPDM
+               DO J = 1, N_RLEASES
+                  PDMFLAG = IVAR( I,J,1 )
+
+                  IF ( PDMFLAG .GE. 0 .AND. PDMFLAG .LE. 2 ) THEN
+                     NSOURCES = NSOURCES + 1
+
+C Get plume section coordinates (PXLL,PYLL,PXUR,PYUR)
+                     CALL MAP1TO3( IVAR( I,J,2 ),
+     &                             MET_NCOLS, PXLL, MET_NROWS, PYLL, PZLL )
+                     CALL MAP1TO3( IVAR( I,J,3 ),
+     &                             MET_NCOLS, PXUR, MET_NROWS, PYUR, PZUR )
+
+C convert (to REAL*8) for accurate comparison
+                     G_XLL = XCELL3D * REAL ( PXLL, 8 ) + XORIG_PDM
+                     G_YLL = YCELL3D * REAL ( PYLL, 8 ) + YORIG_PDM
+                     G_XUR = XCELL3D * REAL ( PXUR, 8 ) + XORIG_PDM
+                     G_YUR = YCELL3D * REAL ( PYUR, 8 ) + YORIG_PDM
+
+                     G_XC = ( G_XLL + G_XUR ) / 2.0
+                     G_YC = ( G_YLL + G_YUR ) / 2.0
+
+                     IF ( G_XC .GE. GRID_XSW .AND. G_YC .GE. GRID_YSW .AND.
+     &                    G_XC .LE. GRID_XNE .AND. G_YC .LE. GRID_YNE ) THEN
+                        N_MEPSES = N_MEPSES + 1
+                        SUB_SOURCE( N_MEPSES ) = I
+                        GO TO 109
+                        END IF
+
+                     END IF   ! 0 <= PDMFLAG <= 2
+
+                  END DO   ! J
+109            CONTINUE
+
+            IF ( NSOURCES .NE. NPTSPDM ) THEN
+               MSG = 'Incorrect number of MEPSES determination'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+               END IF
+
+            WRITE ( LOGDEV,1009 ) N_MEPSES
+1009        FORMAT( / 5X, 'Number of MEPSES determined for this domain:', I4 )
+
+            DEALLOCATE ( IVAR )
+
+            RETURN
+
+            ELSE
+
+            MSG = 'Number of mepses and global PinG dimensions already defined'
+            IF ( WR_ONCE ) THEN
+               WR_ONCE = .FALSE.
+               CALL M3MESG ( MSG )
+               END IF
+
+            RETURN
+
+            END IF   ! FIRSTIME
+
+         CONTAINS
+
+            SUBROUTINE MAP1TO3 ( POINT, NX, X, NY, Y, Z )
+
+            INTEGER, INTENT( IN )  :: POINT, NX, NY
+            INTEGER, INTENT( OUT ) :: X, Y, Z
+            INTEGER :: NXNY, T
+
+            NXNY = NX * NY
+            T = 1 + MOD( POINT - 1, NXNY )
+            Z = 1 + ( POINT - T ) / NXNY
+            X = 1 + MOD( T - 1, NX )
+            Y = 1 + ( T - X ) / NX
+
+!           Z = 1 + ( POINT - 1 ) / NXNY   ! Alternate method
+!           T = POINT - NXNY * ( Z - 1 )   ! Alternate method
+!           Y = 1 + ( T - 1 ) / NX         ! Alternate method
+!           X = T - NX * ( Y - 1 )         ! Alternate method
+
+            RETURN
+
+            END SUBROUTINE MAP1TO3
+
+         END SUBROUTINE GET_NMEPSES
+
+      END MODULE PING_GLOBDIM
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

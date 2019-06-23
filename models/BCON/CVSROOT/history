@@ -1,0 +1,14 @@
+O442002f5|sjr|/project/m3data2/sjr/cvs/work/BCON/*0|CVSROOT||CVSROOT
+M44200300|sjr|/project/m3data2/sjr/cvs/work/BCON|CVSROOT|1.2|modules
+E44200a9f|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/bcon/BLD_e1a*a|src/driver/bcon|HEAD|bcon
+E44200aac|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/bcon/BLD_e1a*9|src/input/profile|HEAD|profile
+E44200ab4|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/bcon/BLD_e1a*d|src/mech_conv/radm2_to_cb4|HEAD|radm2_to_cb4
+E44200abc|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/bcon/BLD_e1a*7|src/icl/icl|HEAD|icl
+E44200b2d|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/bcon/BLD_h1a*a|src/driver/bcon|HEAD|bcon
+E44200b39|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/bcon/BLD_h1a*9|src/input/profile|HEAD|profile
+E44200b41|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/bcon/BLD_h1a*d|src/mech_conv/radm2_to_cb4hg|HEAD|radm2_to_cb4hg
+E44200b49|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/bcon/BLD_h1a*7|src/icl/icl|HEAD|icl
+E44200ec9|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/bcon/BLD_e3a*a|src/driver/bcon|HEAD|bcon
+E44200ed5|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/bcon/BLD_e3a*9|src/input/m3conc|HEAD|m3conc
+E44200ee2|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/bcon/BLD_e3a/mc_*e|src/mech_conv/noop|HEAD|mc_noop
+E44200ee9|sjr|/project/air5/sjr/CMAS4.5.1/work2/scripts/bcon/BLD_e3a*7|src/icl/icl|HEAD|icl

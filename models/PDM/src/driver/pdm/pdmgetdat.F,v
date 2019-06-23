@@ -1,0 +1,309 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/driver/pdm/pdmgetdat.F,v 1.8 2005/08/29 20:31:12 jug Exp $
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+
+C %W% %P% %G% %U%
+
+      SUBROUTINE PDMGETDAT ( JDATE, JTIME, NMEPS, NREL, IPDMDAT, PDMDAT )
+
+C ***********************************************************************
+C  Function: Read PDM_PING_O data file and store the
+C            data from the last hour for all plume releases
+
+      USE HGRD_DEFN             ! horizontal domain specifications
+      USE VGRD_DEFN
+      
+      IMPLICIT NONE
+
+!     INCLUDE SUBST_HGRD_ID
+!     INCLUDE SUBST_VGRD_ID
+      INCLUDE SUBST_IOPARMS
+      INCLUDE SUBST_IOFDESC
+      INCLUDE SUBST_IODECL
+      INCLUDE 'PLUME.EXT'
+      INCLUDE 'FILES_PDM.EXT'
+
+C  Dynamic memory allocation for ceratin arrays since NREL is now known
+C  from the PDMOPEN routine.
+      INTEGER NMEPS, NREL
+
+C     POINTER (P1, XCNO)
+      REAL, ALLOCATABLE :: XCNO( :,: )
+
+C     POINTER (P2,YCNO)
+      REAL, ALLOCATABLE :: YCNO( :,: )
+
+C     POINTER (P3,XLOC1)
+      REAL, ALLOCATABLE :: XLOC1( : )
+
+C     POINTER (P4,YLOC1)
+      REAL, ALLOCATABLE :: YLOC1( : )
+
+      REAL XDIST
+
+C  There are currently 19 variables stored in the PDM data file
+!     INTEGER NVARS
+!     PARAMETER (NVARS = 19)
+      
+      REAL PDMDAT(NMEPS,NREL,NVARPDM)
+
+      CHARACTER( 96 ) :: XMSG = ' '
+      CHARACTER( 16 ) :: PNAME = 'PDMGETDAT'
+      INTEGER IPDMDAT(NMEPS,NREL,7), SDATE, STIME, NN
+      INTEGER IT, IDTSEC, JDATE, JTIME, NSORCE, NS, IR
+      INTEGER IXC, IYC, IZC, NV
+      INTEGER IXLL, IXRU, IYLL
+      INTEGER IYRU, IZLL, IZRU
+      INTEGER VNAM_MAPR (NVARPDM), VNAM_MAPI(4)
+      INTEGER      ALLOCSTAT
+            
+      CHARACTER( 16 ) :: VNAM( NVARPDM )
+      
+C  Names of variables stored in the PDM data file.
+      DATA VNAM /'PLUME_ID',     'XC_PLUME', 'YC_PLUME', 'ZC_PLUME',
+     &           'WIDTH'   ,     'DEPTH'   , 'PBL'     , 'ANGLE',
+     &           'WIDTHDT',      'DEPTHDT',  'DPBLDT' ,  'DDIR',
+     &           'DSPD'    ,     'ID_LL',    'ID_RU'   , 'PLUME_FLAG',
+     &           'INITIAL_WIND', 'RELSTEP',  'TSCALE',   'DDIST' /
+
+C  Arrays for storage locations for real and integer variables.
+      DATA VNAM_MAPR /  2,  3,  4,  5,  6,  7,  8,  9, 10, 11,
+     &                 12, 13, 17, 18, 19, 20,  0,  0,  0,  0 /
+      DATA VNAM_MAPI /  1, 14, 15, 16 /
+          
+      ALLOCATE ( XCNO( NMEPS,NREL ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating XCNO'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+      ALLOCATE ( YCNO( NMEPS,NREL ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating YCNO'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+      ALLOCATE ( XLOC1( NMEPS ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating XLOC1'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+      ALLOCATE ( YLOC1( NMEPS ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         XMSG = 'Failure allocating YLOC1'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+C  ----- OPEN THE PREVIOUS PDM OUTPUT FILE --
+
+      IF ( .NOT. OPEN3( PDM_PING_O, FSREAD3, PNAME ) ) THEN
+         XMSG = 'ERROR opening file PDM_PING_O'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+      IF ( .NOT. DESC3( PDM_PING_O ) ) THEN
+         XMSG = 'Failure getting description of PDM_PING_O'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+      SDATE   = SDATE3D
+      STIME   = STIME3D
+      IDTSEC  = TSTEP3D
+      NSORCE  = NCOLS3D
+
+C  Initialize the master PDM data array
+      DO NS = 1, NSORCE
+         DO IT = 1, NREL
+            DO NV = 1, NVARPDM
+               PDMDAT( NS,IT,NV ) = 0.0
+            END DO
+         END DO
+      END DO
+
+      DO NS = 1, NSORCE
+         DO IT = 1, NREL
+            DO NV = 1, 4
+               IPDMDAT( NS,IT,NV ) = 0
+            END DO
+         END DO
+      END DO
+
+C  ---- output values and angle
+ 
+      WRITE( *,* ) '* Retrieving data for JDATE, JTIME:', JDATE, JTIME
+
+C  Loop to read the PDM data variables
+
+      DO NN = 1,16
+         NV = VNAM_MAPR( NN )
+         IF ( .NOT. READ3( PDM_PING_O, VNAM( NV ), 1, JDATE, JTIME,
+     &         PDMDAT( 1,1,NN ) ) ) THEN
+            XMSG = '*INPUT error for ' // VNAM( NV )
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      END DO
+
+      DO NN = 1,4
+         NV = VNAM_MAPI( NN )
+         IF ( .NOT. READ3( PDM_PING_O, VNAM( NV ), 1, JDATE, JTIME,
+     &         IPDMDAT( 1,1,NN ) ) ) THEN
+            XMSG = '*INPUT error for ' // VNAM( NV )
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+      END DO
+
+C  =============================================
+C  Get the initial X,Y position in order to determine distance, XDIST
+      IF ( .NOT. READ3( PDM_PING_O, VNAM( 2 ), 1, JDATE, JTIME, XCNO ) ) THEN
+         XMSG = 'Failure reading ' //VNAM( 2 )// ' from PDM_PING_O'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+      IF ( .NOT. READ3( PDM_PING_O, VNAM( 3 ), 1, JDATE, JTIME, YCNO ) ) THEN
+         XMSG = 'Failure reading ' //VNAM( 3 )// ' from PDM_PING_O'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+  
+      DO NS = 1,NSORCE
+         XLOC1( NS ) = XCNO( NS,NREL )
+         YLOC1( NS ) = YCNO( NS,NREL )
+         WRITE( *,* ) ' SOURCE LOCATIONS:', XLOC1( NS ), YLOC1( NS )
+      END DO
+
+C  Loop over each release for each mepse source
+      DO IR = 1,NREL
+         DO NS = 1,NSORCE
+C  The following calcs eliminated since downwind dist. now retrieved above.
+!           XDIST = ( ABS ( PDMDAT( NS,IR,1 ) - XLOC1( NS ) ) ** 2.0
+!    &              + ABS ( PDMDAT( NS,IR,2 ) - YLOC1( NS ) ) ** 2.0 )
+!           PDMDAT(NS,IR,16) = SQRT(XDIST)/1000.     ! m to km
+            CALL MAP1TO3( IXLL, IYLL, IZLL, IPDMDAT( NS,IR,2 ) )
+            CALL MAP1TO3( IXRU, IYRU, IZRU, IPDMDAT( NS,IR,3 ) )
+
+            IXC = ( IXLL + IXRU ) / 2
+            IYC = ( IYLL + IYRU ) / 2
+            IZC = ( IZLL + IZRU ) / 2
+            IPDMDAT( NS,IR,5 ) = IXC
+            IPDMDAT( NS,IR,6 ) = IYC
+            IPDMDAT( NS,IR,7 ) = IZC
+         END DO
+      END DO
+
+C  Print out some values
+      DO NS = 1, NMEPS
+         WRITE( *,* ) ' '
+         DO IR = 1, NREL
+C  List the IPDMDAT info 
+            WRITE( *,1352 ) NS, IR, JDATE, JTIME,
+     &                     ( IPDMDAT( NS,IR,NV ), NV = 1,7 ),
+     &                     PDMDAT( NS,IR,8 ), PDMDAT( NS,IR,16 )
+
+         END DO
+      END DO
+
+1352  FORMAT( 2I3, 3I10, 1X, 2I10, 1X, 4I3, 1X, F6.1, 1X, F5.1 )
+     
+      WRITE( *,* )  'Retrieval finished'
+      
+      DEALLOCATE ( XCNO )        
+      DEALLOCATE ( YCNO )
+      DEALLOCATE ( XLOC1 )
+      DEALLOCATE ( YLOC1 )
+      
+      RETURN
+      END
+ 
+C=========================================================================
+ 
+      SUBROUTINE MAP1TO3( IX, IY, IZ, IPOINT )
+ 
+C Map a single integer number IPOINT into a gridded coordinate (ix,iy,iz).
+ 
+      USE HGRD_DEFN             ! horizontal domain specifications
+      USE VGRD_DEFN
+      
+      IMPLICIT NONE
+
+C  Includes
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+
+C  Arguments
+ 
+      INTEGER IX, IY, IZ, IPOINT
+ 
+C  Local Variables
+ 
+      INTEGER KX, KY, ITEMP, KXKY
+
+C ----------------------------------------------------------------
+
+      KX    = NCOLS
+      KY    = NROWS
+
+      KXKY  = KX * KY
+      ITEMP = MOD ( IPOINT-1, KXKY ) + 1
+      IZ    = ( IPOINT - ITEMP ) / KXKY + 1
+      IX    = MOD ( ITEMP-1, KX ) + 1
+      IY    = ( ITEMP - IX ) / KX + 1
+
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

@@ -1,0 +1,187 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/driver/pdm/locatn1.F,v 1.8 2005/08/24 12:43:46 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+       SUBROUTINE LOCATN1 ( MXSITES, LONIN, LATIN, X, Y, COUT, ROUT )
+
+C*************************************************************************
+C**Find the stack grid location (Grid coordinates)
+C
+C   FUNCTION: Computes the grid cell location from the input lat/lon of a
+C             point source stack and the grid cell indices in the domain
+C             
+C 
+C   KEY SUBROUTINES/FUNCTIONS CALLED: DESC3, M3EXIT, ENVSTR, M3ERR,
+C                                     SETLAM, LL2LAM
+C
+C   REVISION HISTORY: Created by Jerry Gipson, March, 1998
+C                     S.Roselle 12/1998 generalized for any site file
+C                     J. Godowitch - modified code for use in PDM
+C*************************************************************************
+
+      IMPLICIT NONE       
+
+C..INCLUDE FILES:
+  
+      INCLUDE SUBST_IOPARMS     ! IOAPI parameters
+      INCLUDE SUBST_IOFDESC     ! IOAPI file description
+      INCLUDE SUBST_IODECL      ! IOAPI declarations
+      INCLUDE 'FILES_PDM.EXT'   ! file names
+
+C..ARGUMENTS:
+
+      INTEGER MXSITES         ! maximum number of sites
+      REAL    LONIN           ! Input longitude in degrees (neg for W )
+      REAL    LATIN           ! Input latitude in degrees (pos for N )
+      REAL    X               ! x-coordinate for lambert projection
+      REAL    Y               ! y-coordinate for lambert projection
+      REAL    XW, XE          ! X-coordinates of grid cell edges  
+      REAL    YS, YN          ! Y-coordinates of grid cell edges  
+      INTEGER  COUT, ROUT     ! Output cell indices
+
+C..PARAMETERS: None
+
+C..EXTERNAL FUNCTIONS: 
+
+      LOGICAL SETLAM         ! Sets up Lambert projection
+      LOGICAL LL2LAM         ! Gets Lambert projection from LAT/LON
+
+C..LOCAL VARIABLES:
+
+      INTEGER  C, R           ! Loop indices
+      INTEGER, SAVE :: NPT
+      LOGICAL, SAVE :: LFIRST = .TRUE.
+
+      CHARACTER( 16 ) :: PNAME = 'LOCATN1' ! routine name
+      CHARACTER( 120 ) :: XMSG = ' '       ! exit message string
+            
+C**********************************************************************
+ 
+      IF ( LFIRST ) THEN
+         LFIRST = .FALSE.     
+         NPT = 0            
+C...get coordinate and grid information from met file
+         IF ( .NOT. DESC3( MET_CRO_3D ) ) THEN
+            XMSG = 'Could not get ' // MET_CRO_3D // ' file description'
+            CALL M3EXIT ( PNAME, 0, 0, XMSG, .TRUE. )
+         END IF
+      END IF
+
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c  Initialize Lambert projection for domain
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      NPT = NPT + 1
+      
+      IF ( .NOT. SETLAM( SNGL( P_ALP3D ),        !  first, initialize
+     &                   SNGL( P_BET3D ),        !  for LAM2LL()
+     &                   SNGL( P_GAM3D ),
+     &                   SNGL( XCENT3D ), 
+     &                   SNGL( YCENT3D ) ) ) THEN
+         XMSG = 'Lambert projection setup error'
+         CALL M3EXIT ( PNAME, 0, 0, XMSG, 2 )
+      END IF
+
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c  Processing to determine x,y grid position of a point source stack
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
+c..get the x,y coordinates using lat/lon to lambert conversion
+
+      IF ( .NOT. LL2LAM( LONIN, LATIN, X, Y ) ) THEN
+         XMSG = 'Lat/Lon to Lambert to conversion error IN LOCATN1'
+         CALL M3EXIT ( PNAME, 0, 0, XMSG, 2 )
+      END IF
+      
+c..find the column location 
+
+      COUT = 0
+      DO C = 1, NCOLS3D
+         XW = XORIG3D + FLOAT( C - 1 ) * XCELL3D 
+         XE = XW + XCELL3D
+         IF ( X .GE. XW .AND. X .LT. XE ) COUT = C
+         IF ( COUT .GT. 0 ) GO TO 10 
+      END DO
+      
+      IF ( COUT .EQ. 0 .OR. COUT .LT. 0 ) THEN
+         WRITE( *,* ) 'LOCATN1: ', NPT, ' MEPSE stack has col = ', COUT
+      END IF
+      
+c..find the row location 
+10    CONTINUE
+
+      ROUT = 0
+      DO R = 1, NROWS3D
+         YS = YORIG3D + FLOAT( R - 1 ) * YCELL3D 
+         YN = YS + YCELL3D
+         IF ( Y .GE. YS .AND. Y .LT. YN ) ROUT = R
+         IF ( ROUT .GT. 0 ) GO TO 20
+      END DO
+      
+      IF ( ROUT .EQ. 0 .OR. ROUT .LT. 0) THEN
+         WRITE( *,* ) 'LOCATN1: ', NPT, ' MEPSE stack has row = ', ROUT
+      END IF
+
+20    CONTINUE
+
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

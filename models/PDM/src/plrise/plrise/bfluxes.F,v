@@ -1,0 +1,175 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/plrise/plrise/bfluxes.F,v 1.4 2005/08/24 13:56:14 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C *************************************************************************
+      SUBROUTINE BFLUXES( TS, QS, D, VS, HS, TREF, BFLUX, ISFLG )
+
+C**************************************************************************
+C PURPOSE: Calculate plume buoyancy parameter BFLUX
+ 
+C Inputs--
+C   TREF   R   Ambient air temperature
+C   TS     R   Stack gas temperature        (K)
+C   QS     R   Stack flow rate              (
+C   D      R   Stack inside diameter        (m)
+C   VS     R   Stack effluent velocity      (m/s)
+C   HS     R   Stack height                 (m) 
+ 
+C Outputs--
+C   BFLUX  R   Buoyancy flux   (M**4/S**3)
+C   ISFLG  I   Flag for stack inventory status
+C              - 0: All inventory items provided
+C              - 1: Velocity missing (use flow rate)
+C              - 2: Flow rate missing (use velocity)
+C              - 3: Only stk ht. missing (use default)
+C              - 4: Vel, stk ht. missing (use flow rate, and default ht)
+C              - 5: Flow rate, stk ht. missing (use vel, and default ht)
+C              - 6: Not enough information to compute
+C              - 7: D.lt.DSMIN
+C              - 8: VS.lt.VSMIN
+C                 :6,7,8;Put all emission into first layer
+C              *QA: ISFLG 0,1,2: Best quality
+C              *QA: ISFLG 3,4,5: Borderline
+C              *QA: ISFLG 6    : Worst
+ 
+C Local variables--
+C   DSMIN  R   Minimum stack inside diameter
+C   HGUESS R   Default value for stack height
+C   VS1    R   Temporary storage for stack effluent velocity
+C   VSMAX  R   Maximum stack effluent velocity
+C   VSMIN  R   Minimum stack effluent velocity
+
+      IMPLICIT NONE
+
+      INCLUDE SUBST_CONST
+
+      REAL    TS, QS, D, VS, HS, TREF, BFLUX
+      INTEGER ISFLG
+
+      REAL DSMIN, HGUESS, VS1, VSMAX, VSMIN 
+ 
+C BDW cut-off values
+      DATA HGUESS / 10.0 /, DSMIN / 0.01 /, VSMIN / 0.01 /, VSMAX / 40.0 /
+      SAVE HGUESS, DSMIN, VSMIN, VSMAX
+
+C Check for bad or missing stack parameter data
+
+      IF ( VS .LE. 0.0) ISFLG = 1
+      IF ( QS .LE. 0.0) ISFLG = 2
+      IF ( HS .LE. 0.0) ISFLG = 3
+      IF ( HS .LE .0.0 .AND. VS .LE. 0.0 ) ISFLG = 4
+      IF ( HS .LE. 0.0 .AND. QS .LE. 0.0 ) ISFLG = 5
+      IF ( HS .LE. 0.0 .AND. VS .LE. 0.0 .AND. QS .LE. 0.0 ) ISFLG = 6
+ 
+      IF ( D .LT. DSMIN ) THEN
+         ISFLG = 7
+         GO TO 998
+      END IF
+      IF ( VS .LT. VSMIN ) THEN
+         ISFLG = 8
+         GO TO 998
+      END IF
+ 
+C If QS is available, use it to estimate VS1
+C However, if VS is available and correct, use it for BFLUX derivation.
+      IF ( ISFLG .EQ. 0 ) THEN
+         VS1= 4.0 * QS / ( PI * D * D )
+!jmg     VS = MIN( VS, VS1 )
+      ELSE IF ( ISFLG .EQ. 1 ) THEN
+         VS = 4.0 * QS / ( PI * D * D )
+      ELSE IF ( ISFLG .EQ. 2 ) THEN
+         QS = 0.25 * VS * ( PI * D * D )
+      ELSE IF ( ISFLG .EQ. 3 ) THEN
+         VS = 4.0 * QS / ( PI * D * D )
+         HS = HGUESS
+      ELSE IF ( ISFLG .EQ. 4 ) THEN
+         VS = 4.0 * QS / ( PI * D * D )
+         HS = HGUESS
+      ELSE IF ( ISFLG .EQ. 5 ) THEN
+         HS = HGUESS
+      ELSE IF ( ISFLG .GE. 6 .OR. ISFLG .LT. 0 ) THEN
+         GO TO 998
+      END IF
+
+C Limit the magnitude of these stack parms
+      VS = MIN( VS, VSMAX )
+      D  = MAX( D, DSMIN )
+
+C Compute the bouyancy flux from stack and ambient temp data
+
+      BFLUX = ( GRAV * ( TS - TREF ) * VS * D * D ) / ( 4.0 * TS )
+
+C The bouyancy flux must be positive or is set to zero
+C (negative bouyancy not permitted)
+      BFLUX = MAX( 0.0, BFLUX )
+
+      GO TO 999
+
+998   CONTINUE
+      BFLUX = 0.0
+
+999   CONTINUE
+
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

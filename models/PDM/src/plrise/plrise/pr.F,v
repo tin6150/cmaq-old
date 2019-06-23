@@ -1,0 +1,626 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/plrise/plrise/pr.F,v 1.11 2005/08/29 20:33:54 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C***********************************************************************
+      SUBROUTINE PR( JDATE, JTIME, IWRTE2, MMS, VM, PSFC, TSFC, ISTACK,
+     &               JSTACK, ITIME, ZF2, ZL2, PLMTOP, PLMBOT, ZCN, JFLAG,
+     &               ISTKFLG, SZ0FAC, SPRFAC, AW )
+
+C***********************************************************************
+
+C  Information about the VM array storage of parameters
+
+C  ---- 2D ---------------------------------------
+C  VM( J,1, 5,I ) = convective vel. scale   (m/s) 
+C  VM( J,2, 5,I ) = heat flux               (w/m2)
+C  VM( J,3, 5,I ) = roughness length Zo     (m)
+C  VM( J,4, 5,I ) = friction velocity U*    (m/s)
+C  VM( J,5, 5,I ) = Obukhov length          (m)
+C  VM( J,6, 5,I ) = mixing height Zi        (m)
+C  ---- 3D ---------------------------------------
+C  VM( J,K, 1,I ) = U component             (m/s)
+C  VM( J,K, 2,I ) = V component             (m/s)
+C  VM( J,K, 3,I ) = pressure at mid-layer   (mb)
+C  VM( J,K, 4,I ) = temperature at layer Z  ( K )
+C  VM( J,K, 6,I ) = layer ave. temperature  ( K )
+C  VM( J,K, 7,I ) = specific humidity       (kg/kg)
+C  VM( J,K, 8,I ) = water vapor conc        (ppm)
+C  VM( J,K, 9,I ) = pressure at sigma level (mb)
+C  VM( J,K,10,I ) = specific humidity at Z  (kg/kg)
+
+C=======================================================================
+C                        PROGRAM PR.FOR
+C=======================================================================
+
+C  Function:  Prepare parameters to perform plume rise in PLUMER
+ 
+C  Output file:
+C       Clipped layered fractions of stack plume for UAM layers
+C       Statistics of layered plume
+
+C  History:
+C       07/06/89: V1.0 For layered plume rise by Daewon Byun
+C       08/04/89: V1.1 Debugged and added more comments. DWB
+C       08/08/89: V1.2 Further debug & clean up for production. BRG
+C       03/07/90: V3.X Upgraded to work with 6 or 15 layer met (DWB)
+C       08/15/90: V3.A Upgraded to give choice of the old algorithms
+C       03/06/91: V3.B Added calls for CKSUMPR met verification (JKV)
+C       03/19/91: V3.C Implemented roughness and PBLPWR routines (DWB)
+C       09/91   :      Upgraded for UAM (JSN)
+c       010/19/95:      NLAYS=NLAYS=30, VM(MYCELL,15,10,MXCELL)
+C       06/27/95: V4.0 Linear interpolation (UTINTP) was added to
+C                      as an option besides PBLPWL to calculate 
+C                      U,T which are not located right on MM levels(ywu)
+C       08/01/95: V5   Method for initial plume width was changed (ywu)
+
+C-----------------------------------------------------------------------
+C        Definitions of variables
+C-----------------------------------------------------------------------
+
+C Inputs --
+C    DS       R      Stack inside diameter   (m)
+C    HS       R      Physical stack height   (m)
+C    ISTACK   I      Stack location in x-grid
+C    JSTACK   I      Stack location in y-grid
+C    ISTKFLG  I      Flag for stack being out of range
+C    ITIME    I      Hour being processed
+C    IWRTE2   I      Output log file number-(6)
+C    MMS      I      Max. number of PinG sources
+C    NXCELL   I      Number of X cells
+C    NYCELL   I      Number of Y cells
+C    NLAYS    I      Number of Z cells
+C    QS       R      Stack flow rate         (m/s)
+C    TS       R      Stack gas temperature   ( K )
+C    VM       R      Array of met. data
+C    VS       R      Stack gas exit velocity (m/s)
+C    ZL2      R      Layer face heights      (m)
+ 
+C Outputs --
+C    PLMBOT   R      Bottom height of plume  (m)
+C    PLMFRA   R      Fraction of plume in specific layer
+C    ZCN      R      Height of plume rise    (m)
+C    PLMTOP   R      Top height of plume     (m)
+C    SUMMRYB  R      Summary for hourly statistics
+C    TOTSOUR  I      Total number of sources for this hour
+C    JFLAG    I      Error flag
+ 
+C Local variables--
+C    AMISG    R      Missing value for real variables
+C    AMOL     R      Monin-Obukhov length
+C    BFLUX    R      Buoyancy flux           (m**4/s**3)
+C    BOT      R      Bottom of plume at final plume rise
+C    CPD      R      Cp (heat capability at constant P) of air
+C    DSI      R      Stack inside diameter   (m)
+C    DZ       R      Dz
+C    ES       R      Water vapor pressure
+C    HFLUX    R      Heat flux               (K*m/s)
+C    HFX      R      a parameter relevant to heat flux  (K*m/s)
+C    HMIX     R      Mixing height           (m)
+C    HMIXMAX  R      Maximium mixing height
+C    HMIXMIN  R      Minimium mixing height
+C    HPSI     R      Physical stack height   (m)
+C    HSTAR    R      Convective scale at stack  (m**2/s**3)
+C    IABOVB   I      Counter for height above mixed layer top
+C    IBADB    I      Counter for stacks not in grid cell
+C    IC       I      Stack sequential number
+C    IOUTB    I      Counter for major points skipped
+C    IP1      I      Lat/lon grid cell number
+C    IPARTB   I      Counter for number of major plume penetrations
+C    IPFLAG   I      Flag for partial penetration
+C    ISDROPB  I      Counter for number of cases droped
+C    ISFLG    I      Flag for stack inventory status
+C                       - 0: All inventory items provided
+C                       - 1: Velocity missing (use flow rate)
+C                       - 2: Flow rate missing (use velocity)
+C                       - 3: Only stk ht. missing (use default)
+C                       - 4: VEL, STK HT. missing (use flow rate and default HT)
+C                       - 5: Flow rate, STK HT. missing (use VEL and default HT)
+C                       - 6: Not enough information to compute
+C                       - 7: D .lt. DSMIN
+C                       - 8: VS .lt. VSMIN
+C                          :6,7,8;put all emission into first layer
+C                       *QA: ISFLG 0,1,2: best quality
+C                       *QA: ISFLG 3,4,5: borderline
+C                       *QA: ISFLG 6    : worst
+C    ISRC     I      Index for source number
+C    ISRCB    I      Counter for number of sources processed
+C    ISTAB    I      0=neutral;-1=unstable;1=stable
+C    ISTABLE  I      Counter for number of stable cases     (HFLUX < 0)
+C    IUNSTAB  I      Counter for number of unstable cases   (HFLUX >= 0)
+C    JP1      I      Grid cell number
+C    KBOT     I      Layer at bottom of plume
+C    KTOP     I      Layer at top of plume
+C    NP       I      Number of point sources
+C    NZ       I      Number of Z cells
+C    PPR      R      Interpolated atmospheric pressure
+C    PSFC     R      Surface pressure field          (mb)
+C    QPR      R      Interpolated specific humidity  (g/g)
+C    QS1      R      Mixing ratio
+C    QSI      R      Stack flow rate
+C    RPR      R      Interpolated relative humidity
+C    THETAG   R      Ground potential temperature
+C    TOP      R      Top of plume at final plume rise
+C    TPR      R      Interpolated temperature        ( K )
+C    TSFC     R      Surface temperature
+C    TSI      R      Stack gas temperature
+C    TVO      R      Virtual temperature
+C    UPR      R      Interpolated wind speed         (m/s)
+C    USTAR    R      ustar at location of stack      (m/s)
+C    USTMIN   R      Minimiun value for ustar
+C    VSI      R      Stack effluent velocity         (m/s)
+C    ZRUF     R      Surface roughness               (m)
+C    DTHDZ    R      Vert. grad. of pot. temp at stack   (K/m)
+C    FRACT    R      Plume fractions in each level
+C    ICSB     I      Frequency plume height was in Z cell
+C    PL       R      Pressure in mb
+C    QL       R      Mixing ratio at stack height
+C    TFRACB   R      Temporary place to store FRACT
+C    THETAV   R      Virtual potential temperature
+C    TL       R      Mid-layer temperature
+C    TV       R      Virtual temperature
+C    U        R      E/W wind component at stack height
+C    UL       R      Wind speed at stack             (m/s)
+C    V        R      N/S wind component at stack height (m/s)
+C    ZF       R      Level (interface) height        (m)
+C    ZL       R      Mid-layer height                (m)
+C    ZR       R      Ht. of UAM Z-layer at stack     (m)
+C    NLAYS    I      Number of vertical Z cells
+
+      USE HGRD_DEFN             ! horizontal domain specifications
+      USE VGRD_DEFN
+      
+      IMPLICIT NONE
+
+!     INCLUDE SUBST_HGRD_ID
+!     INCLUDE SUBST_VGRD_ID
+      INCLUDE SUBST_IOPARMS
+      INCLUDE SUBST_IOFDESC
+      INCLUDE SUBST_CONST
+      INCLUDE 'PLUME.EXT'
+
+      INTEGER JDATE, JTIME, IWRTE2, MMS
+      REAL    VM( NROWS,NLAYS+4,10,NCOLS )
+      REAL    PSFC( NCOLS,NROWS ), TSFC( NCOLS,NROWS )
+      INTEGER ISTACK( MS ), JSTACK( MS ), ITIME
+      REAL    ZF2( MS,0:NLAYS ), ZL2( MS,NLAYS ) 
+      REAL    PLMTOP( MS ), PLMBOT( MS ), ZCN( MS )
+      INTEGER JFLAG, ISTKFLG( MS )
+      REAL    SZ0FAC( MS ), SPRFAC( MS ), AW( MS )
+
+      REAL    TL( NLAYS ), UL( NLAYS ), TV( NLAYS ), PL( NLAYS ), QL( NLAYS ),
+     &        ZL( NLAYS ), TF( NLAYS ), ZF( 0:NLAYS ), U( NLAYS ), V( NLAYS ),
+     &        THETAV( NLAYS ), FRACT( NLAYS ), TFRACB( NLAYS ), DTHDZ( NLAYS ),
+     &        DTVDZ( NLAYS ), DZ( NLAYS ), ZR( NLAYS+1 ), SUMMRYB( 0:120,NLAYS+1 ),
+     &        PLMFRA( MS,NLAYS ), PF( NLAYS ), TVL( NLAYS ), THETAVL( NLAYS ), UF( NLAYS )
+      REAL    DSI, TSI, VSI, HPSI, QSI, HSTAR, TVO
+      REAL    UPR, TPR, QPR, PPR, RPR, BFLUX, TOP, BOT, PRH, DPTH, QS1
+      REAL    ROHAIR, USTMIN, AMISG, HMIXMIN, HMIXMAX, AMOL
+      REAL    PG, TG, ES, THETAG, HFLUX, HFX, HMIX, ZRUF, USTAR
+      REAL    WNDSP, AWNDSP, DELTA, DZZ, ZBOT
+
+      INTEGER ICSB( NLAYS )
+      INTEGER NP, IC
+      INTEGER ISDROPB, IUNSTAB, ISTABLE, IPARTB, IABOVB, K, ISRCB
+      INTEGER IBADB, ISRC, IP1, JP1, KPR, ISTAB, IPFLAG, KBOT, KTOP
+      INTEGER TOTSOUR, IOUTB, ISFLG, ILO, NITER, IHI
+
+      LOGICAL IPRFLG
+      COMMON /OPTN/ IPRFLG
+
+      INTEGER MEPS( MS )
+      REAL    DS( MS ), TS( MS ), VS( MS ), HS( MS ), QS( MS )
+      COMMON /STK/ MEPS, DS, TS, VS, HS, QS
+
+      INTEGER IMETHD, IDPLUM, IPARTFLG, IOLDFIL
+      COMMON /MTH/ IMETHD, IDPLUM, IPARTFLG, IOLDFIL
+
+!     COMMON /MET/ CRO_LAT, PSFC, TSFC
+
+      CHARACTER( 96 ) :: XMSG = ' '
+      CHARACTER( 16 ) :: PNAME = 'PR'
+
+C---- Declare data values
+
+      DATA ROHAIR /1.2928/, USTMIN /0.05/, AMISG /-999.99/
+      DATA HMIXMIN /40.0/, HMIXMAX /3000.0/
+      SAVE ROHAIR, USTMIN, AMISG, HMIXMIN, HMIXMAX
+
+      NP = MMS 
+      TOTSOUR = 0
+      ILO = 0
+      IHI = 0
+      KPR = 0
+
+C---- Initial values
+
+      IC = 0      ! Initialize stack sequential number
+      ISDROPB = 0 ! Initialize for number of major cases dropped
+      IUNSTAB = 0 ! Initialize for number of unstable cases
+      ISTABLE = 0 ! Initialize for number of stable cases (include neutral)
+      IPARTB = 0  ! Initialize for number of major plume penetrations
+      IABOVB = 0  ! Initialize for number of major above mixed layer top
+
+      DO K = 1,NLAYS
+         TFRACB( K ) = 0.0
+         ICSB( K ) = 0
+      END DO
+
+      ISRCB = 0
+      IOUTB = 0
+      IBADB = 0
+
+C*dwb 90251
+C---- Loop over point sources
+
+      DO 300 ISRC = 1, MMS
+
+C---- Count total number of major sources, and
+C     the number of skipped major sources
+
+         ISRCB = ISRCB + 1
+
+         IF ( ISTKFLG( ISRC ) .NE. 0 ) THEN  ! Set some default values for cases outside of domain
+            IOUTB = IOUTB + 1
+            ZCN( ISRC ) = HS( ISRC )
+            PLMTOP( ISRC ) = HS( ISRC ) + 1.0
+            PLMBOT( ISRC ) = HS( ISRC ) - 1.0
+            GO TO 300          ! stack OR plume out of DOMAIN grid
+         END IF
+
+C Set grid indices for this source
+         IP1 = ISTACK( ISRC )
+         JP1 = JSTACK( ISRC )
+         ZF( 0 ) = 0.0
+         DO K = 1 , NLAYS
+            ZL( K ) = ZL2( ISRC,K )
+            ZF( K ) = ZF2( ISRC,K )
+            DZ( K ) = ZF( K ) - ZF( K-1 )
+         END DO
+
+C---- Get met data from VM array, and calculate DTHDZ
+C*** DTHDZ: virtual potential temperature gradient
+
+C---- Retrieve temperature at stack location, face temperature, mixing ratio
+C     at stack and wind components
+!jmg     write( *,* ) 'isrc, ip1,jp1 =', ISRC, IP1, JP1
+         DO K = 1, NLAYS
+            TL( K ) = VM( JP1,K, 6,IP1 )
+            TF( K ) = VM( JP1,K, 4,IP1 )
+!           QL( K ) = VM( JP1,K, 7,IP1 )
+            QL( K ) = VM( JP1,K,10,IP1 )          ! Use layer face values(kg/kg)
+            U ( K ) = VM( JP1,K, 1,IP1 )
+            V ( K ) = VM( JP1,K, 2,IP1 )
+            PL( K ) = VM( JP1,K, 3,IP1 )           ! Pressure at mid-layer  (mb)
+            PF( K ) = VM( JP1,K, 9,IP1 )           ! Pres. at sigma levels  (mb)
+            UL( K ) = SQRT( U( K ) * U( K ) + V( K ) * V( K ) )
+            TV( K )  = TF( K ) * ( 1.0 + 0.6077 * QL( K ) )
+            TVL( K ) = TL( K ) * ( 1.0 + 0.6077 * QL( K ) )
+            THETAV( K )  = TV( K )  * ( 1000.0 / PF( K ) ) ** 0.286
+            THETAVL( K ) = TVL( K ) * ( 1000.0 / PL( K ) ) ** 0.286
+            ZR( K ) = ZF( K-1 )
+!           write( *,* ) K, ZF( K ), PF( K ), THETAV( K ), TV( K ), QL( K )
+         END DO
+
+         ZR( NLAYS+1 ) = ZF( NLAYS )
+!        write( *,* ) zr( nlays+1 )
+
+C---- Surface pressure in mb(hPa) !YWU replace [atmosphere] by [mb]
+         PG = PSFC( IP1,JP1 )
+         TG = TSFC( IP1,JP1 )
+
+C---- Water vapor pressure (surface value)
+         ES = 6.1078 * EXP( 5384.21 * ( 1.0 / 273.15 -  1.0 / TG ) )   ! in mb
+
+C---- Mixing ratio (surface value)
+         QS1 = 0.622 * ES / ( PG - ES )
+
+C---- Virtual temperature (surface value)
+         TVO = TG * ( 1.0 + 0.6077 * QS1 )
+
+C---- Virtual potential temperature (surface value)
+         THETAG = TVO * ( 1000.0 / PG ) ** 0.286
+
+C---- virtual potential temperature gradient (theta_v gradient)
+C     from level to level.
+         DTHDZ( 1 ) = ( THETAV( 1 ) - THETAG ) / ( ZF( 1 ) - ZF( 0 ) )
+
+!        DTVDZ( 1 ) = (TV( 1 ) - TVO ) / ( ZF( 1 ) - ZF( 0 ) ) + 0.0098
+!        write( *,* ) '1, DTVDZ :', DTVDZ( 1 )
+
+         DO K = 1, NLAYS - 1
+            DZZ = ZF( K+1 ) - ZF( K )
+            DTHDZ( K+1 ) = ( THETAV( K+1 ) - THETAV( K ) ) / DZZ
+!           DTVDZ( K+1 ) = ( TV(K+1) - TV( K ) ) / DZZ  + 0.0098
+!           write( *,* ) 'K, DTVDZ ; DTHDZ', K+1, DTVDZ(K+1),DTHDZ(K+1)
+         END DO
+ 
+C---- Get sensible heat flux from VM data array !! (watts/m**2) !!
+         HFLUX = VM( JP1,2,5,IP1 )
+
+C---- Count number of UNSTABLE cases defined by HFLUX > 0
+         IF ( HFLUX .GT. 0.0 ) THEN
+            IUNSTAB = IUNSTAB + 1
+         ELSE
+            ISTABLE = ISTABLE + 1
+         END IF
+
+C---- Compute  HSTAR (m**2/s**3), HFX (K*m/s)
+         HFX = HFLUX / ( CPD * ROHAIR )
+         HSTAR = GRAV * HFX / TG
+
+C---- Get mixing height
+         HMIX = MAX( HMIXMIN, VM( JP1,6,5,IP1 ) )
+
+C---- Get surface roughness for the given stack
+         ZRUF = VM( JP1,3,5,IP1 )
+
+C---- Get friction velocity (u*) and Monin-Obukhov length (L)
+         USTAR = VM( JP1,4,5,IP1 )
+         AMOL  = VM( JP1,5,5,IP1 )
+
+         HMIX = MIN( HMIX, HMIXMAX )
+
+!jmg  write( *,* ) 'HFX,HMIX,AMOL,USTAR=', HFX, HMIX, AMOL, USTAR
+         IC = IC + 1
+
+C*dwb now stack parameter Q/A has been done on the NAPAP data itself
+
+         TSI  = TS( ISRC )
+         QSI  = QS( ISRC )
+         HPSI = HS( ISRC )
+         DSI  = DS( ISRC )
+         VSI  = VS( ISRC )
+         ISFLG = ISTKFLG( ISRC )
+
+C---- Estimate U(UPR) AND T(TPR) at stack height for stack ISRC
+
+         DO K = 1, NLAYS
+            IF ( HPSI .LT. ZF( K ) ) THEN
+               KPR = K
+               GO TO 101
+             END IF
+         END DO
+         KPR = NLAYS
+101   CONTINUE
+
+C Select the method to be used to generate values at stack ht
+         IF ( IMETHD .NE. 0 ) THEN
+
+C Linear interpolation method
+            CALL UTINTP( UL, TL, ZL, NLAYS, HPSI, KPR,
+     &                   TSFC, UPR, TPR, JFLAG )
+            IF ( JFLAG .LT. 0 ) THEN
+               WRITE( XMSG,1101 ) JFLAG
+               CALL M3ERR ( PNAME, JDATE, JTIME, XMSG, .TRUE. )
+            END IF
+         ELSE 
+            CALL PBLPWR( UL, TL, QL, PL, ZL, ZF, NLAYS, HPSI,
+     &                   HMIX, AMOL, ZRUF, TG, PG,
+     &                   UPR, TPR, QPR, PPR, RPR, JFLAG )
+         END IF
+         IF ( JFLAG .LT. 0 ) THEN
+            WRITE( XMSG,1201 ) JFLAG
+            CALL M3ERR ( PNAME, JDATE, JTIME, XMSG, .TRUE. )
+         END IF  
+
+C---- Compute buoyancy fluxes => Assume TVo is fixed for this algorithm
+         CALL BFLUXES( TSI, QSI, DSI, VSI, HPSI, TPR, BFLUX, ISFLG)
+C---- Count bad stacks
+
+         IF ( ISFLG .GE. 6 ) THEN
+            IBADB = IBADB + 1
+            GO TO 300 ! bad stack parameter - all goes into first layer
+         END IF
+
+C---- Call plume rise subroutine - Briggs and Byun's algorithms
+
+!        ILO = KPR           ! the lower layer for wind speed
+
+         CALL PLUMER( ISRC, ZL, ZR, UL, TL, DTHDZ, HMIX, USTAR, HSTAR,
+     &                BFLUX, HPSI, DSI, VSI, TSI, TPR, ZRUF, ZF, QL, PL, TG,
+     &                PG, AMOL, TOP, BOT, ISTAB, IPFLAG, JFLAG, PRH, UPR,
+     &                NITER )
+
+         IF ( JFLAG .LT. 0 ) THEN
+            WRITE( XMSG,1301 ) JFLAG
+            CALL M3ERR ( PNAME, JDATE, JTIME, XMSG, .TRUE. )
+         END IF
+
+C---- Calculate ALTERNATE plume rise heights of top and bottom of plume
+C     if option selected. (IDPLUM = 1 )
+         IF ( IDPLUM .EQ. 1 ) THEN
+            CALL PLSPRD ( DTHDZ, ZF, NLAYS, PRH, HMIX, SZ0FAC,
+     &                    SPRFAC, TOP, BOT, DPTH)
+         END IF
+C  Store final plume height and top and bottom heights of plume
+         ZCN( ISRC ) = PRH
+         PLMTOP( ISRC ) = TOP
+         PLMBOT( ISRC ) = BOT 
+C---- First time plume move 
+
+         DO K = 0, NLAYS - 1
+            IF ( BOT .GE. ZF( K ) .AND. BOT .LE. ZF( K+1 ) ) ILO = K
+            IF ( TOP .GE. ZF( K ) .AND. TOP .LE. ZF( K+1 ) ) IHI  = K + 1
+         END DO
+
+!     IF ( ILO .LE. 0 ) ILO = 1
+         IF ( IHI .EQ. 0 ) THEN 
+            WRITE( XMSG,'(A,2I5)' ) 'Plume IHI NOT SET; BOT & TOP =', BOT, TOP
+            CALL M3ERR ( PNAME, JDATE, JTIME, XMSG, .TRUE. )
+         END IF
+
+         AWNDSP = 0.0
+         DELTA = ZF(IHI) - ZF(ILO)
+
+C Do the wind averaging over the layer(s).
+C Get the fractional part of the plume in each layer.
+C IF BOT IN PBL, over the first hour it will mix thru the PBL,
+C so consider winds from layer 2 to KTOP to determine plume
+C segment speed in determination of its downwind length.
+         IF ( BOT .LT. HMIX ) ZBOT = ZR( 2 )
+         IF ( BOT .GE. HMIX ) ZBOT = BOT          
+         CALL PART( ISRC, NLAYS, ZR, ZBOT, TOP, FRACT, KBOT, KTOP, JFLAG )
+         IF (  JFLAG .GE. 0 ) THEN
+            KBOT = MAX( 1,KBOT )
+            KTOP = MIN( NLAYS, KTOP )
+!           write( *,* ) 'CALC. INITIAL WIND:', KBOT, KTOP, ZBOT, BOT, TOP
+            DO K = KBOT, KTOP
+               WNDSP = SQRT( U( K ) * U( K ) + V( K ) * V( K ) )
+               WNDSP = WNDSP * FRACT( K )
+               AWNDSP = AWNDSP + WNDSP
+!              write( *,* ) 'Lyr weight:', K, FRACT( K ), AWNDSP
+            END DO
+         ELSE
+            DO K = ILO + 1, IHI
+               WNDSP = SQRT( U( K ) * U( K ) + V( K ) * V( K ) )
+               WNDSP = WNDSP * ( DZ( K ) / DELTA )
+               AWNDSP = AWNDSP + WNDSP
+            END DO
+
+         END IF
+C  Average transport wind speed of this plume section.
+         AW( ISRC ) = AWNDSP
+!        write( *,* ) 'In PR: Initial wind=', AW( ISRC ), ILO, IHI
+
+         IF ( IPFLAG .EQ. 1) IPARTB = IPARTB + 1
+         IF ( IPFLAG .EQ. 2) IABOVB = IABOVB + 1
+
+C---- Call plume partition routine
+C Next routine really unnecssary, only for use in RADM, GEMAP 
+c  Should be elimated and later code associated with it.
+         IF ( IPARTFLG .EQ. 0 ) GO TO 300
+
+         CALL PART( ISRC, NLAYS, ZR, ZBOT, TOP, FRACT, KBOT, KTOP, JFLAG )
+
+         IF ( JFLAG .LT. 0 ) THEN
+            WRITE( XMSG,1401 ) JFLAG
+            CALL M3ERR ( PNAME, JDATE, JTIME, XMSG, .TRUE. )
+         END IF
+
+C---- Put plume fraction into a disk file
+C*dwb 90251 For time independent stack parameter, if everything goeS
+C*          to the first layer, drop in final output
+C*dwb 90251 For hourly time dependent stack paramaters,
+C*          do not drop anything in final output
+
+         IF ( KBOT .EQ. 1 .AND. KTOP .EQ. 1 ) THEN
+            ICSB( 1 ) = ICSB( 1 ) + 1
+            ISDROPB   = ISDROPB + 1
+            TFRACB( 1 ) = TFRACB( 1 ) + FRACT( 1 )
+         ELSE
+            DO K = KBOT, KTOP
+               ICSB( K ) = ICSB( K ) + 1
+               TFRACB( K ) = TFRACB( K ) + FRACT( K )
+            END DO
+         END IF
+
+C---- Store the fraction that the plume is in the level into PLMFRA
+
+         DO K = 1 , NLAYS
+            IF ( FRACT( K ) .GT. 0.0 ) TOTSOUR = TOTSOUR + 1  
+            PLMFRA( ISRC,K ) = FRACT( K )
+         END DO
+
+300   CONTINUE
+C  Return if no plume partitioning performed, since no printout necessary
+      IF ( IPARTFLG .EQ. 0 ) RETURN
+
+C ---------------------------------------------------------------------
+
+C - E.O.L. for stack
+C For each hour, print counter
+      IF ( IPRFLG ) THEN
+
+         WRITE( IWRTE2,1501 )
+!        WRITE( IWRTE2,1601 ) JCURDT, CURTIM, IOUTB, IBADB, ISDROPB
+         WRITE( IWRTE2,1701 ) IUNSTAB, ISTABLE, IPARTB, IABOVB
+         DO K = 1, NLAYS
+             WRITE( IWRTE2,1801 ) K, ICSB( K ), TFRACB( K )
+         END DO
+
+C Summary for hourly statistics for major points
+
+         SUMMRYB( ITIME,1 ) = FLOAT( ITIME )           ! time from start
+         SUMMRYB( ITIME,2 ) = TFRACB( 1 ) + FLOAT( IBADB ) ! total 1st layer fraction
+         DO K = 2, NLAYS
+            SUMMRYB( ITIME,K+1 ) = TFRACB( K )     ! TOTAL KTH LAYER FRACTION
+         END DO
+
+      END IF
+      
+      RETURN
+
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+
+1101  FORMAT(' ERROR in PR ', I4, ' was returned from subroutine UTINTP' )
+1201  FORMAT(' ERROR in PR ', I4, ' was returned from subroutine PBLPWR' )
+1301  FORMAT(' ERROR in PR ', I4, ' was returned from subroutine PLUMER' )
+1401  FORMAT(' ERROR in PR ', I4, ' was returned from subroutine PART' )
+1501  FORMAT(' NOTE: Stats at end of PR ')
+1601  FORMAT('--- Major stats at DAY', I7, 2X, 'HOUR', F7.2 / 
+     &       ' ISTOT=', I5, 2X, 'IOUT=',I5, 2X, 'IBAD=', I5, 2X, 'ISDROP=', I5 )
+1701  FORMAT( 'IUNSTAB=', I5, 2X, 'ISTABLE=', I5, 2X, 'IPARTB=', I5, 2X,
+     &        'IABOVB=', I5 )
+1801  FORMAT( 'LAYER=', I5, 2X, 'FREQ=', I5, 2X, 'TOTAL=', F11.5 )
+1901  FORMAT( I3, '. HOUR (ELAPSED)'// )
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

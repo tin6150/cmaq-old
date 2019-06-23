@@ -1,0 +1,571 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.27.27;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/PDM/src/driver/pdm/metin.F,v 1.15 2005/08/29 20:31:12 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C **********************************************************************
+      SUBROUTINE METIN( MMS, JDATE, JTIME, IDTSEC, IHRM, VM, IT, ZF,
+     &                  IPLUM, JPLUM, ZL3, DELMIX, IPLMFLG, ITT, MTE,
+     &                  PSFC, TSFC, CRO_LAT )
+C **********************************************************************
+
+C  Function: Reads the MCIP2 met. data files, stores selected data,
+C            and performs certain calculations.
+
+C  Information about the VM array storage of parameters.
+
+C  VM( J, 1,5,I ) = convective vel. scale  (m/s) 
+C  VM( J, 2,5,I ) = heat flux              (w/m**2)
+C  VM( J, 3,5,I ) = roughness length Zo    (m)
+C  VM( J, 4,5,I ) = friction velocity U*   (m/s)
+C  VM( J, 5,5,I ) = Obukhov length         (m)
+C  VM( J, 6,5,I ) = mixing height Zi       (m)
+C  VM( J, 7,5,I ) = cloud base height      (m)
+C  VM( J, 8,5,I ) = cloud top height       (m)
+C  VM( J, 9,5,I ) = low cloud fraction       
+C  VM( J,10,5,I ) = ave. cloud liquid water content (g/M**3)
+ 
+C  VM( J,K, 1,I ) = U component            (m/s)
+C  VM( J,K, 2,I ) = V component            (m/s)
+C  VM( J,K, 3,I ) = pressure at mid-layer  (mb)
+C  VM( J,K, 4,I ) = temperature at layer Z (K)
+C  VM( J,K, 6,I ) = mid-layer temperature (K)
+C  VM( J,K, 7,I ) = mid-layer specific humidity (kg/kg)
+C  VM( J,K, 8,I ) = water vapor conc       (ppm)
+C  VM( J,K, 9,I ) = pressure at sigma level(mb)
+C  VM( J,K,10,I ) = specific humidity at ZFs 
+
+      USE HGRD_DEFN             ! horizontal domain specifications
+      USE VGRD_DEFN
+      
+      IMPLICIT NONE
+!     INCLUDE SUBST_HGRD_ID
+!     INCLUDE SUBST_VGRD_ID
+      INCLUDE SUBST_IOPARMS
+      INCLUDE SUBST_IOFDESC
+      INCLUDE SUBST_CONST
+      INCLUDE SUBST_IODECL
+      INCLUDE 'FILES_PDM.EXT'
+      INCLUDE 'PLUME.EXT'
+
+      CHARACTER( 96 ) :: XMSG = ' '
+      CHARACTER( 16 ) :: PNAME = 'METIN'
+            
+      INTEGER MTE
+      INTEGER IPLUM( MS,MTE ), JPLUM( MS,MTE ), IPLMFLG( MS,MTE )
+      INTEGER I, IV, J, K, IX, IY, JDATE, JTIME, IDTSEC, IT
+      INTEGER NS, IP, JP, IR, NVARS, IHRM
+      INTEGER JDAT, JTIM, NNCEL, NPCEL, N2CEL, ITT, MMS, M
+      INTEGER ALLOCSTAT
+      INTEGER INDEX1, V
+      INTEGER, SAVE :: LOGDEV
+
+      EXTERNAL INDEX1
+      CHARACTER*16 UNITSCK
+
+      PARAMETER ( NVARS = 15 )
+!     PARAMETER ( NCOLSP = NCOLS+1, NROWSP = NROWS+1 )
+!     PARAMETER ( NNCEL = NCOLS*NROWS*NLAYS, NPCEL = NCOLSP*NROWSP*NLAYS )
+!     PARAMETER ( N2CEL = NCOLS*NROWS )
+
+      REAL ZL3( MS,MTE,NLAYS ), VM( NROWS,NLAYS+4,10,NCOLS ), ZF( MS,0:NLAYS )
+      REAL UWIN, VWIN, TURL,
+     &     PSTAR( NCOLS,NROWS ), P( NCOLS,NROWS,NLAYS ),
+     &     PSFC( NCOLS,NROWS ), TSFC( NCOLS,NROWS ), CRO_LAT( NCOLS,NROWS )
+
+      REAL  MET2D( NCOLS+1,NROWS+1,NVARS ), MET2DX( NCOLS,NROWS,NVARS ),
+     &      UWIND( NCOLS+1,NROWS+1,NLAYS ), VWIND( NCOLS+1,NROWS+1,NLAYS ),
+     &      DEN( NCOLS,NROWS,NLAYS ), ZFACE( NCOLS,NROWS,NLAYS ),
+     &      QV( NCOLS,NROWS,NLAYS ), TA( NCOLS,NROWS,NLAYS ),
+     &      ZLAY( NCOLS,NROWS,NLAYS ), DZ,
+     &      TOP, DELZH, DELZT, CONVPA, DELMIX( MS,MTE ), PBL( MS,200 )
+
+      REAL, ALLOCATABLE, SAVE :: HTMIX( :,: )
+      REAL, ALLOCATABLE, SAVE :: HTMIX1( :,: )
+      REAL, ALLOCATABLE, SAVE :: PLAY( : )
+      REAL, ALLOCATABLE, SAVE :: PLVL( : )
+	    
+      REAL, ALLOCATABLE, SAVE :: ZZERO( :,: )
+      REAL, ALLOCATABLE, SAVE :: CRO_LON( :,: )
+      REAL, ALLOCATABLE, SAVE :: XMSFD ( :,:)
+                 
+!     COMMON /MET/ CRO_LAT, PSFC, TSFC
+
+      CHARACTER*16 NAMEV( NVARS )
+      LOGICAL STATUS
+      LOGICAL, SAVE :: LFIRST = .TRUE.
+
+C................................................
+C  VM(J,K,IV,I) Array also defined in PR               .
+C................................................
+!     DATA NAMEV / 'LAT'  ,'LON'  ,'ZZERO', 'HFX' ,
+      DATA NAMEV / 'LAT'  ,'LON'  ,'ZRUF', 'HFX' ,
+     &             'PBL' ,'PSTAR','TEMP1P5' ,'USTAR' ,'MOLI' ,'WSTAR' ,
+!    &             'CLDB' ,'CLDT','CFRACL' ,'WBAR', 'MSFD2'/
+     &             'CLDB' ,'CLDT','CFRAC' ,'WBAR', 'MSFD2'/
+
+      SAVE PLVL, TOP, PLAY, NAMEV, PBL,
+     &     CONVPA, NNCEL, NPCEL, N2CEL
+
+C ----------------------------------------------------------------------
+
+C Sigma level values etc are in FDESC.EXT after using DESC IOAPI routine
+C The following parameters are defined in *.EXT files
+
+      IF ( LFIRST ) THEN    ! not read in time-indep. data
+         LFIRST = .FALSE. 
+         LOGDEV = INIT3()
+
+         NNCEL = NCOLS * NROWS * NLAYS
+         NPCEL = ( NCOLS+1 ) * ( NROWS+1 ) * NLAYS
+         N2CEL = NCOLS * NROWS
+
+         ALLOCATE ( HTMIX( MS,MTE ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating HTMIX'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+         ALLOCATE ( HTMIX1( MS,MTE ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating HTMIX1'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+         ALLOCATE ( CRO_LON( NCOLS,NROWS ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating CRO_LON'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+         ALLOCATE ( ZZERO( NCOLS,NROWS ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating CRO_LON'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+         ALLOCATE ( XMSFD( NCOLS+1,NROWS+1 ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating XMSFD'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+	 
+         ALLOCATE ( PLAY( NLAYS ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating PLAY'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+	 
+         ALLOCATE ( PLVL( 0:NLAYS ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            XMSG = 'Failure allocating PLVL'
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+C  Find if METCRO2D file has PSTAR or PRSFC.      
+         IF ( .NOT. DESC3( MET_CRO_2D ) ) THEN
+            XMSG = 'Could not get ' // MET_CRO_2D // ' file description'
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT2 )
+         END IF         !  error abort if desc3() failed
+
+         V = INDEX1( 'PRSFC', NVARS3D, VNAME3D )
+         IF ( V .NE. 0 ) THEN
+            UNITSCK = UNITS3D( V )
+            NAMEV( 6 ) = VNAME3D( V )
+         ELSE
+            XMSG = 'Could not get variable PRSFC from ' // MET_CRO_2D
+     &           // ' Try for variable PSTAR'
+            CALL M3MESG( XMSG )
+            V = INDEX1( 'PSTAR', NVARS3D, VNAME3D )
+            IF ( V .NE. 0 ) THEN
+               UNITSCK = UNITS3D( V )
+               NAMEV( 6 ) = VNAME3D( V ) 
+            ELSE
+               V = INDEX1( 'PSTAR', NVARS3D, VNAME3D )
+               XMSG = 'Could not get variable PSTAR from ' // MET_CRO_2D
+               CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT2 )
+            END IF
+         END IF
+
+C  Check the units of the pressure variable.
+         IF ( UNITSCK .EQ. 'PASCAL' .OR. UNITSCK .EQ. 'pascal' .OR.
+     &        UNITSCK .EQ. 'Pascal' .OR. UNITSCK .EQ. 'PA'     .OR.
+     &        UNITSCK .EQ. 'pa'     .OR. UNITSCK .EQ. 'Pa' ) THEN
+!           CONVPA = 1.0
+            CONVPA = 0.01
+         ELSE IF ( UNITSCK .EQ. 'MILLIBAR' .OR. UNITSCK .EQ. 'millibar' .OR.
+     &             UNITSCK .EQ. 'Millibar' .OR. UNITSCK .EQ. 'MB'       .OR.
+     &             UNITSCK .EQ. 'mb'       .OR. UNITSCK .EQ. 'Mb' ) THEN
+!           CONVPA = 1.0E-02
+            CONVPA = 1.0
+         ELSE IF ( UNITSCK .EQ. 'CENTIBAR' .OR. UNITSCK .EQ. 'centibar' .OR.
+     &             UNITSCK .EQ. 'Centibar' .OR. UNITSCK .EQ. 'CB'       .OR.
+     &             UNITSCK .EQ. 'cb'       .OR. UNITSCK .EQ. 'Cb' ) THEN
+!           CONVPA = 1.0E-03
+            CONVPA = 10.
+         ELSE
+            XMSG = 'Units incorrect on ' // MET_CRO_2D
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT2 )
+         END IF
+
+C  Use IOAPI routine to load parameter values into FDESC.EXT 
+         IF ( .NOT. DESC3( MET_CRO_3D ) ) THEN
+            XMSG = ' Could not get description of MET_CRO_3D'
+            CALL M3EXIT( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+         DO NS = 1, MMS
+            HTMIX( NS,1 ) = 0.0
+         END DO      
+C  Store the MM5 sigma levels from MCIP file
+         DO  K = 0, NLAYS
+           PLVL( K ) = VGLVS3D( K+1 )
+         END DO         
+C  Determine the mid-layer sigma values.
+         DO  K = 1, NLAYS 
+           PLAY( K ) = 0.5 * ( PLVL( K-1 ) + PLVL( K ) )
+         END DO
+                
+         TOP = VGTOP3D
+      
+C  ******************* Read data *******************
+C  *t-indep. : GRID_CRO_2D  GRID_DOT_2D            *
+C  *t-depend : MET_CRO_2D   MET_CRO_3D  MET_DOT_3D *
+C  *************************************************
+
+C  Read GRID_CRO_2D data file
+         DO I = 1,2
+            STATUS = READ3( GRID_CRO_2D, NAMEV( I ), 1, JDATE, JTIME, MET2DX( 1,1,I ) )
+            IF ( .NOT. STATUS ) THEN
+            XMSG = 'Cannot find' // NAMEV( I )
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+            END IF 
+         END DO
+
+C  Read the surface roughness length from METCRO2D from MCIP2 release '03
+         STATUS = READ3( MET_CRO_2D, NAMEV( 3 ), 1, JDATE, JTIME, MET2DX( 1,1,3 ) )
+         IF ( .NOT. STATUS ) THEN
+            XMSG = 'Cannot find' // NAMEV( 3 )
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+C  Store the time-independent grid data and ZO.
+         DO IY = 1, NROWS
+            DO  IX = 1, NCOLS
+               CRO_LAT( IX,IY ) = MET2DX( IX,IY,1 )
+               CRO_LON( IX,IY ) = MET2DX( IX,IY,2 )
+               ZZERO( IX,IY )   = MET2DX( IX,IY,3 )      ! sfc. roughness (M)
+            END DO
+         END DO
+
+C  Read GRID_DOT_2D data file, time independent
+         STATUS = READ3( GRID_DOT_2D, NAMEV( 15 ), 1, JDATE, JTIME, MET2D( 1,1,15 ) )
+         IF ( .NOT. STATUS ) THEN
+            XMSG = 'Cannot find' // NAMEV( 15 )
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF
+
+C  Squared MSFD2, so take the SQRT of DOT point map scale factors.
+         DO IY = 1, NROWS+1
+            DO IX = 1, NCOLS+1
+               XMSFD( IX,IY ) = SQRT( MET2D( IX,IY,15 ) )
+            END DO
+         END DO
+
+      END IF   ! LFIRST
+
+C **********************************************************************
+
+C  (Re)Initialize the master VM array each time step
+      DO IV = 1, 10
+         DO K = 1, NLAYS+4
+            DO I = 1, NCOLS
+               DO J = 1, NROWS
+                  VM( J,K,IV,I ) = 0.0
+               END DO
+            END DO
+         END DO
+      END DO
+
+      ZL3 = 0.0
+
+C  Set up time for use in interpolation of met parameters
+      JDAT = JDATE
+      JTIM = JTIME
+
+      IF ( ITT .GT. 1 ) CALL NEXTIME( JDAT, JTIM, IHRM )
+!     IF ( MOD( ITT, NSTEP ) .NE. 1 ) CALL NEXTIME(JDAT, JTIM, IHRM )
+
+!     write( logdev,* ) 'In METIN: ITT,IT,JDAT,JTIM= ', ITT, IT, JDAT, JTIM
+
+C  Read MET_CRO_2D data file and retrieve parameter fields
+      DO I = 4, 14
+         STATUS = INTERP3 ( MET_CRO_2D, NAMEV( I ), 'METIN', JDAT, JTIM,
+     &                      N2CEL, MET2DX( 1,1,I ) )
+         IF ( .NOT. STATUS) THEN
+            XMSG = 'Cannot read' // NAMEV( I )
+            CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+         END IF  
+      END DO
+
+C  Transfer data into VM array and local arrays
+      DO IY = 1, NROWS
+         DO IX = 1, NCOLS
+            IF ( NAMEV( 6 ) .EQ. 'PSTAR' ) PSTAR( IX,IY ) = MET2DX( IX,IY,6 )
+            TSFC( IX,IY )    = MET2DX( IX,IY,7 )       ! 1.5 m temperature (c)
+            VM( IY, 1,5,IX ) = MET2DX( IX,IY,10 )     ! convective vel. (m/s)
+            VM( IY, 2,5,IX ) = MET2DX( IX,IY,4 )      ! heat flux (w/m**2)
+            VM( IY, 3,5,IX ) = ZZERO( IX,IY )         ! Sfc roughness length (m)
+            VM( IY, 4,5,IX ) = MET2DX( IX,IY,8 )      ! friction vel. (m/S)
+            TURL  = MET2DX( IX,IY,9 )
+C  Set limits on the magnitude of the M-O length scale
+            IF ( TURL .LT.  0.0001 .AND. TURL .GE. 0.0 ) TURL = 0.0001
+            IF ( TURL .GT. -0.0001 .AND. TURL .LT. 0.0 ) TURL = -0.0001
+            IF ( TURL .LT. -9999.0 ) TURL = -9999.0
+            IF ( TURL .GT.  9999.0 ) TURL = 9999.0
+            VM( IY, 5,5,IX ) = 1.0 / TURL             ! Monin-Obhukov lengtH
+            VM( IY, 6,5,IX ) = MET2DX( IX,IY,5 )      ! PBL height (m)
+            VM( IY, 7,5,IX ) = MET2DX( IX,IY,11 )     ! cloud base ht (m)
+            VM( IY, 8,5,IX ) = MET2DX( IX,IY,12 )     ! cloud top ht (m)
+            VM( IY, 9,5,IX ) = MET2DX( IX,IY,13 )     ! fraction of total cloud
+            VM( IY,10,5,IX ) = MET2DX( IX,IY,14 )     ! cloud water (g/m**3)
+         END DO
+      END DO
+
+C  Read MET_CRO_3D data file and retrieve 3-d parameter fields
+!     IF ( .NOT. READ3( METCRO3D,'TA', ALLAYS3, JDATE, JTIME, TA ) ) THEN
+      IF ( .NOT. INTERP3( MET_CRO_3D,'TA','METIN', JDAT, JTIM,
+     &                    NNCEL, TA ) ) THEN
+         XMSG = 'Cannot read TA'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+      IF ( .NOT. INTERP3( MET_CRO_3D, 'DENS', 'METIN', JDAT, JTIM,
+     &                    NNCEL, DEN ) ) THEN
+         XMSG = 'Cannot read DENS'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+      IF ( .NOT. INTERP3( MET_CRO_3D, 'QV', 'METIN', JDAT, JTIM,
+     &                    NNCEL, QV ) ) THEN
+         XMSG = 'Cannot read QV'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+      IF ( .NOT. INTERP3( MET_CRO_3D, 'PRES', 'METIN', JDAT, JTIM,
+     &                    NNCEL, P ) ) THEN
+         XMSG = 'Cannot read Pressure'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+C  Read MET_DOT_3D data file and retrieve 3-D wind component fields
+      IF ( .NOT. INTERP3( MET_DOT_3D, 'UWIND', 'METIN', JDAT, JTIM,
+     &                    NPCEL, UWIND ) ) THEN
+         XMSG = 'Cannot read UWIND'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+      IF ( .NOT. INTERP3( MET_DOT_3D, 'VWIND', 'METIN', JDAT, JTIM,
+     &                    NPCEL, VWIND ) ) THEN
+         XMSG = 'Cannot read VWIND'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF
+
+C ---- Full layer level heights  (in MKS units)
+C  Sigma level heights already available in METCRO3D file
+      IF ( .NOT. INTERP3( MET_CRO_3D, 'ZF', 'METIN', JDAT, JTIM,
+     &                    NNCEL, ZFACE ) ) THEN
+         XMSG = 'Cannot read ZF'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF 
+
+      DO 410 NS = 1, MMS
+         IF ( IPLMFLG( NS,IT ) .LT. 0 .OR. IPLMFLG( NS,IT ) .GT. 10 ) GO TO 410
+         IP = IPLUM( NS,IT )
+         JP = JPLUM( NS,IT )
+         ZF( NS,0 ) = 0.0
+C  Use the level face heights from the data file
+         DO K = 1, NLAYS
+            ZF( NS,K ) = ZFACE( IP,JP,K )
+         END DO
+
+410   CONTINUE
+
+C ---- Mid-layer height where data located  (in MKS units)
+C  Mid-layer heights already available in METCRO3D file
+      IF ( .NOT. INTERP3( MET_CRO_3D, 'ZH', 'METIN', JDAT, JTIM,
+     &                    NNCEL, ZLAY ) ) THEN
+         XMSG = 'Cannot read ZH'
+         CALL M3EXIT ( PNAME, JDATE, JTIME, XMSG, XSTAT1 )
+      END IF 
+
+C  Determine temperaturess and QV ar the full-layer heights from the mid-layer values.
+      DO K = 1, NLAYS-1
+         DO I = 1, NCOLS
+            DO J = 1, NROWS
+
+               DELZT = ZLAY( I,J,K+1 ) - ZLAY( I,J,K )
+               VM( J,K, 4,I ) = TA( I,J,K ) + ( TA( I,J,K+1 ) - TA( I,J,K ) )
+     &                        * ( ZFACE( I,J,K ) - ZLAY( I,J,K ) ) / DELZT
+               VM( J,K,10,I ) = QV( I,J,K ) + ( QV( I,J,K+1 ) - QV( I,J,K ) )
+     &                        * ( ZFACE( I,J,K ) - ZLAY( I,J,K ) ) / DELZT
+            END DO
+         END DO
+      END DO
+
+C  Temperatures: At top sigma level (PTOP).
+      DO I = 1, NCOLS
+         DO J = 1, NROWS
+            DELZH = ZLAY( I,J,2 ) - ZLAY( I,J,1 )
+!           TSFC(I,J) = TA( I,J,1 ) + ( TA( I,J,1 ) - TA( I,J,2 ) ) / DELZH
+            DELZT = ZLAY( I,J,NLAYS ) - ZLAY( I,J,NLAYS-1 )
+            VM( J,NLAYS, 4,I ) = TA( I,J,NLAYS ) - ( TA( I,J,NLAYS-1 ) - TA( I,J,NLAYS ) )
+     &                         * ( ZFACE( I,J,NLAYS ) - ZLAY( I,J,NLAYS ) ) / DELZT
+            VM( J,NLAYS,10,I ) = QV( I,J,NLAYS ) - ( QV( I,J,NLAYS-1 ) - QV( I,J,NLAYS ) )
+     &                         * ( ZFACE( I,J,NLAYS ) - ZLAY( I,J,NLAYS ) ) / DELZT
+            IF ( NAMEV( 6 ) .EQ. 'PSTAR' ) THEN
+               PSFC( I,J ) = PLVL( 0 ) * PSTAR( I,J ) * CONVPA + TOP * CONVPA
+            ELSE
+               PSFC( I,J ) = MET2DX( I,J,6 ) * CONVPA
+            END IF
+         END DO
+      END DO
+
+      DO K = 1, NLAYS
+         DO I = 1, NCOLS
+            DO J = 1, NROWS
+C  Values on DOT point --> on CROSS point (horizontally)
+C  Apply map scale factors to get real wind component values
+
+               UWIN = 0.0625 * ( UWIND( I,J,  K ) + UWIND( I+1,J,  K )
+     &                         + UWIND( I,J+1,K ) + UWIND( I+1,J+1,K ) )
+     &                       * ( XMSFD( I,J )   + XMSFD( I+1,J )
+     &                         + XMSFD( I,J+1 ) + XMSFD( I+1,J+1 ) )     ! u (layer)
+!              VWIN = 0.0625 * ( VWIND( I,J,  K ) + VWIND( I,J+1,  K )
+               VWIN = 0.0625 * ( VWIND( I,J,  K ) + VWIND( I+1,J,  K )
+     &                         + VWIND( I,J+1,K ) + VWIND( I+1,J+1,K ) )
+!    &                       * ( XMSFD( I,J )   + XMSFD( I,J+1 )
+     &                       * ( XMSFD( I,J )   + XMSFD( I+1,J )
+     &                         + XMSFD( I,J+1 ) + XMSFD( I+1,J+1 ) )     ! v (layer)
+
+               VM( J,K,1,I ) = UWIN                      ! U [m/s] (layer)
+               VM( J,K,2,I ) = VWIN                      ! V [m/s] (layer)
+               VM( J,K,3,I ) = P( I,J,K ) / 100.0        ! P [Pa]/100=mb(lyr)
+               VM( J,K,6,I ) = TA( I,J,K )               ! T (K)   (layer)
+               VM( J,K,7,I ) = QV( I,J,K )
+
+               IF ( NAMEV( 6 ) .EQ. 'PSTAR' ) THEN
+                  VM( J,K,9,I ) = PLVL( K ) * PSTAR( I,J ) * CONVPA + TOP * CONVPA  ! mb at SIG LVLS
+               ELSE
+C  Derive the layer interface pressures
+C  Conversion factor to MB is 0.01 for the 2nd term
+!                 DZ = ZFACE( I,J,K ) - ZLAY( I,J,K )
+!                 VM( J,K,9,I ) = P( I,J,K ) * CONVPA - 0.01 * GRAV * DEN( I,J,K ) * DZ
+
+C  Use sigma values and SFC surfaces. P = SIGMA (PSFC - TOP) + TOP
+                  VM( J,K,9,I ) = PLVL( K ) * ( PSFC( I,J ) - TOP * CONVPA ) + TOP * CONVPA
+
+               END IF
+            END DO
+         END DO
+      END DO
+     
+      DO 421 IR = 1, IT
+         DO 420 NS = 1, MMS
+            IF ( IPLMFLG( NS,IR ) .LT. 0 .OR. IPLMFLG( NS,IR ) .GT. 10 ) GO TO 420
+            IP = IPLUM( NS,IR )
+            JP = JPLUM( NS,IR )
+!           HTMIX1( NS,IR ) = HTMIX( NS,IR )
+            HTMIX1( NS,IR ) = PBL( NS,IR )
+            HTMIX( NS,IR )  = VM( JP,6,5,IP )
+            PBL( NS,IR )    = HTMIX( NS,IR )
+
+C  Use layer heights from MCIP met. data file        
+            DO K = 1, NLAYS
+               ZL3( NS,IR,K ) = ZLAY( IP,JP,K )
+            END DO
+
+420      CONTINUE       
+421   CONTINUE
+
+C  Initialize DELMIX for this time
+      DO NS = 1, MMS
+         DELMIX( NS,IT ) = 0.0
+      END DO
+
+      IF ( IT. GT. 1 ) THEN
+      
+         DO 620 IR = 1, IT
+            DO 610 NS = 1, MMS
+               IF ( IPLMFLG( NS,IR ) .LT. 0 .OR. IPLMFLG( NS,IR ) .GE. 10 ) GO TO 610
+               IF ( MOD( ITT, NSTEP ) .NE. 1 ) THEN
+                  DELMIX( NS,IR ) = HTMIX( NS,IR ) - HTMIX1( NS,IR )
+               END IF
+610         CONTINUE
+620      CONTINUE
+
+      END IF
+
+!     DEALLOCATE( HTMIX )
+!     DEALLOCATE( HTMIX1 )
+      
+      RETURN
+      END
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

@@ -1,0 +1,160 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.51;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.51;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/base/PLUME_BG.F,v 1.4 2004/09/28 18:07:46 yoj Exp $
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+      MODULE PLUME_BG
+
+      USE PING_GLOBDIM
+
+C 03 Dec 01 David Wong: added SAVE statemnt to dynamic allocate variables
+
+      IMPLICIT NONE
+
+C Left  background concentration (ppm)
+      REAL, ALLOCATABLE, SAVE :: CLBG( :,: )
+
+C Right background concentration (ppm)
+      REAL, ALLOCATABLE, SAVE :: CRBG( :,: )
+
+C Top   background concentration (ppm)
+      REAL, ALLOCATABLE, SAVE :: CTBG( :,: )
+
+C Bottom background concentration (ppm)
+      REAL, ALLOCATABLE, SAVE :: CBBG( :,: )
+
+!     COMMON / PINGR5 / CLBG, CRBG, CTBG, CBBG
+
+      CONTAINS
+
+         SUBROUTINE PLUME_BGINIT ( VAL )
+
+         REAL, INTENT( IN ) :: VAL
+
+         INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+         INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+         INCLUDE SUBST_AE_SPC    ! aerosol species table (dim./name/molwt)
+         INCLUDE SUBST_NR_SPC    ! non-reactive species table (dim./name/molwt)
+         INCLUDE SUBST_TR_SPC    ! traver species table (dim./name/molwt)
+
+         INTEGER     ALLSPC      ! Number of species in CPLUME, like CGRID
+         PARAMETER ( ALLSPC = N_GC_SPCD + N_AE_SPC + N_NR_SPC + N_TR_SPC )
+
+         CHARACTER( 200 ) :: MSG
+         CHARACTER( 16 )  :: PNAME = 'PLUME_BGINIT'
+
+         INTEGER NPLUMTOT, ALLOCSTAT
+         INTEGER I, J
+         LOGICAL OK
+         INTEGER, SAVE :: LOGDEV
+         LOGICAL, SAVE :: FIRSTIME = .TRUE.
+
+         IF ( FIRSTIME ) THEN
+            FIRSTIME = .FALSE.
+            LOGDEV = INIT3 ()
+            
+            CALL GET_NMEPSES ( )
+
+            NPLUMTOT = N_MEPSES * N_RLEASES
+
+            ALLOCATE ( CLBG( ALLSPC,NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** CLBG Memory allocation failed'
+               CALL M3ERR ( PNAME, -999, -999, MSG, .TRUE.)
+               END IF
+
+            ALLOCATE ( CRBG( ALLSPC,NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** CRBG Memory allocation failed'
+               CALL M3ERR ( PNAME, -999, -999, MSG, .TRUE.)
+               END IF
+
+            ALLOCATE ( CTBG( ALLSPC,NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** CTBG Memory allocation failed'
+               CALL M3ERR ( PNAME, -999, -999, MSG, .TRUE.)
+               END IF
+
+            ALLOCATE ( CBBG( ALLSPC,NPLUMTOT ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** CBBG Memory allocation failed'
+               CALL M3ERR ( PNAME, -999, -999, MSG, .TRUE.)
+               END IF
+
+            END IF   ! FIRSTIME
+
+         DO J = 1, NPLUMTOT
+            DO I = 1, ALLSPC
+               CLBG( I,J ) = VAL
+               CRBG( I,J ) = VAL
+               CTBG( I,J ) = VAL
+               CBBG( I,J ) = VAL
+               END DO
+            END DO
+
+!        write( logdev,* ) '@@@@ Plume_BG_Init - Val: ', VAL
+
+         RETURN
+
+         END SUBROUTINE PLUME_BGINIT
+
+      END MODULE PLUME_BG
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

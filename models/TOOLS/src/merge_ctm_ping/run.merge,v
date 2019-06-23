@@ -1,0 +1,79 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2006.03.13.19.36.07;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.13.19.36.07;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#! /bin/csh -f
+
+# Fortran postprocessor program to merge
+# CTM_CONC and CTM_PING concentration files
+# and generate a final combined conc file
+# containing all species in layer 1
+ 
+ set BASE            = $cwd      
+#  Directory path of the input conc files.
+ set INDIR           = /home/jug/m3codes/ctm/rel04/output
+ set OUTDIR          = $INDIR
+
+ cd $BASE
+ 
+if( -e MRGD_CONC_1 ) then
+   unalias rm
+   rm MRGD_CONC_1
+endif
+ 
+##############################################################
+#                  Set up for merge program run              #
+##############################################################
+#  Setup for the ctm and ping conc files. 
+ setenv CTM_CONC_1      $INDIR/CTMPING04_TUT32CONC.1999jul2
+ setenv CTM_PING_1      $INDIR/CTMPING04_TUT32PING.1999jul2
+ 
+#  Setup for the pdm file.
+ setenv PING_PDM_1  /home/jug/m3pdm/rel04/output/pdmrel04.ioapi_tut36
+ 
+#  Setup for the MET_CRO_3D MCIP file.
+ set METDIR = /project/air5/sjr/CMAS4.4/distr/rel/data/mcip2/M_32_99NASH
+ setenv MET_CRO_3D  $METDIR/METCRO3D_tut02
+
+#  Setup for the output combined conc file.
+ setenv MRGD_CONC_1     $OUTDIR/MRGCONC04_TUT32_1999jul2L1
+ 
+ if ($status != 0) exit (2)
+ 
+ /usr/bin/time  $BASE/MERGE_PING_CTM_L1
+ 
+ exit() 
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@

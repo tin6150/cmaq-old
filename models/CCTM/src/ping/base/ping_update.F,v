@@ -1,0 +1,1576 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  CMAQv4_5_1:1.1.1.1 ASMD:1.1.1;
+locks    ; strict;
+comment  @c @;
+
+
+1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2006.03.15.20.43.52;  author sjr;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+C***********************************************************************
+C   Portions of Models-3/CMAQ software were developed or based on      *
+C   information from various groups: Federal Government employees,     *
+C   contractors working on a United States Government contract, and    *
+C   non-Federal sources (including research institutions).  These      *
+C   research institutions have given the Government permission to      *
+C   use, prepare derivative works, and distribute copies of their      *
+C   work in Models-3/CMAQ to the public and to permit others to do     *
+C   so.  EPA therefore grants similar permissions for use of the       *
+C   Models-3/CMAQ software, but users are requested to provide copies  *
+C   of derivative works to the Government without restrictions as to   *
+C   use by others.  Users are responsible for acquiring their own      *
+C   copies of commercial software associated with Models-3/CMAQ and    *
+C   for complying with vendor requirements.  Software copyrights by    *
+C   the MCNC Environmental Modeling Center are used with their         *
+C   permissions subject to the above restrictions.                     *
+C***********************************************************************
+C RCS file, release, date & time of last delta, author, state, [and locker]
+C $Header: /project/work/rep/CCTM/src/ping/base/ping_update.F,v 1.15 2005/09/07 17:51:59 jug Exp $ 
+
+C what(1) key, module and SID; SCCS file; date and time of last delta:
+C %W% %P% %G% %U%
+
+C=======================================================================
+C This file, ping_update.F contains:
+C    SUBROUTINE PING_UPDATE
+C    SUBROUTINE PING_READMAIN
+C    SUBROUTINE PING_FLAGINIT
+C    SUBROUTINE PING_UPDATEBG
+C    SUBROUTINE PING_INIT
+C=======================================================================
+ 
+      SUBROUTINE PING_UPDATE ( CPLUME, NPLUMES, NPACTIVE, JDATE, JTIME )
+ 
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- use ifdef to distinguish implementation of CGRID between serial and
+C        parallel which requires a ghost cell region to accommodate the
+C        situation where the LL and UR of a plume can lie in two adjacent
+C        grid cells
+C     -- call INIT_IARRAY to initialize processor array containing plume
+C     -- call slice3 to update CPLUME when a plume has moved from one
+C        processor to another processor
+C  11/30/99 Jeff Young & Jim Godowich
+C     -- add restart/continuation capability
+C   1/06/2000 Jeff Young
+C    -- f90 memory mgmt
+C    22 Nov 00 J.Young
+C    --  SLICE3 -> Dave Wong's f90 stenex SLICE; need to
+C        dimension CPLUME explicitly for SLICE
+C    24 Sep 01 J.Young
+C    --  dyn alloc - Use HGRD_DEFN
+C-----------------------------------------------------------------------
+
+      USE SUBST_MODULES       ! stenex
+!     USE SUBST_SLICE_MODULE  ! stenex
+
+      USE PLUME_DYN   ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_STATE ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+C Define variables
+ 
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_GC_EMIS   ! emissions name and mapping tables
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! file name parameters
+ 
+C...............      Shared Arguments      ................
+ 
+C Grid Model concentration array
+ 
+!     REAL    :: CGRID( :,:,:,: )
+ 
+C Plume concentration array
+ 
+!     REAL    :: CPLUME( N_GC_SPC,NPILLARS,NPLUMTOT )
+      REAL    :: CPLUME( :,:,: )
+      INTEGER :: NPLUMES       ! Number of plumes (total released)
+      INTEGER :: NPACTIVE      ! Number of plumes (active plumes)
+      INTEGER :: JDATE         ! Current model date (Julian), YYYYDDD
+      INTEGER :: JTIME         ! Current model time, HHMMSS
+ 
+C...............      Local Variables            ................
+ 
+      CHARACTER( 200 ) :: MSG   ! Temporary message holder
+
+      INTEGER I, J            ! Loop counters
+      INTEGER UPDATE_SCS      ! Number of seconds since last update
+
+      CHARACTER( 16 ) :: PNAME = 'PING_UPDATE'
+
+C Variables to be saved
+ 
+      INTEGER, SAVE :: LASTDATE        ! Last date this routine was called
+      INTEGER, SAVE :: LASTTIME        ! Last time this routine was called
+
+      INTEGER, SAVE :: LOGDEV          ! FORTRAN unit number for log file
+ 
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+
+C Functions
+ 
+      INTEGER, EXTERNAL ::  SECSDIFF, INDEXSPCS, TRIMLEN
+ 
+      INTERFACE
+!#       SUBROUTINE PING_UPDATEBG ( CGRID, NPACTIVE )
+!#          IMPLICIT NONE
+!#          REAL, INTENT( IN )     :: CGRID( :,:,:,: )
+!#          INTEGER, INTENT( IN )  :: NPACTIVE
+!#       END SUBROUTINE PING_UPDATEBG
+         SUBROUTINE PING_INIT ( CPLUME, NPACTIVE, JDATE, JTIME )
+            IMPLICIT NONE
+            REAL, INTENT( OUT )    :: CPLUME( :,:,: )
+            INTEGER, INTENT( IN )  :: NPACTIVE
+            INTEGER, INTENT( IN )  :: JDATE, JTIME
+         END SUBROUTINE PING_INIT
+      END INTERFACE
+C-----------------------------------------------------------------------
+ 
+      IF ( FIRSTIME ) THEN
+
+         FIRSTIME = .FALSE.
+         LOGDEV = INIT3 ()
+ 
+C PDM output variables have been organized in the following manner:
+C   VARIABLE_NAME(COL,ROW,LAY,VAR), where
+C   COL = Source
+C   ROW = Release 
+C   LAY = 1
+C   VAR = Variable
+C   therefore, NCOLS3D*NROWS3D = (MAX # of sources)*(MAX # of releases) 
+C         = N_MEPSES*MXRLEASES = MAX number of plume sections in the run
+
+         LASTDATE = JDATE
+         LASTTIME = JTIME
+         CALL NEXTIME ( LASTDATE, LASTTIME, -60 )
+
+         END IF !  FIRSTIME
+ 
+C If JDATE,JTIME is after the last time this subroutine (PING_UPDATE) was 
+C called, then continue.  Otherwise, return.
+ 
+!     write( logdev,* ) '@@@@ Update: lastdate,date, lasttime,time ',
+!    &                             lastdate, jdate, lasttime, jtime
+
+      UPDATE_SCS = SECSDIFF( LASTDATE, LASTTIME, JDATE, JTIME )
+      IF ( UPDATE_SCS .LE. 0 ) RETURN
+      LASTDATE = JDATE
+      LASTTIME = JTIME
+
+C READMAIN reads in the plume information provided by PDM, then calls READMET
+C to read in appropriate met information. It also calculates the number of
+C plumes (the useable size of the array).
+ 
+      CALL PING_READMAIN ( JDATE, JTIME, NPLUMES )
+!     write( logdev,* ) '@@@@ Update: After READMAIN'
+
+C Call slice to update CPLUME when a plume has moved from one processor to
+C another processor, then update the processor ownership of the plume
+
+      DO I = 1, NPLUMES
+         IF ( PEC( I ) .NE. OLDPEC( I ) )
+     &      CALL SUBST_SLICE ( CPLUME, OLDPEC(I), PEC(I), 3, I, I )
+         OLDPEC( I ) = PEC( I )
+         END DO
+
+C Update the PLUMEPTR pointer array and calculate the number of active
+C plumes (i.e., NPACTIVE)
+
+!     write( logdev,* ) '@@@@ Update: Before UPDATEPTR', NPLUMES, NPACTIVE 
+
+      CALL PING_UPDATEPTR ( NPLUMES, NPACTIVE )  ! in F90 Module PLUME_STATE
+
+!     write( logdev,* ) '@@@@ Update: After UPDATEPTR', NPLUMES, NPACTIVE
+
+C UPDATEBG updates the background concentration arrays (i.e., CLBG, CRBG, ...)
+ 
+      IF ( NPACTIVE .GT. 0 ) CALL PING_UPDATEBG ( NPACTIVE )
+
+!     write( logdev,* ) '@@@@ Update: After UPDATEBG: ', NPLUMES, NPACTIVE
+!     write( logdev,* ) '@@@@ Update: After UPDATEBG: ', JDATE, JTIME
+
+      IF ( NPLUMES .GT. 0 ) CALL PING_INIT ( CPLUME, NPACTIVE, JDATE, JTIME )
+
+!     write( logdev,* ) '@@@@ Update: After INIT, NPACTIVE now = ', NPACTIVE
+
+      RETURN
+      END SUBROUTINE PING_UPDATE
+ 
+C=======================================================================
+ 
+      SUBROUTINE PING_READMAIN ( JDATE, JTIME, NPLUMES )
+
+C Revision History:
+C    6/23/99 David Wong at LM
+C      -- call MY_REGION to determine plume ownership
+C      -- call slice1 to update PFLAG when a plume has moved from one
+C         processor to another processor
+C      -- use MY_* variables for local processor
+C      -- call GLOBAL_TO_LOCAL_COORD to convert grid point from global to
+C         local scale
+C      -- use MY_NPLUMES to keep track of number of plumes in a processor
+C      -- use MPINDEX to store the original plume index with respect to
+C         plume number, number of releases, and hour of release
+C  11/30/99 Jeff Young & Jim Godowich
+C      -- add restart/continuation capability
+C   1/06/2000 Jeff Young
+C      -- f90 memory mgmt
+C      -- eliminated MPINDEX
+C  12/01/2000 Jeff Young
+C      -- add close ctm_ping_0 (enable update(append))
+C  12/15/2000 J.Young
+C      -- SLICE1 -> Dave Wong's f90 stenex SLICE
+C    2 Nov 01 J.Young
+C      -- change PLUME_INIT to INIT_PING and reverse sense
+C-----------------------------------------------------------------------
+
+      USE SUBST_MODULES              ! stenex
+!     USE SUBST_SLICE_MODULE         ! stenex
+
+      USE PLUME_DYN   ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_MET   ! inherits PLUME_STATE, which inherits PLUME_LOC,
+                      ! which inherits PING_GLOBDIM
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+C Define variables
+ 
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! file name parameters
+ 
+C...............      Shared Variables      ................
+ 
+      INTEGER      JDATE                  ! Current date (YYYYDDD)
+      INTEGER      JTIME                  ! Current time (HHMMSS)
+      INTEGER      NPLUMES                ! Number of plumes in the array
+ 
+C...............      Local Variables       ................
+ 
+      INTEGER I, J, K                     ! Loop counter
+      INTEGER MY_I                        ! Loop counter
+      INTEGER :: ALLOCSTAT                ! Memory allocation status
+
+      CHARACTER( 200 ) :: MSG             ! Temporary message holder
+      LOGICAL OK                          ! Temporay status variable
+
+      LOGICAL P_INIT                      ! Ping init flag
+      CHARACTER( 16 ) :: INIT_PING = 'INIT_PING'    ! environment variable
+      INTEGER ::  STATUS                  ! ENV... status
+
+      INTEGER, SAVE :: CDATE, CTIME       ! Current record date and time
+
+      INTEGER NRLEASES                    ! Number of plume releases
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+      LOGICAL, SAVE :: FIRSTCUT = .TRUE.  ! First time indicator for pflag
+      CHARACTER( 16 ) :: PNAME = 'PING_READMAIN'
+
+      INTEGER ::  P_SDATE, P_STIME   ! Starting date&time of previous plume file
+      LOGICAL ::  RESTART            ! restart [T] or continuation [F] flag
+
+      INTEGER, SAVE :: LOGDEV
+
+C Functions
+ 
+      INTEGER, EXTERNAL :: SECSDIFF   ! Returns the number of secnds in a time
+                                      ! interval, starting at ADATE:ATIME and
+                                      ! ending at ZDATE:ZTIME
+      LOGICAL, EXTERNAL :: CURRSTEP   ! Returns the current time step in a file
+      LOGICAL, EXTERNAL :: ENVYN
+ 
+      INTERFACE
+         SUBROUTINE PING_FLAGINIT ( JDATE, JTIME, RESTART, N_MEPSES, NRLEASES,
+     &                              P_FLAG )
+         IMPLICIT NONE
+         INTEGER, INTENT( IN )  :: JDATE, JTIME
+         LOGICAL, INTENT( IN )  :: RESTART
+         INTEGER, INTENT( IN )  :: N_MEPSES, NRLEASES
+         INTEGER, INTENT( OUT ) :: P_FLAG( : )
+         END SUBROUTINE PING_FLAGINIT
+      END INTERFACE
+C-----------------------------------------------------------------------
+ 
+      IF ( FIRSTIME ) THEN
+
+         FIRSTIME = .FALSE.
+         LOGDEV = INIT3 ()
+
+         CALL GET_NMEPSES ( )
+
+C Initialize PFLAG array
+
+         CALL SET_PFLAG ( 1, 0 )
+
+C Initialize pdm clock
+
+         OK = CURRSTEP ( JDATE, JTIME, PDM_SDATE, PDM_STIME, PDM_TSTEP,
+     &                   CDATE, CTIME )
+         IF ( .NOT. OK ) THEN
+            MSG = 'Failure getting current timestamp'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+C Retrieve PFLAG array from the previous simulation to continue into
+C this simulation. Used to amend PLUMEPTR in PING_UPDATEPTR
+
+         P_INIT = ENVYN( INIT_PING, 'Init PinG Output', P_INIT, STATUS )
+            IF ( STATUS .NE. 0 ) WRITE( LOGDEV, '(5X, A)' ) 'Init PinG Output'
+            IF ( STATUS .EQ. 1 ) THEN
+               MSG = 'Environment variable improperly formatted'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+               END IF
+
+         IF ( .NOT. P_INIT ) THEN ! We need initial plume data
+
+C Open the ping conc file from previous simulation
+
+            OK = OPEN3 ( CTM_PING_0, FSREAD3, PNAME )
+            IF ( .NOT. OK ) THEN
+               MSG = 'Error Opening ' // CTM_PING_0
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+               END IF
+
+C Get the file description
+
+            OK = DESC3 ( CTM_PING_0 )
+            IF ( .NOT. OK ) THEN
+               MSG = 'Cannot get description from ' // CTM_PING_0
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+               END IF
+
+            NRLEASES = NCOLS3D
+            P_SDATE = SDATE3D
+            P_STIME = STIME3D
+
+            RESTART = .FALSE.    ! posit continuation run
+            IF ( P_SDATE .EQ. PDM_SDATE .AND. P_STIME .EQ. PDM_STIME )
+     &         RESTART = .TRUE.  ! admit restart run
+
+            IF ( RESTART ) THEN
+               WRITE( LOGDEV,* ) '  P-in-G Restart'
+               ELSE
+               WRITE( LOGDEV,* ) '  P-in-G Continuation'
+               END IF
+            WRITE( LOGDEV,* ) 'Previous Start Date/Time: ', PDM_SDATE, PDM_STIME
+            WRITE( LOGDEV,* ) ' Current Start Date/Time: ', JDATE, JTIME
+
+            CALL PING_FLAGINIT ( JDATE, JTIME, RESTART, N_MEPSES, NRLEASES,
+     &                           PFLAG )
+
+            OK = CLOSE3 ( CTM_PING_0 )
+            IF ( .NOT. OK ) THEN
+               MSG = 'Error Closing ' // CTM_PING_0
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+               END IF
+
+            END IF  ! .not. P_INIT
+
+         END IF   ! FIRSTIME
+ 
+!     write( logdev,* ) '@@@@ ReadMain1: JDATE,CDATE, JTIME,CTIME ',
+!    &                                 jdate, cdate, jtime, ctime
+
+      OK = CURRSTEP ( JDATE, JTIME, PDM_SDATE, PDM_STIME, PDM_TSTEP,
+     &                CDATE, CTIME )
+      IF ( .NOT. OK ) CALL M3ERR ( PNAME, JDATE, JTIME,
+     &                            'Cannot get current step', .TRUE. )
+
+!     write( logdev,* ) '@@@@ ReadMain2: JDATE,CDATE, JTIME,CTIME ',
+!    &                                 jdate, cdate, jtime, ctime
+
+C get plume section coordinates (IXLL,IRLL,IZLL,IXUR,IYUR,IZUR,IXC,IYC) and
+C current number of plume sections (NRLEASES)
+
+      CALL PLUME_COORD ( JDATE, JTIME, NRLEASES ) ! in module PLUME_LOC
+
+C Return if there are no plumes yet (no releases)
+ 
+      IF ( NRLEASES .EQ. 0 ) RETURN
+
+      NPLUMES  = N_MEPSES * NRLEASES
+ 
+!     write( logdev,* ) '@@@@ ReadMain3: NRLEASES,NPLUMES ', nrleases, nplumes
+
+C get plume section dynamic data (RWP,RHP,UPLUME) for start of time step
+
+      CALL PLUME_RATES ( CDATE, CTIME, NRLEASES )
+
+C Set PING flags:
+ 
+C K is the release number, J is the source number and I is the plume number
+ 
+      I = 0
+      DO K = 1, NRLEASES
+         DO J = 1, N_MEPSES
+
+            I = I + 1
+
+C If plume has moved from OLDPEC to PEC, update PFLAG on PEC
+
+            IF ( .NOT. FIRSTCUT ) THEN
+
+               IF ( PEC( I ) .NE. OLDPEC( I ) ) THEN
+                  IF ( OLDPEC( I ) .EQ. -888 ) THEN
+                     WRITE( LOGDEV,1005 ) I, PEC( I )
+                     ELSE IF ( PEC( I ) .EQ. -1 ) THEN
+                     WRITE( LOGDEV,1009 ) I, OLDPEC( I )
+                     ELSE
+                     WRITE( LOGDEV,1011 ) I, OLDPEC( I ), PEC( I )
+                     END IF
+                  CALL SUBST_SLICE( PFLAG, OLDPEC( I ), PEC( I ), 1, I, I )
+                  END IF
+
+C Change PFLAG on OLDPEC to indicate plume transfer to PEC
+
+               IF ( ( .NOT. MY_REGION( I ) ) .AND.
+     &              ( PFLAG( I ) .EQ. 3 ) )  THEN
+                  IF ( PEC( I ) .NE. OLDPEC( I ) ) THEN
+                     IF ( PEC( I ) .EQ. -1 ) THEN
+                        CALL SET_PFLAG ( I, -5 ) ! active plume out of domain
+                        ELSE
+                        CALL SET_PFLAG ( I, -3 )
+                        END IF
+                     PDMFLAG( I ) = -3
+                     ELSE
+                     CALL SET_PFLAG( I, 0 )
+                     END IF
+                  WRITE( LOGDEV,1019 ) I, PFLAG( I ), PDMFLAG( I )
+                  END IF
+
+               END IF   ! .NOT. FIRSTCUT
+
+            IF ( MY_REGION( I ) ) THEN
+
+C for windowing restart - if inactive plume has moved out of subdomain:
+               IF ( PFLAG( I ) .EQ. -1 ) PDMFLAG( I ) = -22
+
+C Criterion to identify a new inactive plume section
+               IF ( PFLAG( I ) .EQ. 0 .AND. PDMFLAG( I ) .NE. -100 ) THEN
+                  CALL SET_PFLAG ( I, 1 )
+                  END IF
+
+C Criterion to identify a new active plume section
+               IF ( PFLAG( I ) .EQ. 1 .AND. PDMFLAG( I ) .EQ. 2 ) THEN
+                  CALL SET_PFLAG ( I, 2 )   ! new active
+                  END IF
+
+C Criterion to identify an already active plume section
+               IF ( PFLAG( I ) .LE. 2 .AND. PDMFLAG( I ) .EQ. 3 ) THEN
+                  CALL SET_PFLAG( I, 3 )
+                  END IF
+
+C Criterion to identify a dead plume section from previous CTM_PING file
+C              PFLAG already = 5 - from CTM_PING_0 file
+
+C reset PFLAG for inactive plume that's moved out of subdomain:
+               IF ( ( ABS ( PDMFLAG( I ) ) .EQ. 21 .OR.
+     &                ABS ( PDMFLAG( I ) ) .EQ. 22 ) .AND.
+     &              PFLAG( I ) .LT. 3 ) THEN
+                  CALL SET_PFLAG ( I, -1 )
+                  END IF
+
+               END IF   ! MY_REGION
+
+            END DO   ! N_MEPSES
+         END DO   ! NRLEASES
+
+      FIRSTCUT = .FALSE.
+
+C time-interpolate plume section dynamic data (WP,HP,ANGLE,XC,YC,ZC,ZBOT,ZTOP,
+C BKY)
+
+      CALL PLUME_GEOM ( JDATE, JTIME, NRLEASES )
+
+C Read the met data (deposition velocities, etc...)
+ 
+      CALL PING_READMET ( JDATE, JTIME, NPLUMES )
+
+      RETURN
+
+1005  FORMAT( 5X, 'Plume', I5, 1X, 'starts in pe', I3 )
+1009  FORMAT( 5X, 'Plume', I5, 1X, 'has moved from pe', I3,
+     &        1X, 'out of domain' )
+1011  FORMAT( 5X, 'Plume', I5, 1X, 'has moved from pe', I3, 1X, 'to pe', I3 )
+1019  FORMAT( 5X, 'pflag changed in ping_update -> plume, pflag, pdmflag:', 3I5)
+
+      END SUBROUTINE PING_READMAIN
+
+C=======================================================================
+
+      SUBROUTINE PING_FLAGINIT ( JDATE, JTIME, RESTART, NMEPSES, NRLEASES,
+     &                           P_FLAG )
+
+C Revision History:
+C-----------------------------------------------------------------------
+
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+
+      IMPLICIT NONE
+
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! file name parameters
+      INTEGER JDATE           ! Current date (YYYYDDD)
+      INTEGER JTIME           ! Current time (HHMMSS)
+      LOGICAL RESTART         ! restart [T] or continuation [F] flag
+      INTEGER NMEPSES         ! no. of sources (mepses)
+      INTEGER NRLEASES        ! total no. of releases in CTM_PING_0
+      INTEGER :: P_FLAG( : )  ! PFLAG array
+
+      REAL, ALLOCATABLE :: PVAR( :,: )
+      INTEGER ALLOCSTAT
+
+      INTEGER I, N                   ! Loop counter
+      CHARACTER( 200 ) :: MSG        ! Temporary message holder
+      LOGICAL OK                     ! Temporay status variable
+
+      INTEGER, PARAMETER :: FAKELAY = 1 ! fake layer definition for plume file
+
+      CHARACTER( 16 ) :: PNAME = 'PING_FLAGINIT'
+
+      INTEGER, SAVE :: LOGDEV        ! FORTRAN unit number for log file
+
+      LOGDEV = INIT3 ()
+
+C allocate memory for plume data array
+
+      ALLOCATE ( PVAR( NRLEASES,NPILLARS+4 ), STAT = ALLOCSTAT )
+      IF ( ALLOCSTAT .NE. 0 ) THEN
+         MSG = '*** PVAR Memory allocation failed'
+         CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+         END IF
+
+      OK = READ3 ( CTM_PING_0, 'P_FLAG', FAKELAY, JDATE, JTIME, PVAR )
+      IF ( .NOT. OK ) THEN
+         MSG = 'Error Reading ' // CTM_PING_0
+         CALL M3EXIT( PNAME, JDATE, JTIME, MSG, 2 )
+         END IF
+
+      IF ( RESTART ) THEN
+         N = 0
+         ELSE
+         DO I = 1, NRLEASES
+            IF ( PVAR( I,1 ) .EQ. 3 ) THEN
+               N = I - ( MOD ( I - 1, NMEPSES ) + 1 )
+               GO TO 101
+               END IF
+            END DO
+         MSG = 'Inconsistent result: No active plumes'
+         CALL M3EXIT( PNAME, JDATE, JTIME, MSG, 3 )
+         END IF
+
+101   CONTINUE
+
+      DO I = N+1, NRLEASES
+         P_FLAG( I-N ) = INT( PVAR( I,1 ) )
+         END DO
+
+      WRITE( LOGDEV,1001 ) NRLEASES
+1001  FORMAT( / 8X, 'Ping Flags Initialization for', I5, ' releases:'
+     &        /14X, 'I', 4X, 'I-N', 3X, 'Ping Flag' )
+      DO I = N+1, NRLEASES
+         WRITE( LOGDEV,1003 ) I, I-N, P_FLAG( I-N )
+1003     FORMAT( 10X, 3I6 )
+         END DO
+
+      DEALLOCATE ( PVAR )
+
+      RETURN
+      END SUBROUTINE PING_FLAGINIT
+
+C=======================================================================
+ 
+      SUBROUTINE PING_UPDATEBG ( NPACTIVE )
+
+C Revision History:
+C   6/23/99 David Wong at LM
+C     -- use ifdef to distinguish implementation of CGRID between serial and
+C        parallel which requires a ghost cell region to accommodate the
+C        situation where the LL and UR of a plume can lie in two adjacent
+C        grid cells
+C     -- use MY_* variables for local processor
+C   1/15/2000 Jeff
+C     -- f90 memory mgmt
+C   24 Sep 01 J.Young
+C     -- dyn alloc - Use HGRD_DEFN
+C-----------------------------------------------------------------------
+
+      USE PCGRID_DEFN ! inherits HGRD_DEFN and CGRID_SPCS
+      USE PLUME_STATE ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_BG    ! inherits PING_GLOBDIM
+      USE PLUME_PARM  ! Plume dimensioning/control parameters
+      USE PLUME_MET
+ 
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+      INCLUDE SUBST_IODECL
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC    ! aerosol species table (dim./name/molwt)
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table (dim./name/molwt)
+      INCLUDE SUBST_TR_SPC    ! traver species table (dim./name/molwt)
+
+C Define variables
+ 
+C...............      Shared Arguments      ................
+ 
+      INTEGER NPACTIVE          ! Number of active plumes
+C Number of species in CPLUME, like CGRID
+      INTEGER,PARAMETER :: ALLSPC = N_GC_SPCD
+     &                            + N_AE_SPC
+     &                            + N_NR_SPC
+     &                            + N_TR_SPC
+ 
+C...............      Local Variables            ................
+
+      INTEGER NPLUMTOT 
+      INTEGER I, J, K, L                               ! Loop counters
+      INTEGER C, R, XLL, XUR, YLL, YUR, ZLL, ZUR, ILO  ! intermediate indices
+      REAL    SUMLV, SUMLB, SUMRB, DELTA               ! Temporary work scalars
+      REAL    ZDIF, ZSUM
+
+C Variables to be saved
+ 
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+      INTEGER, SAVE :: LOGDEV          ! FORTRAN unit number for log file 
+
+C-----------------------------------------------------------------------
+ 
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+         LOGDEV = INIT3 ()
+C Set the background concentrations to zero
+         CALL PLUME_BGINIT ( 0.0 )
+
+         END IF
+
+C...End of the first time block
+C................................
+
+C Set the plume concentration to background concentration (in ppm)
+C Average the background over all the levels, weighted by layer thickness.
+
+!     write( logdev,* ) 'In PING_UPDATEBG'
+
+      DO L = 1, NPACTIVE
+         I = PLUMEPTR( L )
+
+         C = MY_IXC( I ); R = MY_IYC( I )
+         XLL = MY_IXLL( I ); XUR = MY_IXUR( I )
+         YLL = MY_IYLL( I ); YUR = MY_IYUR( I )
+         ZLL = MY_IZLL( I ); ZUR = MY_IZUR( I )
+
+         ILO = MAX ( 1, ZLL )
+         IF ( ILO .GT. ZUR ) ILO = ZUR
+         IF ( ILO .GT. 1 ) THEN
+            DELTA = ZFNOW( I,ZUR ) - ZFNOW( I,ILO-1 )
+            ELSE IF ( ILO .EQ. 1 ) THEN
+            DELTA = ZFNOW( I,ZUR ) - 0.0
+            END IF
+         SUMLV = FLOAT( ZUR - ZLL + 1 )
+!        write( logdev,* ) L, I, ILO, ZUR, SUMLV, DELTA
+         DO J = 1, ALLSPC
+            CTBG( J,I ) = PCGRID( C,R,ZUR,J )
+            CBBG( J,I ) = PCGRID( C,R,ZLL,J )
+            SUMLB = 0.0
+            SUMRB = 0.0
+            ZSUM = 0.0
+            DO K = ZLL, ZUR
+               IF ( K .GT. 1 ) THEN
+                  ZDIF = ( ZFNOW( I,K ) - ZFNOW( I,K-1 ) )
+                  ELSE IF ( K .EQ. 1 ) THEN
+                  ZDIF = ZFNOW( I,K )
+                  END IF
+!              SUMLB = SUMLB + PCGRID( XLL,YLL,K,J )
+!              SUMRB = SUMRB + PCGRID( XUR,YUR,K,J )
+               SUMLB = SUMLB + PCGRID( XLL,YLL,K,J ) * ( ZDIF / DELTA )
+               SUMRB = SUMRB + PCGRID( XUR,YUR,K,J ) * ( ZDIF / DELTA )
+               ZSUM = ZSUM + ZDIF / DELTA
+               END DO
+!           CLBG( J,I ) = SUMLB / SUMLV
+!           CRBG( J,I ) = SUMRB / SUMLV
+            CLBG( J,I ) = SUMLB 
+            CRBG( J,I ) = SUMRB
+!           if ( j .eq. 48 ) write( logdev,* ) 'BC: ', l, i, j,
+!    &                                         clbg( j,i ), crbg( j,i ),
+!    &                                         cbbg( j,i ), ctbg( j,i ), zsum
+            END DO
+         END DO
+
+      RETURN
+      END SUBROUTINE PING_UPDATEBG
+ 
+C=======================================================================
+ 
+      SUBROUTINE PING_INIT ( CPLUME, NPACTIVE, JDATE, JTIME )
+
+C  12/01/2000 Jeff Young
+C      -- add close ctm_ping_0 (enable update(append))
+C  12/15/2000 J.Young
+C      -- GOBAL_ISUM -> Dave Wong's f90 stenex GOBAL_SUM
+C   24 Sep 01 J.Young
+C      -- dyn alloc - Use HGRD_DEFN
+C    2 Nov 01 J.Young
+C      -- change PLUME_INIT to INIT_PING and reverse sense
+C      -- remove ALL_PE_SYNC_IO_MODE
+C   02 Feb 05 J.Young: dyn alloc - establish both horizontal & vertical
+C                      domain specifications in one module
+C-----------------------------------------------------------------------
+
+      USE GRID_CONF   ! horizontal & vertical domain specifications
+      USE SUBST_MODULES              ! stenex
+!     USE SUBST_GLOBAL_SUM_MODULE    ! stenex
+
+      USE CGRID_SPCS
+      USE PLUME_DYN   ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_STATE ! inherits PLUME_LOC, which inherits PING_GLOBDIM
+      USE PLUME_BG    ! inherits PING_GLOBDIM
+      USE PLUME_ETA   ! inherits PLUME_PARM
+      USE PING_AERO_EMIS  !  Module with aerosol emissions treatment.
+      
+      IMPLICIT NONE
+
+C.....INCLUDES:      
+
+!     INCLUDE SUBST_HGRD_ID   ! horizontal dimensioning parameters
+!     INCLUDE SUBST_VGRD_ID   ! vertical dimensioning parameters
+      INCLUDE SUBST_GC_SPC    ! gas chemistry species table (dim./name/molwt)
+      INCLUDE SUBST_AE_SPC    ! aerosol species table (dim./name/molwt)
+      INCLUDE SUBST_NR_SPC    ! non-reactive species table (dim./name/molwt)
+      INCLUDE SUBST_TR_SPC    ! traver species table (dim./name/molwt)
+      INCLUDE SUBST_CONST     ! constants
+      INCLUDE SUBST_GC_EMIS   ! emissions name and mapping tables
+      INCLUDE SUBST_NR_EMIS   ! non-reactive emissions name and mapping tables
+      INCLUDE SUBST_TR_EMIS   ! tracer emissions name and mapping tables
+      INCLUDE SUBST_IOPARMS   ! I/O parameters definitions
+      INCLUDE SUBST_IOFDESC   ! file header data structure
+      INCLUDE SUBST_IODECL    ! I/O definitions and declarations
+      INCLUDE SUBST_FILES_ID  ! file name parameters
+!     INCLUDE SUBST_COORD_ID
+      INCLUDE 'PING_CB4_ICON.EXT' ! Initial values for select species & levels
+
+C Define variables
+ 
+C...............      Shared Arguments      ................
+ 
+!     REAL    :: CPLUME( N_GC_SPC,NPILLARS,* )
+      REAL    :: CPLUME( :,:,: )
+      INTEGER :: NPACTIVE        ! Number of active plumes
+      INTEGER :: JDATE           ! Current date (YYYYDDD)
+      INTEGER :: JTIME           ! Current time (HHMMSS)
+      INTEGER     ALLSPC      ! Number of species in CPLUME, like CGRID
+      PARAMETER ( ALLSPC = N_GC_SPCD + N_AE_SPC + N_NR_SPC + N_TR_SPC )
+
+C...............      Local Variables            ................
+ 
+      INTEGER :: I, J, K, L, R, C, KK, JJ, II      ! Loop counters
+      INTEGER :: KNDX
+      INTEGER :: MY_I
+      INTEGER :: ISOURCE         ! Source # in EMIS array
+      INTEGER :: NEMIS           ! Number of various gas emission species 
+
+      INTEGER :: N_PING_INIT     ! Number of plumes to be initialized
+      INTEGER, ALLOCATABLE, SAVE :: PING_INIT_MAP( : )
+      INTEGER, SAVE :: NPLUMTOT  ! Total no. of plume sections for CPLUME file
+      INTEGER :: ALLOCSTAT       ! Memory allocation status
+
+      REAL    SIGY               ! Sigma-y of the plume
+      REAL    EXFCTR( NPILLARS ) ! Exponential factor
+      REAL    VFACTOR            ! Volume factor: 1/(U*Hp*sigy*sqrt(2pi))
+      REAL    RATIO              ! y'/sig-y ratio
+      REAL    ARG                ! Temporary variable storage
+      REAL    EMISF              ! Temporary emission factor
+!     REAL    DENS( NCOLS,NROWS,NLAYS ) ! air density
+      REAL, ALLOCATABLE, SAVE :: DENS( :,:,: ) ! air density
+      REAL, ALLOCATABLE, SAVE :: MIDDENS( : ) ! density at midlevel
+      REAL    PLDEPTH            ! No. of layers plume occupies
+ 
+      CHARACTER( 200 ) :: MSG    ! Message character string
+
+C Input emissions
+      REAL, ALLOCATABLE, SAVE :: EMIS( :,: )
+      REAL, ALLOCATABLE, SAVE :: EMIS_AE( :,: )
+
+      INTEGER NPTS               ! Number of mepses
+      INTEGER KX, KZ             ! Number of columns and layers in MEPSE_1
+
+      LOGICAL OK, EMOK           ! Status indicators
+
+C   Temporary approach to setting flags if modeling various species classes
+      LOGICAL, SAVE :: EM_AERO = .FALSE.  ! default do aero emis processing?
+      LOGICAL, SAVE :: EM_NONR = .TRUE.   ! default do non-reactive emissions?
+      LOGICAL, SAVE :: EM_TRAC = .FALSE.  ! default do tracer emissions?
+
+      LOGICAL RESTART            ! restart [T] or continuation [F] flag
+      LOGICAL P_INIT             ! Ping init flag
+      CHARACTER( 16 ) :: INIT_PING = 'INIT_PING'    ! environment variable
+      INTEGER STATUS             ! ENV... status
+
+      INTEGER NRLEASES0          ! no. of releases on CTM_PING_0 file
+
+      REAL        CMIN
+      PARAMETER ( CMIN = 1.0E-30 )
+
+C Variables to be saved
+ 
+      REAL, SAVE    :: STWOPI    ! Square root of 2*PI
+      REAL, SAVE    :: CONVF     ! Conversion factor: MolWt(air)*Kg/g*ppmV/MLMR
+
+      CHARACTER( 16 ) :: PNAME = 'PING_INIT'
+      CHARACTER( 28 ) :: NMSG = ' >> Number of MEPSEs in the '
+
+      INTEGER, SAVE :: LOGDEV    ! FORTRAN unit number for log file
+      LOGICAL, SAVE :: FIRSTIME = .TRUE.
+      LOGICAL, SAVE :: WR_ONCE = .TRUE.
+ 
+      INTEGER      GXOFF, GYOFF              ! global origin offset from file
+C for INTERPX
+      INTEGER, SAVE :: STRTCOLMC3, ENDCOLMC3, STRTROWMC3, ENDROWMC3
+
+C Function definitions
+ 
+      INTEGER, EXTERNAL :: INDEXSPCS, TRIMLEN
+      LOGICAL, EXTERNAL :: ENVYN
+ 
+      INTERFACE
+         SUBROUTINE RDPLUME ( JDATE, JTIME, NRLEASES, NPACTIVE,
+     &                        RESTART, CPLUME )
+            IMPLICIT NONE
+            INTEGER, INTENT( IN ) :: JDATE, JTIME
+            INTEGER, INTENT( IN ) :: NRLEASES, NPACTIVE
+            LOGICAL, INTENT( IN ) :: RESTART
+            REAL, INTENT( OUT )   :: CPLUME( :,:,: )
+         END SUBROUTINE RDPLUME
+         SUBROUTINE PING_OUT ( CPLUME, NPACTIVE, JDATE, JTIME )
+            IMPLICIT NONE
+            REAL, INTENT( IN )    :: CPLUME( :,:,: )
+            INTEGER, INTENT( IN ) :: NPACTIVE
+            INTEGER, INTENT( IN ) :: JDATE, JTIME
+         END SUBROUTINE PING_OUT
+      END INTERFACE
+C-----------------------------------------------------------------------
+ 
+      IF ( FIRSTIME ) THEN
+         FIRSTIME = .FALSE.
+         LOGDEV = INIT3 ()
+
+         IF ( N_AE_SPC .GT. 0 ) EM_AERO = .TRUE.
+
+         CALL GET_NMEPSES ( )
+
+         NPLUMTOT = N_MEPSES * N_RLEASES
+
+C Open the Major Elevated Point Source Emissions file
+
+         IF ( .NOT. OPEN3( MEPSE_1, FSREAD3, PNAME) ) THEN
+            MSG = 'Error Opening '// MEPSE_1
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+         IF (.NOT. DESC3 ( MEPSE_1) ) THEN
+            MSG = 'Cannot get Description from ' // MEPSE_1
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+C The number of MEPSEs with emissions is in NROWS3D.
+
+         NPTS = NROWS3D ! = Number of MEPSEs in the data file
+         KX   = NCOLS3D
+         KZ   = NLAYS3D
+C               NVARS3D   = Number of species in the MEPSE data file
+
+C Emissions output variables are organized in the following manner:
+C   VARIABLE_NAME(COL,ROW,LAY,VAR), where
+C   COL = 1
+C   ROW = Source
+C   LAY = 1
+C   VAR = Variable
+C   therefore, NCOLS3D*NROWS3D = (MAX # of sources)
+C         = NPTS = number of MEPSES in the run
+
+C Check to see PDM output is compatable with emission file input
+
+         IF ( NPTS .NE. N_MEPSES ) THEN
+            WRITE( LOGDEV,* ) NMSG // 'emis file:       ', NPTS
+            WRITE( LOGDEV,* ) NMSG // 'PDM file:        ', NPTSPDM
+            WRITE( LOGDEV,* ) NMSG // 'windowed domain: ', N_MEPSES
+!           MSG = 'Emissions file and PDM file do not match'
+!           CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+            MSG = 'WARNING: Emissions file and PDM file do not match'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .FALSE.)
+            END IF
+
+C Stop if the number of cols and layers are not set to 1
+
+         IF ( KX .NE. 1 .OR. KZ .NE. 1 ) THEN
+            MSG = 'NCOLS/NROWS are not 1 in MEPSE_1 file'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+C Warn if the number of species in the data file and in the
+C EXT file are different (we use the EXT file information)
+
+         IF ( NVARS3D .NE. N_GC_EMIS ) THEN
+            MSG = 'Number of SPCS in the MEPSE file '
+     &          // '(MEPSE_1) and GC_EMIS.EXT differ'
+!           CALL M3WARN( PNAME, SDATE3D, STIME3D, MSG )
+            CALL M3ERR( PNAME, SDATE3D, STIME3D, MSG, .FALSE. )
+            WRITE( MSG,'("MEPSE_1:", I3, " vs. GC_EMIS EXT:", I3)' )
+     &             NVARS3D, N_GC_EMIS
+            CALL M3MESG ( MSG )
+            END IF
+
+C Warn about the mis-matches
+
+         DO I = 1, NVARS3D
+            J = INDEXSPCS ( VNAME3D( I ), GC_SPC, N_GC_SPC )
+            IF ( J .EQ. 0 ) THEN
+               MSG = 'Emission species '
+     &             // VNAME3D( I )( 1:TRIMLEN( VNAME3D( I ) ) )
+     &             // ' in the MEPSE_1 file, but not in the GC_SPC list'
+!              CALL M3WARN ( PNAME, JDATE, JTIME, MSG )
+!              CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .FALSE. )
+               CALL M3MESG ( MSG )
+               END IF
+
+            J = INDEXSPCS ( VNAME3D( I ), GC_EMIS, N_GC_EMIS )
+            IF ( J .EQ. 0 ) THEN
+               MSG = 'Emission species '
+     &             // VNAME3D( I )( 1:TRIMLEN( VNAME3D( I ) ) )
+     &             // ' in the MEPSE_1 file, but not in the GC_EMIS list'
+!              CALL M3WARN ( PNAME, JDATE, JTIME, MSG )
+!              CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .FALSE. )
+               CALL M3MESG ( MSG )
+               END IF
+
+            END DO
+
+C Check to make sure that the mapping in the EXT file is correct
+
+         DO I = 1, N_GC_EMIS
+
+            J = INDEXSPCS( GC_EMIS( I ), VNAME3D, NVARS3D )
+            IF ( J .EQ. 0 ) THEN
+               MSG = 'Emission species '
+     &             // GC_EMIS( I )( 1:TRIMLEN( GC_EMIS( I ) ) )
+     &             // ' not in the MEPSE file.'
+     &             // ' Emissions set to zero.'
+               CALL M3WARN( PNAME, JDATE, JTIME, MSG )
+               END IF
+
+            J = INDEXSPCS( GC_EMIS( I ), GC_SPC, N_GC_SPC )
+            IF ( J .EQ. 0 ) THEN
+               MSG = 'Emission species '
+     &             // GC_EMIS( I )( 1:TRIMLEN( GC_EMIS( I ) ) )
+     &             // ' not in the GC_SPC list - name mis-match'
+               CALL M3ERR( PNAME, SDATE3D, STIME3D, MSG, .FALSE. )
+               J = GC_EMIS_MAP( I )
+               END IF
+
+            IF ( J .NE. GC_EMIS_MAP( I ) ) THEN
+               MSG = 'Emission species '
+     &             // GC_EMIS( I )( 1:TRIMLEN( GC_EMIS( I ) ) )
+     &             // ' not correctly mapped. EMIS.EXT file must be corrected.'
+               CALL M3ERR( PNAME, SDATE3D, STIME3D, MSG, .TRUE. )
+               END IF
+
+            END DO
+
+C Fetch the active plume concs from the previous simulation to continue into
+C this simulation.
+
+         WRITE( LOGDEV,* ) ' '
+
+         P_INIT = ENVYN( INIT_PING, 'Init PinG Output', P_INIT, STATUS )
+            IF ( STATUS .NE. 0 ) WRITE( LOGDEV, '(5X, A)' ) 'Init PinG Output'
+            IF ( STATUS .EQ. 1 ) THEN
+               MSG = 'Environment variable improperly formatted'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+               END IF
+
+C Even tho' there would be no active plumes for a true init, so just using
+C a zero value for NPACTIVE could be enough, we might want to start clean
+C where there were some active plumes...
+
+         IF ( .NOT. P_INIT ) THEN
+
+            IF ( SUBST_GLOBAL_SUM( NPACTIVE ) .GT. 0 ) THEN
+C we have plumes inititally
+
+C Open the ping conc file from previous simulation
+
+               OK = OPEN3 ( CTM_PING_0, FSREAD3, PNAME )
+               IF ( .NOT. OK ) THEN
+                  MSG = 'Error Opening ' // CTM_PING_0
+                  CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+                  END IF
+
+C Get the file description
+
+               OK = DESC3 ( CTM_PING_0 )
+               IF ( .NOT. OK ) THEN
+                  MSG = 'Cannot get description from ' // CTM_PING_0
+                  CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+                  END IF
+
+               RESTART = .FALSE.  ! assume continuation run
+               IF ( PDM_SDATE .EQ. SDATE3D .AND. PDM_STIME .EQ. STIME3D )
+     &            RESTART = .TRUE.
+               NRLEASES0 = NCOLS3D
+
+               CALL RDPLUME ( JDATE, JTIME, NRLEASES0, NPACTIVE,
+     &                        RESTART, CPLUME )
+
+               WRITE( LOGDEV,* ) ' Finished RDPLUME at: ', JDATE, JTIME
+
+               OK = CLOSE3 ( CTM_PING_0 )
+               IF ( .NOT. OK ) THEN
+                  MSG = 'Error Closing ' // CTM_PING_0
+                  CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+                  END IF
+
+               END IF
+
+            END IF   ! .not. P_INIT
+
+C Write the initial CPLUME array
+
+!        write( logdev,* ) 'in ping_init, calling ping_out - jdate, jtime: ',
+!    &                      jdate, jtime
+
+         CALL PING_OUT ( CPLUME, NPACTIVE, JDATE, JTIME )
+
+C Set constants
+ 
+         STWOPI = SQRT( 2.0 * PI )
+
+         CONVF = MWAIR * 1.0E+03
+
+         CALL SUBHFILE ( MET_CRO_3D, GXOFF, GYOFF,
+     &                   STRTCOLMC3, ENDCOLMC3, STRTROWMC3, ENDROWMC3 )
+
+         ALLOCATE ( PING_INIT_MAP( NPLUMTOT ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** PING_INIT_MAP Memory allocation failed'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+            END IF
+
+         PING_INIT_MAP = -999
+    
+         ALLOCATE ( DENS( MY_NCOLS,MY_NROWS,NLAYS ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = 'Failure allocating DENS'
+            CALL M3ERR( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+
+         NEMIS = N_GC_EMIS + N_NR_EMIS + N_TR_EMIS      
+         ALLOCATE ( EMIS( NPTSPDM,NEMIS ), STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = '*** EMIS Memory allocation failed'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+               END IF
+
+         EMIS = 0.0
+
+         IF ( EM_AERO ) THEN
+         WRITE(LOGDEV,*) 'Allocating EMIS_AE :', NPTSPDM, N_AE_EMIS
+            ALLOCATE ( EMIS_AE( NPTSPDM,N_AE_EMIS ),
+     &                 STAT = ALLOCSTAT )
+            IF ( ALLOCSTAT .NE. 0 ) THEN
+               MSG = 'VDEMIS_AE memory allocation failed'
+               CALL M3EXIT ( PNAME, JDATE, JTIME, MSG, XSTAT1 )
+               END IF
+            END IF
+
+         ALLOCATE ( MIDDENS( NPLUMTOT ), STAT = ALLOCSTAT )
+         IF ( ALLOCSTAT .NE. 0 ) THEN
+            MSG = '*** MIDDENS Memory allocation failed'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE.)
+            END IF
+
+         END IF
+
+C get AE_STRT
+
+         CALL CGRID_MAP( NSPCSD, GC_STRT, AE_STRT, NR_STRT, TR_STRT )
+
+C...End of the first time block
+C................................
+
+C Check to see if initialization is required, then find the indices
+
+      N_PING_INIT = 0
+      DO I = 1, MY_NPLUMES
+         MY_I = MY_PLUMEPTR( I )
+         IF ( PFLAG( MY_I ) .EQ. 2 ) THEN
+            N_PING_INIT = N_PING_INIT + 1
+            PING_INIT_MAP( N_PING_INIT ) = MY_I
+            END IF
+         END DO
+
+      IF ( SUBST_GLOBAL_SUM( N_PING_INIT ) .EQ. 0 ) RETURN
+
+C Get the air density
+ 
+      EMOK = .TRUE.
+!     OK = INTERP3( MET_CRO_3D, 'DENS', PNAME,
+!    &              JDATE, JTIME, NCOLS*NROWS*NLAYS, DENS )
+      OK = INTERPX( MET_CRO_3D, 'DENS', PNAME,
+     &              STRTCOLMC3,ENDCOLMC3, STRTROWMC3,ENDROWMC3, 1,NLAYS,
+     &              JDATE, JTIME, DENS )
+      IF ( .NOT. OK ) THEN
+         EMOK = .FALSE.
+         MSG = 'Could not read DENS from ' // MET_CRO_3D
+         IF ( EMOK ) THEN
+            CALL M3ERR( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            ELSE
+            CALL M3ERR( PNAME, JDATE, JTIME, MSG, .FALSE. )
+            END IF
+         END IF
+
+C Initialize the concentrations
+
+C Read the emissions
+ 
+      EMOK = .TRUE.
+      DO I = 1, N_GC_EMIS
+         OK = INTERP3( MEPSE_1, GC_EMIS( I ), PNAME,
+     &                 JDATE, JTIME, NPTSPDM, EMIS( 1,I ) )
+         IF ( .NOT. OK ) THEN
+            EMOK = .FALSE.
+            MSG = 'Cannot read '
+     &          // GC_EMIS( I )( 1:TRIMLEN( GC_EMIS( I ) ) ) 
+     &          // '; for this timestep. Emission rate is set to zero'
+            IF ( WR_ONCE ) THEN
+               WR_ONCE = .FALSE.  ! get rid of excessive writes to log
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .FALSE. )
+               END IF
+!           DO J = 1, N_MEPSES
+            DO J = 1, NPTSPDM
+               EMIS( J,I ) = 0.0
+               END DO
+            END IF
+         END DO
+
+C aerosol emissions - all units conversions done in RDEMIS_AE for aerosols
+
+      IF ( EM_AERO ) THEN
+         CALL PINGRDEMIS_AE ( JDATE, JTIME, N_PING_INIT, PING_INIT_MAP,
+     &                        EMIS, EMIS_AE )    ! PINGRDEMIS_AE in
+                                                 ! f90 module PING_AERO_EMIS
+         END IF
+
+C Input the nonreactive species
+
+      IF ( EM_NONR ) THEN
+         EMOK = .TRUE.
+         DO I = 1, N_NR_EMIS
+            II = N_GC_EMIS + I
+            OK = INTERP3( MEPSE_1, NR_EMIS( I ), PNAME,
+     &                    JDATE, JTIME, NPTSPDM, EMIS( 1,II ) )
+            IF ( .NOT. OK ) THEN
+               EMOK = .FALSE.
+               MSG = 'Cannot read '
+     &             // NR_EMIS( I )( 1:TRIMLEN( NR_EMIS( I ) ) ) 
+     &             // '; for this timestep. Emission rate is set to zero'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .FALSE. )
+               DO J = 1, NPTSPDM
+                  EMIS( J,II ) = 0.0
+                  END DO
+               END IF
+            END DO
+          END IF
+       
+C Input the tracer species
+
+      IF ( EM_TRAC ) THEN
+         EMOK = .TRUE.
+         DO I = 1, N_TR_EMIS
+         II = N_GC_EMIS + N_NR_EMIS + I
+            OK = INTERP3( MEPSE_1, TR_EMIS( I ), PNAME,
+     &                    JDATE, JTIME, NPTSPDM, EMIS( 1,II ) )
+            IF ( .NOT. OK ) THEN
+               EMOK = .FALSE.
+               MSG = 'Cannot read '
+     &             // TR_EMIS( I )( 1:TRIMLEN( TR_EMIS( I ) ) ) 
+     &             // '; for this timestep. Emission rate is set to zero'
+               CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .FALSE. )
+               DO J = 1, NPTSPDM
+                  EMIS( J,II ) = 0.0
+                  END DO
+               END IF
+            END DO
+          END IF
+
+C--------------------------------------------------------
+C Loop over the plumes and initialize the concentrations
+C Only for new active plumes (i.e., PFLAG(I)=2)
+C--------------------------------------------------------
+
+      DO L = 1, N_PING_INIT
+         I = PING_INIT_MAP( L )
+ 
+C  Plume flag Description:
+C      Value      Description
+C        0        non-existent plume
+C        1        new inactive plume (released, but not initialized)
+C        2        new active plume   (to be initialized)
+C        3        old active plume   (has already been initialized)
+C        4        handing over plume
+C        5        dead plume
+C        6        plume moving out of (possible) subdomain
+ 
+C Change the plume flag from 2 (new active) to 3 (old active)
+ 
+         CALL SET_PFLAG ( I, 3 )
+ 
+C Find the corresponding emission source for this plume (i.e., plume I):
+C The variable ISOURCE is the corresponding source in the emission array
+C EMIS (i.e., EMIS(ISOURCE,x) is the emission for plume I). Since
+C NPLUMES = NPTS * NRLEASES, we subtract integer multiples of NPTS
+C from plume number I, and the remainder will be the corresponding source
+C number as defined in the PDM array. Then the PDMSRCID pointer points to
+C the corresponding MEPSE in the MEPSE EMIS array.
+
+C Set the plume concentration to background concentration (in ppm)
+C Average the background (left and right) concentrations
+C (INITIALIZING AT NEAR-ZERO)
+
+         DO K = 1, ALLSPC
+            DO J = 1, NPILLARS
+!              CPLUME( K,J,I ) = 0.5 * ( CLBG( K,I ) + CRBG( K,I ) )
+               CPLUME( K,J,I ) = CMIN
+               END DO
+            END DO
+
+C Initialize certain species
+         KK = NSIGL - 1
+         DO K = 2, NSIGL
+!           write( logdev,* ) k, fsigl( k-1 ), fsigl( k ),
+!    &                        vglvs_gd( my_izur( i ) )
+            IF ( VGLVS_GD( MY_IZUR( I ) ) .LE. FSIGL( K-1 ) .AND.
+     &           VGLVS_GD( MY_IZUR( I ) ) .GT. FSIGL( K ) ) KK = K - 1
+            END DO         
+
+         DO K = 1, N_GC_SPC
+            J = INDEXSPCS( GC_SPC( K ), PING_IC_SPC, N_SPC_IC )
+            IF ( J .NE. 0 ) THEN
+               KNDX = GC_STRT - 1 + K
+               DO JJ = 1, NPILLARS
+                  CPLUME( KNDX,JJ,I ) = PING_IC_CONC( J,KK )
+                  END DO
+!              write( logdev,* ) 'Species ', gc_spc( k ), ' = ',
+!     &                          cplume( kndx,6,i ), k, kndx, j
+               END IF
+            END DO
+ 
+         DO K = 1, N_AE_SPC
+            J = INDEXSPCS( AE_SPC( K ), PING_IC_SPC, N_SPC_IC )
+            IF ( J .NE. 0 ) THEN
+               KNDX = AE_STRT - 1 + K
+               DO JJ = 1, NPILLARS
+                  CPLUME( KNDX,JJ,I ) = PING_IC_CONC( J,KK )
+                  END DO
+!              write( logdev,* ) 'Species ', ae_spc( k ), ' = ',
+!     &                          cplume( kndx,6,i ), k, kndx, j
+               END IF
+            END DO
+ 
+         DO K = 1, N_NR_SPC
+            J = INDEXSPCS( NR_SPC( K ), PING_IC_SPC, N_SPC_IC )
+            IF ( J .NE. 0 ) THEN
+               KNDX = NR_STRT - 1 + K
+               DO JJ = 1, NPILLARS
+                  CPLUME( KNDX,JJ,I ) = PING_IC_CONC( J,KK )
+                  END DO
+!              write( logdev,* ) 'Species ', nr_spc( k ), ' = ',
+!     &                          cplume( kndx,6,i ), k, kndx, j
+               END IF
+            END DO
+ 
+         DO K = 1, N_TR_SPC
+            J = INDEXSPCS( TR_SPC( K ), PING_IC_SPC, N_SPC_IC )
+            IF ( J .NE. 0 ) THEN
+               KNDX = TR_STRT - 1 + K
+               DO JJ = 1, NPILLARS
+                  CPLUME( KNDX,JJ,I ) = PING_IC_CONC( J,KK )
+                  END DO
+!              write( logdev,* ) 'Species ', tr_spc( k ), ' = ',
+!     &                          cplume( kndx,6,i ), k, kndx, j
+               END IF
+            END DO
+ 
+C Calculate the exponential factor: exp(-.5*(y'/sig-y)**2)
+ 
+         SIGY = WP( I ) / PINGAFCTR
+         VFACTOR = UPLUME( I ) * HP( I ) * SIGY * STWOPI
+         IF ( VFACTOR .LE. 0.0 ) THEN
+            WRITE( LOGDEV,* ) ' Plume # ', I
+            WRITE( LOGDEV,* ) ' WP, HP: ', WP( I ), HP( I )
+            MSG = ' *** ERROR: Plume with 0 Volume ***'
+            CALL M3ERR ( PNAME, JDATE, JTIME, MSG, .TRUE. )
+            END IF
+ 
+C Calculate Y values and the exponential factors, 
+C use y at the center of each pillar
+ 
+         DO J = 2, NLEFT + 1
+            RATIO = PINGAFCTR * ( ETAL( J-1 ) + 0.5 * DETAL( J-1 ) )
+            ARG = -0.5 * RATIO * RATIO
+            K = NLEFT+2 - J
+            IF ( ARG .EQ. 0.0 ) THEN
+               EXFCTR( K ) = 1.0
+               ELSE
+               EXFCTR( K ) = EXP( ARG )
+               END IF
+            END DO
+
+         DO J = 2, NRIGHT + 1
+            RATIO = PINGAFCTR * ( ETAR( J-1 ) + 0.5 * DETAR( J-1 ) )
+            ARG = -0.5 * RATIO * RATIO
+            K = NLEFT-1 + J
+            IF ( ARG .EQ. 0.0 ) THEN
+               EXFCTR( K ) = 1.0
+               ELSE
+               EXFCTR( K ) = EXP( ARG )
+               END IF
+            END DO
+
+C Calculate the average density over the vertical extent of the plume using
+C the density horizontal location at the plume center
+ 
+         PLDEPTH = FLOAT( MY_IZUR( I ) - MY_IZLL( I ) + 1 )
+         MIDDENS( I ) = 0.0
+         DO K = MY_IZLL( I ), MY_IZUR( I )
+            MIDDENS( I ) = MIDDENS( I ) + DENS( MY_IXC( I ),MY_IYC( I ),K )
+            END DO
+         MIDDENS( I ) = MIDDENS( I ) / PLDEPTH
+
+!        write( logdev,* ) ' @@@@Ping_Init -> i, MidDENS(i): ', I,
+!    &                     ' ', MIDDENS( I )
+
+!        do j = 1, NPILLARS
+!           write( logdev,* ) ' @@@@Ping_Init -> j, EXfctr: ', j, ' ', EXFCTR( j )
+!           end do
+
+C---------------------------------------------------
+C Calculate the concentration for each pillar
+ 
+         ISOURCE = MOD( I - 1, N_MEPSES ) + 1
+ 
+         DO K = 1, N_GC_EMIS
+ 
+            EMISF = EMIS( SUB_SOURCE( ISOURCE ),K ) * GC_EMIS_FAC( K )
+     &            * CONVF / ( MIDDENS( I ) * VFACTOR )
+
+!           write( logdev,* ) ' @@@@Ping_Init -> k, EMISF: ', k, ' ', EMISF
+
+C Multiply it by the exponential factor and add it to the background
+ 
+            DO J = 1, NPILLARS
+               CPLUME( GC_EMIS_MAP( K ),J,I ) = CPLUME( GC_EMIS_MAP( K ),J,I )
+     &                                        + EMISF * EXFCTR( J )
+               END DO
+
+            END DO
+
+C Calculate the various aerosol concentrations for each pillar
+
+         IF ( EM_AERO ) THEN   ! N_AE_EMIS is independent of AE_SPC.EXT
+            DO K = 1, N_AE_EMIS
+               EMISF = EMIS_AE( SUB_SOURCE( ISOURCE ),K )
+               KK = N_GC_SPCD + AE_EMIS_MAP( K )
+              write( logdev,* ) k, kk, ae_emis_map( k ),I,ISOURCE, emisf           
+               DO J = 1, NPILLARS
+                  CPLUME( KK,J,I ) = CPLUME( KK,J,I ) + EMISF * EXFCTR( J )
+               if ( j .eq. npillars/2 ) write( logdev,* ) j,I, cplume( kk,j,i )
+                  END DO
+               END DO
+            END IF
+
+C nonreative species
+
+         DO K = 1, N_NR_EMIS
+
+            II = N_GC_EMIS + K
+            EMISF = EMIS( SUB_SOURCE( ISOURCE),II ) * NR_EMIS_FAC( K )
+     &            * CONVF / ( MIDDENS( I ) * VFACTOR )
+
+C Multiply by the exponential factor and add to the background
+
+            KK = N_GC_SPCD + N_AE_SPC + NR_EMIS_MAP( K )
+  
+            DO J = 1, NPILLARS
+               CPLUME( KK,J,I ) = CPLUME( KK,J,I ) + EMISF * EXFCTR( J )
+               END DO
+
+            END DO
+
+C tracer species
+
+         DO K = 1, N_TR_EMIS
+ 
+            II = N_GC_EMIS + N_NR_EMIS + K
+            EMISF = EMIS( ISOURCE,II ) * TR_EMIS_FAC( K )
+     &            * CONVF / ( MIDDENS( I ) * VFACTOR )
+
+C Multiply by the exponential factor and add to the background
+
+            KK = N_GC_SPCD + N_AE_SPC + N_NR_SPC + TR_EMIS_MAP( K )
+  
+            DO J = 1, NPILLARS
+               CPLUME( KK,J,I ) = CPLUME( KK,J,I ) + EMISF * EXFCTR( J )
+               END DO
+
+         END DO   ! L
+
+C---------------------------------------------------
+ 
+         WRITE( LOGDEV,91000 ) I, ISOURCE,
+     &                         IXLL( I ), IYLL( I ),
+     &                         IXUR( I ), IYUR( I ),
+     &                         IZLL( I ), IZUR( I ),
+     &                         WP( I ), HP( I ), SIGY, UPLUME( I ), VFACTOR,
+     &                         RWP( I ), RHP( I ), BKY( I )
+
+         K = INDEXSPCS ( 'NO', GC_EMIS, N_GC_EMIS )
+         WRITE( LOGDEV,92000 ) GC_EMIS( K ),
+     &                         CLBG( GC_EMIS_MAP( K ),I ),
+     &                         CRBG( GC_EMIS_MAP( K ),I ),
+     &                         EMIS( SUB_SOURCE( ISOURCE ),K )
+         IF ( NPILLARS .LE. 8 ) THEN
+            WRITE( LOGDEV,93100 ) ( CPLUME( GC_EMIS_MAP( K ),J,I ),
+     &                              J = 1, NPILLARS )
+            ELSE
+            WRITE( LOGDEV,93200 ) ( CPLUME( GC_EMIS_MAP( K ),J,I ),
+     &                              J = 1, NPILLARS )
+            END IF
+
+         K = INDEXSPCS ( 'NO2',GC_EMIS,N_GC_EMIS )
+         WRITE( LOGDEV,92000 ) GC_EMIS( K ),
+     &                         CLBG( GC_EMIS_MAP( K ),I ),
+     &                         CRBG(GC_EMIS_MAP( K ),I ),
+     &                         EMIS( SUB_SOURCE( ISOURCE ),K )
+         IF ( NPILLARS .LE. 8 ) THEN
+            WRITE( LOGDEV,93100 ) ( CPLUME( GC_EMIS_MAP( K ),J,I ),
+     &                              J = 1, NPILLARS )
+            ELSE
+            WRITE( LOGDEV,93200 ) ( CPLUME( GC_EMIS_MAP( K ),J,I ),
+     &                              J = 1, NPILLARS )
+            END IF
+
+         K = INDEXSPCS ( 'O3', GC_SPC, N_GC_SPC )
+         WRITE( LOGDEV,92000 ) GC_SPC( K ),
+     &                         CLBG( K,I ),
+     &                         CRBG( K,I ),
+     &                         0.0
+         IF ( NPILLARS .LE. 8 ) THEN
+            WRITE( LOGDEV,93100 ) ( CPLUME( K,J,I ),
+     &                            J = 1, NPILLARS )
+            ELSE
+            WRITE( LOGDEV,93200 ) ( CPLUME( K,J,I ),
+     &                            J = 1, NPILLARS )
+            END IF
+
+         IF ( EM_AERO ) THEN   ! N_AE_EMIS is independent of AE_SPC.EXT
+            K = INDEXSPCS ( 'ASO4J', AE_EMIS, N_AE_EMIS )
+            IF ( K .GT. 0 ) THEN
+               KK = N_GC_SPCD + AE_EMIS_MAP( K )
+               WRITE( LOGDEV,92500 ) AE_EMIS( K ),
+     &                               CLBG( KK,I ),
+     &                               CRBG( KK,I ),
+     &                               EMIS_AE( ISOURCE,K )
+               IF ( NPILLARS .LE. 8 ) THEN
+                  WRITE( LOGDEV,93100 ) ( CPLUME( KK,J,I ),
+     &                                  J = 1, NPILLARS )
+                  ELSE
+                  WRITE( LOGDEV,93200 ) ( CPLUME( KK,J,I ),
+     &                                  J = 1, NPILLARS )
+                  END IF
+               END IF
+            END IF
+ 
+C End of the plume init. loop
+ 
+         END DO
+
+      RETURN
+
+91000 FORMAT(/
+     &        10X, 'Plume Section', I5, ' (Source', I3, ') initialized' /
+     &        10X, 'Left  background grid cell   (IX,IY): ', I4, ', ', I4 /
+     &        10X, 'Right background grid cell   (IX,IY): ', I4, ', ', I4 /
+     &        10X, 'Lower & upper Z levels   (IZLL,IZUR): ', I4, ', ', I4 /
+     &        10X, 'Plume width                      (m): ', 1PE11.4 /
+     &        10X, 'Plume height                     (m): ', 1PE11.4 /
+     &        10X, 'Plume sigma-y                    (m): ', 1PE11.4 /
+     &        10X, 'Plume initial velocity         (m/s): ', 1PE11.4 /
+     &        10X, 'Plume initial volume          (m**3): ', 1PE11.4 /
+     &        10X, 'Rate of change of plume width  (m/s): ', 1PE11.4 /
+     &        10X, 'Rate of change of plume height (m/s): ', 1PE11.4 /
+     &        10X, 'Diffusion coefficient (Ky)  (m**2/s): ', 1PE11.4 )
+
+92000 FORMAT(/
+     &        15X, 'Information for ', A16 /
+     &        15X, 'Left  background concentration (ppm): ', 1PE11.4 /
+     &        15X, 'Right background concentration (ppm): ', 1PE11.4 /
+     &        15X, 'Emissions in mol/s:                   ', 1PE11.4 /
+     &        15X, 'Initial pillar concentrations (ppm):  ' )
+
+92500 FORMAT(/
+     &        15X, 'Information for ', A16 /
+     &        15X, 'Left  background concentration (ug/m3): ', 1PE11.4 /
+     &        15X, 'Right background concentration (ug/m3): ', 1PE11.4 /
+     &        15X, 'Emissions in g/s:                       ', 1PE11.4 /
+     &        15X, 'Initial pillar concentrations (ug/m3):  ' )
+
+!3100 FORMAT( 2(10X, 4( 1PE12.4 ) / ) )
+!3200 FORMAT( 2(10X, 5( 1PE12.4 ) / ) )
+93100 FORMAT( 15X, 4( 1PE12.4 ) / 15X, 4( 1PE12.4 ) )
+93200 FORMAT( 15X, 5( 1PE12.4 ) / 15X, 5( 1PE12.4 ) )
+
+      END SUBROUTINE PING_INIT
+@
+
+
+1.1.1.1
+log
+@CMAQv4_5_1 release
+@
+text
+@@
