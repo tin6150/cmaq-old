@@ -1,5 +1,7 @@
                        CVS_NETCDF - 14 Sep 2005
 
+*>>* rst pending...  but probably not needed for this file, not complicated
+
 
 ==========================================================================+ 
  CVS-1.11 Release---------------------------------------------------------+

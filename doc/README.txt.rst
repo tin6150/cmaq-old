@@ -1,5 +1,9 @@
                      README for CMAQv4.5.1 - 15 Mar 2006
 
+renamed to rst by tin, so to be able to add notes (with highlight)
+----------
+	search for *vv* or *>>* 
+
 
  This README file outlines the steps necessary to build and run CMAQ 
  models. The code has been tested on a variety of platforms, but the build 
@@ -42,9 +46,11 @@
                               tutorial runs
  o AEROSOL_NOTES            - text file containing comments on aerosol
                               updates in CMAQv4.5.1
+*vv* 
  o CVS_NETCDF               - text file explaining the CVS configuration
                               management system and the netCDF data system
                               and how to set them up
+*vv* 
  o IOAPI                    - text file explaining how to get the I/O API
                               system and set up the libraries
  o RELEASE_NOTES            - text file containing a list of the changes
@@ -53,6 +59,10 @@
                               code archives for models, tools, and libraries
  o M3DATA.tar.gz            - gzipped tar file (~109 Mb) containing the
                               required datasets not produced by this package
+							  *>>* where is this file??
+							  		got from 4.7.1 download.  ~tin/gs/Downloads/CMAQ
+
+
  o SCRIPTS.tar.gz           - gzipped tar file (~16 Kb) containing C-Shell
                               scripts to build and execute the CMAQ models
  o M3DATA_REF.tar.gz        - gzipped tar file (~346 Mb) containing reference
@@ -74,6 +84,21 @@
        setenv M3MODEL  $M3HOME/models
        setenv M3LIB    $M3HOME/lib  (you need to create this subdirectory)
        setenv M3DATA   $M3HOME/data
+
+
+*vv*
+	https://www.cmascenter.org/download/software/cmaq/cmaq_4-5-1.cfm?DB=TRUE
+	talks about M3DATA.CMAQv4.5.1.tar and M3DATA_REF.CMAQv4.5.1.tar 
+	but does not show such file for download :(
+	
+	for now, downloaded from v4.7.1 
+	https://www.cmascenter.org/download/software/cmaq/cmaq_4-7-1.cfm?DB=TRUE
+
+	CMAQ default data files	Download (58 MB)	6/28/2010
+		https://drive.google.com/uc?export=download&id=0B4Gx-y00i4D0TWF4SHNtc29vZ2c
+
+	CMAQ benchmark output data for CMAQ	Download (291 MB)	6/28/2010
+
 
  3) cd to $M3HOME and gunzip and untar the data tar file, M3DATA.tar.gz.
     This will produce the following subdirectories:
@@ -121,8 +146,13 @@
     compiler flags, if necessary, and setting the "BIN" environment variable
     appropriately - see the IOAPI readme file included with this release.
 
+			**end** 
+
  5) In $M3HOME gunzip and untar the models archive tar file, MODELS.tar.gz. 
     This will produce the following subdirectories:
+
+		**>>** using ~/gs/Downloads/CMAQ/M3MODELS.CMAQv4.5.1.tar.gz
+
 
        models/
               BCON/
