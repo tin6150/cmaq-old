@@ -42,3 +42,5 @@ https://drive.google.com/uc?export=download&id=0B4Gx-y00i4D0V1lpWXM3SEpZYlk
 doc:
 https://drive.google.com/uc?export=download&id=0B4Gx-y00i4D0aTBnUFBtQ0FOLWs
 
+could not wget from above link, downloaded from browser and manually copied the tar file over and sync via git
+
