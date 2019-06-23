@@ -11,7 +11,8 @@ where build steps are listed.
 
 Ling said to work in : /global/home/groups-sw/pc_adjoint/Tin_Ho
 
-start with doc/README.txt
+
+refer to doc/README.txt [.rst for annotated version]
 
 export M3HOME=/global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel
 mkdir -p $M3HOME
@@ -21,16 +22,98 @@ export M3LIB=$M3HOME/lib
 mkdir $M3LIB
 export M3DATA=$M3HOME/data
 
-export M3DATA_TGZ=???     ## where to get this??  use
-/global/home/groups-sw/pc_adjoint/CMAQ4.5/data ??
-export M3DATA_TGZ=
+# export M3DATA_TGZ=???     ## in "distribution pkg", but only found it under CMAQ 4.7.1
+# /global/home/groups-sw/pc_adjoint/CMAQ4.5/data # not sure what Ling has in there
+export M3DATA_TGZ=~/gs/Downloads/CMAQ/DATA.CMAQv4.7.1.tar.gz
 
-cd $M3HOME
+**Step 4**
 
-tar 
+cd $M3HOME    				# /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel
+tar xfz $M3DATA_TGZ
+
+					mkdir $M3LIB/
+          mkdir $M3LIB/build/
+          mkdir $M3LIB/ioapi_3/
+          mkdir $M3LIB/netCDF/
+          mkdir $M3LIB/pario/
+          mkdir $M3LIB/stenex/
+
+
+mkdir $M3LIB/netCDF/Linux
+cd    $M3LIB/netCDF/Linux
+ln -s /global/software/sl-7.x86_64/modules/intel/2018.1.163/netcdf/4.6.1-intel-p/lib/libnetcdf.a .
+			# started with parallel version, but not sure if it would work... ~~
+
+# module load netcdf/4.6.1-intel-p
+
+module load netcdf/4.6.1-intel-p
+
+					module av
+					-s = serial version
+					-p = parallel version
+																							netcdf/4.4.1.1-intel-p
+					hdf5/1.8.18-intel-p                 netcdf/4.4.1.1-intel-s
+					hdf5/1.8.18-intel-s                 netcdf/4.6.1-intel-p
+					hdf5/1.8.20-intel-p                 netcdf/4.6.1-intel-s
+					hdf5/1.8.20-intel-s                 
+
+		**>>** details on ioapi not done yet
+
+**Step 5**
+
+cd $M3HOME  # /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel
+tar xfz ~/gs/Downloads/CMAQ/M3MODELS.CMAQv4.5.1.tar.gz
+
+
+**Step 6**
+tar xf ~tin/gs/Downloads/CMAQ/M3SCRIPTS.CMAQv4.5.1.tar.gz 
+
+export WORK=$M3HOME/scripts     # ie /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/scripts
+
+
+**Step 7**
+
+mkdir $M3LIB/ioapi_3 						####### install here
+
+cd $WORK/stenex 
+
+	cp -p bldit.se_noop.pgf bldit.se_noop.pgf.orig
+  cp -p bldit.se.pgf bldit.se.pgf.orig
+
+		vi bldit.se.pgf
+		*sigh* need cvs!!
+
+
+				**##**         
+				**##**         
+									continue here after getting cvs 
+				**##**         
+				**##**         
+
+    module load netcdf/4.6.1-intel-p   # include intel/2018.
+    csh bldit.se.pgf | tee bldit.se.pgf.log 2>&1 
+
+  cp back to ~tin/gs/tin-gh/cmaq/scripts/stenex/
 
 
 
+~~~~
+
+
+export CVSROOT=/home/tin/tin-gh/cmaq/models/BUILD 
+	CVS create a CVSROOT for its DB, (think .git or RCS)
+	CVS is like a glorified RCS, adding directory and centralized server to store the tree
+
+MAC_OSX_README.txt has step detail with cvs
 
 
 also need to see IOAPI.txt and the CVS_NETCDF
+
+
+~~~~
+
+
+xref:
+* https://wiki.uiowa.edu/display/hpcdocs/CMAQ
+
+* https://blog.chenzhang.org/post/gis/cmaq-installation/   for CMAQ 5.1 or so...
