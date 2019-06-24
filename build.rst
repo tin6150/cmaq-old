@@ -6,6 +6,11 @@ download was for Linux Intel.
 Plan is to build on lrc, using intel SMF
 
 
+** just cuz don't have cvs... and singularity does not bind path for /global/home/groups-sw
+** have to move this to my own scratch dir.
+** maybe ask if there are objection to install cvs on lrc-viz ...
+
+
 use scripts/ 
 where build steps are listed.
 
@@ -68,6 +73,7 @@ tar xfz ~/gs/Downloads/CMAQ/M3MODELS.CMAQv4.5.1.tar.gz
 **Step 6**
 tar xf ~tin/gs/Downloads/CMAQ/M3SCRIPTS.CMAQv4.5.1.tar.gz 
 
+export M3HOME=/global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel
 export WORK=$M3HOME/scripts     # ie /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/scripts
 
 
@@ -75,23 +81,31 @@ export WORK=$M3HOME/scripts     # ie /global/home/groups-sw/pc_adjoint/Tin_Ho/CM
 
 mkdir $M3LIB/ioapi_3 						####### install here
 
-cd $WORK/stenex 
+cd $WORK/stenex 					# /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/scripts/stenex
 
 	cp -p bldit.se_noop.pgf bldit.se_noop.pgf.orig
   cp -p bldit.se.pgf bldit.se.pgf.orig
 
+
 		vi bldit.se.pgf
-		*sigh* need cvs!!
+		# change lines 46
+		## set FC = /global/software/sl-7.x86_64/modules/langs/intel/2018.1.163/bin/fpp ## this is Fortran PreProcessor
+		set FC = /global/software/sl-7.x86_64/modules/langs/intel/2018.1.163/bin/ifort
+		set F_FLAGS = "" # since don't know what's intel equiv of pgi options 
 
 
-				**##**         
-				**##**         
-									continue here after getting cvs 
-				**##**         
-				**##**         
-
+		export M3HOME=/global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel
+		export M3MODEL=$M3HOME/models
+		export M3LIB=$M3HOME/lib 
+    # cvs via singularity container in /global/scratch/tin/singularity-repo
+		# do things like `setenv CVSROOT $M3MODEL/STENEX`
+		. ~/.bashrc
     module load netcdf/4.6.1-intel-p   # include intel/2018.
-    csh bldit.se.pgf | tee bldit.se.pgf.log 2>&1 
+		    1) vim/7.4                4) intel/2018.1.163       7) openmpi/3.0.1-intel
+			  2) emacs/25.1             5) mkl/2018.1.163         8) hdf5/1.8.20-intel-p
+				3) git/2.11.1             6) openmpi/2.0.2-intel    9) netcdf/4.6.1-intel-p
+
+    csh bldit.se.pgf 2>&1  | tee bldit.se.pgf.log 
 
   cp back to ~tin/gs/tin-gh/cmaq/scripts/stenex/
 
