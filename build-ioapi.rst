@@ -25,6 +25,8 @@ rm -rf m3tools notcdf exclude Makefile* HTML iotests ioapi  README.txt VERSION.t
 tar xfz ioapi-3.1.tar.gz 
 # rm ioapi 3.0 files first  cuz don't want files not in 3.1 to linger
 # and indeed there are quite a number per git status
+# see https://github.com/tin6150/cmaq/commit/335342627666d614d807f498713838d29cebe825 for diff ioapi 3.0 -> 3.1
+
 
 
 
@@ -50,10 +52,17 @@ Try `-mcmodel=large` with intel first.  if fails, use `-mcmodel=medium`
 LOG
 ---
 
+
 **^ tin viz.scs00 ~/gs/tin-gh/cmaq/ioapi ^**>  
+follow ioapi/README.txt
+	setenv BIN `uname -s``uname -r | cut -d. -f1`
+	Linux3
 vi Makefile
 vi ioapi/Makefiile
 vi m3tools/Makefile
+
+
+is there a `make configure`?
 
 
 

@@ -14,10 +14,6 @@
 #               for "$(IODIR)/Makeinclude.$(BIN)" to determine compilation
 #               flags, and in $(OBJDIR) and $(INSTALL) to determine
 #               binary directories
-#### maybe Linux2_x86_64...+compiler: ifort or ifort_medium  
-#### *sigh* 
-#### setenv BIN `uname -s``uname -r | cut -d. -f1`
-#### get "Linux3"
 #
 #       INSTALL installation-directory root, used for "make install":
 #               "libioapi.a" and the tool executables will be installed
@@ -38,7 +34,6 @@
 #       $(INSTALL)  installation-directory root, used for "make install":
 #                   "libioapi.a" and the tool executables will be installed
 #                   in $(INSTALL)/$(BIN)
-#### change INSTALL dir
 #       object/library/executable directory
 #.........................................................................
 # Note On Library Versions and configuration:
@@ -97,20 +92,13 @@ VERSION = 3.1
 #       Defining BIN3_DEBUG turns on trace-messages for native-binary
 #       mode routines.
 
-SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/
-DSTBASE    = /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/
-##BASEDIR    = ${HOME}/web31
-BASEDIR    = ${SNHOME}/ioapi
-#INSTALL    = /SOMEWHERE
-INSTALL    = ${DSTBASE}/lib/ioapi_3
-#### ${BIN} likely eval to something like Linux2ifort
+BASEDIR    = ${HOME}/web31
+INSTALL    = /SOMEWHERE
 LIBINST    = $(INSTALL)/$(BIN)
 BININST    = $(INSTALL)/$(BIN)
 
 CPLMODE    = cpl
 IOAPIDEFS  = -DIOAPICPL
-
-#### i hope PVM_ROOT isn't really needed...
 PVMINCL    = $(PVM_ROOT)/conf/$(PVM_ARCH).def
 
 #               ****   Variants   ****

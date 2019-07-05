@@ -68,16 +68,7 @@
 
 .SUFFIXES: .m4 .c .F .f .mod
 
-##BASEDIR = ${HOME}/web31
-
-SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/
-DSTBASE    = /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/
-##BASEDIR    = ${HOME}/web31
-BASEDIR    = ${SNHOME}/ioapi
-
-##INSTALL    = ${DSTBASE}/lib/ioapi_3
-## likely will inherit from ENV , so maybe set by ../Makefile ...
-
+BASEDIR = ${HOME}/web31
 
 IODIR   = ${BASEDIR}/ioapi
 
@@ -86,7 +77,6 @@ IODIR   = ${BASEDIR}/ioapi
 OBJDIR  = ${BASEDIR}/${BIN}
 
 INSTDIR = ${INSTALL}/${BIN}
-
 
 FIXDIR  = ${IODIR}/fixed_src
 
