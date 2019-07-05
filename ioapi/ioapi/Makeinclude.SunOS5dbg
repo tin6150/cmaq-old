@@ -1,0 +1,26 @@
+# @(#)$Header$
+#
+#  Library flags severely hacked to satisfy Sun's broken
+#  compiler-linker system
+#
+AR   = ar
+CC   = cc
+FC   = f90
+M4   = m4
+CPP  = cpp
+LINK = $(CC)
+
+MFLAGS    = 
+
+OMPFLAGS  = -openmp
+OMPLIBS   = -openmp -mt -lsocket -lnsl -lthread
+COPTFLAGS = -g -xcg92 ${MFLAGS}
+FOPTFLAGS = -g -cg92  ${MFLAGS}
+FPPFLAGS  = -xpp=cpp -DFLDMN=1
+FSFLAGS   = 
+ARCHFLAGS = -DFLDMN=1
+PARFLAGS  =
+ARCHLIB   = 
+
+M4DEFFILE = $(PVM_ROOT)/conf/$(PVM_ARCH).m4
+PVMLIBS   = -L$(PVM_ROOT)/lib/$(PVM_ARCH) -lpvm3

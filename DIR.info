@@ -12,3 +12,8 @@ tar xfz ~/Downloads/M3SCRIPTS.CMAQv4.5.1.tar.gz
 tar xfz ~/Downloads/M3MODELS.CMAQv4.5.1.tar.gz 
 tar xfz ~/Downloads/M3DOCS.CMAQv4.5.1.tar.gz 
 
+
+lib/
+dir in /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel
+was created manually, as noted in build.rst   thus not in source tree.
+

@@ -1,7 +1,8 @@
+# vim: tabstop=4 noexpandtab
 
 my notes on building cmaq.
 
-download was for Linux Intel.
+download was for Linux Intel.  but seems like script is still for PGI
 
 Plan is to build on lrc, using intel SMF
 
@@ -51,10 +52,9 @@ tar xfz $M3DATA_TGZ
 mkdir $M3LIB/netCDF/Linux
 cd    $M3LIB/netCDF/Linux
 ln -s /global/software/sl-7.x86_64/modules/intel/2018.1.163/netcdf/4.6.1-intel-p/lib/libnetcdf.a .
-			# started with parallel version, but not sure if it would work... ~~
+			# started with parallel version, but not sure if it would work...
 
-# module load netcdf/4.6.1-intel-p
-
+# module load netcdf/4.6.1-intel-s
 module load netcdf/4.6.1-intel-p
 
 					module av
@@ -68,6 +68,7 @@ module load netcdf/4.6.1-intel-p
 
 		**>>** details on ioapi not done yet
 		       may need this now, cuz stuck at step 7
+			   xref: build-ioapi.rst
 
 **Step 5**
 
@@ -109,13 +110,15 @@ cd $WORK/stenex 					# /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/sc
     # end up compiling cvs from souce (which req fixing s/getline/get\ line/ kind of patch)
 		. ~/.bashrc
     module load netcdf/4.6.1-intel-p   # include intel/2018.
-		    1) vim/7.4                4) intel/2018.1.163       7) openmpi/3.0.1-intel
+			  1) vim/7.4                4) intel/2018.1.163       7) openmpi/3.0.1-intel
 			  2) emacs/25.1             5) mkl/2018.1.163         8) hdf5/1.8.20-intel-p
-				3) git/2.11.1             6) openmpi/2.0.2-intel    9) netcdf/4.6.1-intel-p
-		   10) /tools/cvs/1.11.23  ## cvs added 2019.0704 (in personal SMFdev)
+			  3) git/2.11.1             6) openmpi/2.0.2-intel    9) netcdf/4.6.1-intel-p
+			 10) /tools/cvs/1.11.23  ## cvs added 2019.0704 (in personal SMFdev)
+			 set path = ( /global/software/sl-7.x86_64/modules/tools/cvs/1.11.23/bin $path )
 
-	  # cp -p bldit.se.pgf ~tin/gs/tin-gh/cmaq/scripts/stenex/ 
-    csh bldit.se.pgf 2>&1  | tee bldit.se.pgf.log 
+	# cp -p bldit.se.pgf ~tin/gs/tin-gh/cmaq/scripts/stenex/ 
+	bash> csh  bldit.se.pgf 2>&1 |  tee bldit.se.pgf.log 
+	csh>     ./bldit.se.pgf      |& tee bldit.se.pgf.log                #|  
 
 			problem
 				/global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/scripts/stenex/BLD

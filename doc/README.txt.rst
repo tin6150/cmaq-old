@@ -1,9 +1,16 @@
-                     README for CMAQv4.5.1 - 15 Mar 2006
+# vim: tabstop=4 noexpandtab
 
 renamed to rst by tin, so to be able to add notes (with highlight)
-----------
+to see my changes:
+git diff 94540d6:./README.txt README.txt.rst
+actually, 
+git checkout 94540d6: ./README.txt
+so now can just do diff
 	search for *vv* or *>>* 
 
+################################################################################
+
+                     README for CMAQv4.5.1 - 15 Mar 2006
 
  This README file outlines the steps necessary to build and run CMAQ 
  models. The code has been tested on a variety of platforms, but the build 
