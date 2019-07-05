@@ -61,8 +61,15 @@ vi Makefile
 vi ioapi/Makefiile
 vi m3tools/Makefile
 
-
 is there a `make configure`?
 
+cp Makeinclude.Linux2_x86_64ifortdbg Makeinclude.Linux3 + edit
 
+module load netcdf/4.6.1-intel-p	# so that -lnetcdf can find it
+make
+
+*sigh* nope, doesn't work.  many unfindible symbols.
+make clean
+
+new plan: compile my own netcdf, with -mcmodel=medium
 
