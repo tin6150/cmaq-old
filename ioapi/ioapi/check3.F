@@ -1,16 +1,15 @@
 
-C.........................................................................
+        LOGICAL   FUNCTION CHECK3( FNAME, VNAME, JDATE, JTIME )
+
+C***********************************************************************
+C Version "$Id: check3.F 45 2014-09-12 20:05:29Z coats $"
 C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
-C (C) 2003-2005 by Baron Advanced Meteorological Systems.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
+C (C) 2003-2010 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-
-        LOGICAL   FUNCTION  CHECK3 ( FNAME, VNAME, JDATE, JTIME )
-
-C***********************************************************************
-C  function body starts at line  108
+C  function body starts at line  107
 C
 C  FUNCTION:  returns TRUE iff time step for (JDATE,JTIME) and variable
 C       VNAME is available in file with logical name FNAME.  If FNAME 
@@ -49,6 +48,8 @@ C       Modified 9/2004 by CJC for virtual INTERP bug-fix: change to
 C       READ3V interface
 C
 C       Modified 11/2004 by CJC:  new "verbose-flag" argument to RDTFLAG
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
@@ -65,22 +66,20 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)   FNAME   !  file name for query
-        CHARACTER*(*)   VNAME   !  vble name for query
-        INTEGER         JDATE   !  date (YYYYDDD) for query
-        INTEGER         JTIME   !  time (HHMMSS) for query
+        CHARACTER*(*), INTENT(IN   ) ::   FNAME   !  file name for query
+        CHARACTER*(*), INTENT(IN   ) ::   VNAME   !  vble name for query
+        INTEGER      , INTENT(IN   ) ::   JDATE   !  date (YYYYDDD) for query
+        INTEGER      , INTENT(IN   ) ::   JTIME   !  time (HHMMSS) for query
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER         INDEX1     !  look up names in name tables
-        INTEGER         INIT3      !  initialize I/O system files.
-        INTEGER         NAME2FID   !  fname~~> fid lookup
-        LOGICAL         RDTFLAG    !  check time step record availability
-        INTEGER         TRIMLEN    !  trimmed string length
-
-        EXTERNAL        INDEX1, INIT3, NAME2FID, RDTFLAG, TRIMLEN
-        EXTERNAL        INITBLK3   !  block data: initialize I/O state
+        INTEGER, EXTERNAL :: INDEX1     !  look up names in name tables
+        INTEGER, EXTERNAL :: INIT3      !  initialize I/O system files.
+        INTEGER, EXTERNAL :: NAME2FID   !  fname~~> fid lookup
+        LOGICAL, EXTERNAL :: RDTFLAG    !  check time step record availability
+        
+        EXTERNAL :: INITBLK3   !  block data: initialize I/O state
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -108,7 +107,7 @@ C   begin body of function  CHECK3
         FID   = NAME2FID( FNAME )
         EFLAG = ( FID .LE. 0 )
 
-        VLEN  = TRIMLEN( VNAME )
+        VLEN  = LEN_TRIM( VNAME )
 
         IF ( VLEN .GT. NAMLEN3 ) THEN
             EFLAG = .TRUE.
@@ -190,5 +189,5 @@ C.......   Find netCDF index for the file, and check time step availability:
 
         RETURN
 
-        END
+        END FUNCTION CHECK3
 

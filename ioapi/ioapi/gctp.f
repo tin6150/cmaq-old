@@ -1,13 +1,13 @@
 
 C.........................................................................
-C Version "@(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/gctp.f,v 1.2 2000/11/28 21:22:46 smith_w Exp $"
+C Version "$Id: gctp.f 423 2016-09-13 12:56:40Z coats $"
 C Adapted from USGS general cartographic transformation package, version 2.0.2
 C with portability and F90-related enhancements
 C EDSS/Models-3 I/O API.  Modifications copyright (C) 1992-2000 MCNC
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C
+
 C     general cartographic transformation package - version 2.0.2
 C     fortran 77 language for ibm, amdahl, encore, vax, concurrent, and
 C     data general computers
@@ -16,11 +16,11 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION ADJLZ0 (LON)
-C
+
 C FUNCTION TO ADJUST LONGITUDE ANGLE TO MODULO 180 DEGREES.
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       PARAMETER ( TWO = 2.0D0 )
@@ -39,36 +39,36 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION ASINZ0 (CON)
-C
+
 C THIS FUNCTION ADJUSTS FOR ROUND-OFF ERRORS IN COMPUTING ARCSINE
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       DATA ONE /1.0D0/
-C
+
       IF (DABS(CON) .GT. ONE) THEN
        CON = DSIGN (ONE,CON)
        ENDIF
       ASINZ0 = DASIN (CON)
       RETURN
-C
+
       END
 C                   DMSPZ0
 C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION DMSPZ0 (SGNA,DEGS,MINS,SECS)
-C
+
 C SUBROUTINE TO CONVERT UNPACKED DMS TO PACKED DMS ANGLE
 C SGNA : SIGN OF ANGLE
 C DEGS : DEGREES PORTION OF ANGLE
 C MINS : MINUTES PORTION OF ANGLE
 C SECS : SECONDS PORTION OF ANGLE
-C
+
       IMPLICIT REAL*8 (A-H,O-Z)
       SAVE
       REAL SECS
@@ -76,23 +76,23 @@ C
       CHARACTER*1 SGNA,NEG
       DATA CON1,CON2 /1000000.0D0,1000.0D0/
       DATA NEG /'-'/
-C
+
       CON = DBLE (DEGS) * CON1 + DBLE (MINS) * CON2 + DBLE (SECS)
       IF (SGNA .EQ. NEG) CON = - CON
       DMSPZ0 = CON
       RETURN
-C
+
       END
 C                   E0FNZ0
 C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION E0FNZ0 (ECCNTS)
-C
+
 C FUNCTION TO COMPUTE CONSTANT (E0).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       PARAMETER ( QUART =  0.25D0 )
@@ -100,10 +100,10 @@ C
       PARAMETER ( ONEQ  =  1.25D0 )
       PARAMETER ( THREE =  3.0D0  )
       PARAMETER ( DSIXT  = 1.0 / 16.0D0  )
-C
+
       E0FNZ0 = ONE - QUART * ECCNTS * (ONE + ECCNTS * DSIXT *
-     .         (THREE + ONEQ * ECCNTS))
-C
+     &         (THREE + ONEQ * ECCNTS))
+
       RETURN
       END
 C                   E1FNZ0
@@ -111,19 +111,19 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION E1FNZ0 (ECCNTS)
-C
+
 C FUNCTION TO COMPUTE CONSTANT (E1).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       DATA CON1,CON2,CON3 /0.375D0,0.25D0,0.46875D0/
       DATA ONE /1.0D0/
-C
+
       E1FNZ0 = CON1 * ECCNTS * (ONE + CON2 * ECCNTS *
      .         (ONE + CON3 * ECCNTS))
-C
+
       RETURN
       END
 C                   E2FNZ0
@@ -131,18 +131,18 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION E2FNZ0 (ECCNTS)
-C
+
 C FUNCTION TO COMPUTE CONSTANT (E2).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       DATA CON1,CON2 /0.05859375D0,0.75D0/
       DATA ONE /1.0D0/
-C
+
       E2FNZ0 = CON1 * ECCNTS * ECCNTS * (ONE + CON2 * ECCNTS)
-C
+
       RETURN
       END
 C                   E3FNZ0
@@ -150,17 +150,17 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION E3FNZ0 (ECCNTS)
-C
+
 C FUNCTION TO COMPUTE CONSTANT (E3).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       PARAMETER ( F35D3072 = 35.D0/3072.D0 )
-C
+
       E3FNZ0 = ECCNTS*ECCNTS*ECCNTS*F35D3072
-C
+
       RETURN
       END
 C                   E4FNZ0
@@ -168,19 +168,19 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION E4FNZ0 (ECCENT)
-C
+
 C FUNCTION TO COMPUTE CONSTANT (E4).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       DATA ONE /1.0D0/
-C
+
       CON = ONE + ECCENT
       COM = ONE - ECCENT
       E4FNZ0 = DSQRT ((CON ** CON) * (COM ** COM))
-C
+
       RETURN
       END
 C                   GTPZ0
@@ -188,13 +188,13 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       SUBROUTINE GTPZ0(CRDIN,INSYS,INZONE,TPARIN,INUNIT,INSPH,IPR,JPR,
-     .     LEMSG,LPARM,CRDIO,IOSYS,IOZONE,TPARIO,IOUNIT,LN27,LN83,
-     .     FN27,FN83,LENGTH,IFLG)
-C
+     &     LEMSG,LPARM,CRDIO,IOSYS,IOZONE,TPARIO,IOUNIT,LN27,LN83,
+     &     FN27,FN83,LENGTH,IFLG)
+
 C **********************************************************************
-C
+
 C INPUT ****************************************************************
 C CRDIN  : COORDINATES IN INPUT SYSTEM (2 DP WORDS ARRAY).
 C INSYS  : CODE NUMBER OF INPUT COORDINATE SYSTEM (INTEGER).
@@ -259,9 +259,13 @@ C            = 6 , INCONSISTENT UNIT AND SYSTEM CODES FOR OUTPUT.
 C            = 7 , ILLEGAL INPUT ZONE CODE.
 C            = 8 , ILLEGAL OUTPUT ZONE CODE.
 C      OTHERWISE , ERROR CODE FROM PROJECTION COMPUTATIONAL MODULE.
-C
+
       IMPLICIT REAL*8 (A-H,O-Z)
       SAVE
+
+      CHARACTER*72 :: SVN_ID =
+     &'$Id:: gctp.f 423 2016-09-13 12:56:40Z coats                   $'
+
       INTEGER   NAD27(134), NAD83(134), NADUT(54), SPTYPE(134)
       INTEGER   SYSUNT(24), SWITCH(23), ITER
       INTEGER*2 INMOD, IOMOD, FWD, INV
@@ -274,7 +278,7 @@ C
       COMMON /PROJZ0/ IPROJ
       COMMON /SPCS/ ISPHER,LU27,LU83,LEN,MSYS,FILE27,FILE83
       COMMON /TOGGLE/ SWITCH
-C
+
       PARAMETER (MAXUNT=6, MAXSYS=23)
       PARAMETER (FWD=0, INV=1)
       DATA SYSUNT / 0 , 23*2 /
@@ -283,7 +287,7 @@ C
       DATA IOSP/999/, IOPJ/999/, IOZN/99999/
       DATA ITER /0/
       DATA JFLAG/0/
-C
+
       DATA NAD27/0101,0102,5010,5300,0201,0202,0203,0301,0302,0401,0402,
      .           0403,0404,0405,0406,0407,0501,0502,0503,0600,0700,0901,
      .           0902,0903,1001,1002,5101,5102,5103,5104,5105,1101,1102,
@@ -297,7 +301,7 @@ C
      .           4502,4601,4602,4701,4702,4801,4802,4803,4901,4902,4903,
      .           4904,5001,5002,5003,5004,5005,5006,5007,5008,5009,5201,
      .           5202,5400/
-C
+
       DATA NAD83/0101,0102,5010,5300,0201,0202,0203,0301,0302,0401,0402,
      .           0403,0404,0405,0406,0000,0501,0502,0503,0600,0700,0901,
      .           0902,0903,1001,1002,5101,5102,5103,5104,5105,1101,1102,
@@ -311,21 +315,21 @@ C
      .           4502,4601,4602,4701,4702,4801,4802,4803,4901,4902,4903,
      .           4904,5001,5002,5003,5004,5005,5006,5007,5008,5009,5200,
      .           0000,5400/
-C
+
 C     TABLE OF UNIT CODES AS SPECIFIED BY STATE LAWS AS OF 2/1/92
 C     FOR NAD 1983 SPCS - 1 = U.S. SURVEY FEET, 2 = METERS,
 C                         5 = INTERNATIONAL FEET
-C
+
 C     NADUT - UNIT CODES FOR THE STATES ARRANGED IN STATE NUMBER ORDER
 C              (FIRST TWO DIGITS OF ZONE NUMBER)
-C
+
       DATA NADUT /1, 5, 1, 1, 5, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 2, 2,
      .            1, 1, 5, 2, 1, 2, 5, 1, 2, 2, 2, 1, 1, 1, 5, 2, 1, 5,
      .            2, 2, 5, 2, 1, 1, 5, 2, 2, 1, 2, 1, 2, 2, 1, 2, 2, 2/
-C
+
 C     TABLE OF STATE PLANE ZONE TYPES:  4 = LAMBERT, 7 = POLYCONIC,
 C     9 = TRANSVERSE MERCATOR, AND 20 = OBLIQUE MERCATOR
-C
+
       DATA SPTYPE / 9, 9, 4, 4, 9, 9, 9, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
      .              4, 4, 4, 9, 9, 9, 4, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
      .              9, 9, 9, 9, 4, 4, 4, 4, 4, 4, 4, 4, 4, 9, 9, 4, 4,
@@ -334,9 +338,9 @@ C
      .              4, 4, 4, 4, 4, 4, 4, 4, 4, 9, 4, 4, 4, 4, 4, 4, 4,
      .              4, 4, 4, 4, 4, 4, 9, 4, 4, 4, 4, 4, 4, 4, 4, 4, 9,
      .              9, 9, 9,20, 9, 9, 9, 9, 9, 9, 9, 9, 4, 4, 7/
-C
+
 C     SETUP
-C
+
       IOSPH = INSPH
       IPEMSG = IPR
       IPPARM = JPR
@@ -348,9 +352,9 @@ C
       LU83 = LN83
       FILE83 = FN83
       LEN = LENGTH
-C
+
 C     INITIALIZE SWITCH FOR EACH PROJECTION TO ZERO
-C
+
       ITER = ITER + 1
       IF (ITER .LE. 1) THEN
          DO 5 I=1,15
@@ -365,46 +369,46 @@ C
       ESZ = 0.0D0
       CALL SPHDZ0(0,DUMMY)
       JFLAG = 1
-C
+
 C CHECK VALIDITY OF CODES FOR REFERENCE SYSTEMS.
-C
+
    10 IF (INSYS.LT.0 .OR. INSYS.GT.MAXSYS) THEN
          IF (IPEMSG .NE. 0) WRITE (IPELUN,2000) INSYS
  2000    FORMAT (' ILLEGAL SOURCE REFERENCE SYSTEM CODE = ',I6)
          IFLG = 1
          RETURN
       END IF
-C
+
       IF (IOSYS.LT.0 .OR. IOSYS.GT.MAXSYS) THEN
          IF (IPEMSG .NE. 0) WRITE (IPELUN,2010) IOSYS
  2010    FORMAT (' ILLEGAL TARGET REFERENCE SYSTEM CODE = ',I6)
          IFLG = 2
          RETURN
       END IF
-C
+
 C     FORCE INITIALIZATION OF PROJECTIONS IF SPHEROID OR PROJECTION
 C     HAS CHANGED FROM PREVIOUS INPUT - OUTPUT SET
-C
+
       IF (INSPH .NE. INSP) THEN
          DO 11 I = 1,MAXSYS
             SWITCH(I) = 0
    11    CONTINUE
       END IF
-C
+
       IF (INSYS .GT. 0) THEN
          IF (INSYS .NE. INPJ .AND. INSYS .NE. IOPJ) SWITCH(INSYS) = 0
          IF (SWITCH(INSYS) .NE. INZONE .AND. SWITCH(INSYS) .NE. IOZONE)
      .      SWITCH(INSYS) = 0
       END IF
-C
+
       IF (IOSYS .GT. 0) THEN
          IF (IOSYS .NE. INPJ .AND. IOSYS .NE. IOPJ) SWITCH(IOSYS) = 0
          IF (SWITCH(IOSYS) .NE. INZONE .AND. SWITCH(IOSYS) .NE. IOZONE)
      .      SWITCH(IOSYS) = 0
       END IF
-C
+
 C     CHECK FOR REPEAT OF INPUT SYSTEM
-C
+
       INMOD = 1
       IF (INSYS .EQ. 2) THEN
          IF (INZONE .GT. 0) THEN
@@ -433,26 +437,26 @@ C
       END IF
       INMOD = 0
       GO TO 30
-C
+
 C     SAVE INPUT SYSTEM PARAMETERS
-C
+
    15 INSP = INSPH
       INPJ = INSYS
       INZN = INZONE
       DO 16 I=1,15
    16 PDIN(I) = TPARIN(I)
-C
+
 C CHECK CONSISTENCY BETWEEN UNITS OF MEASURE
-C
+
       IF (INUNIT.LT.0 .OR. INUNIT.GT.MAXUNT) THEN
          IF (IPEMSG .NE. 0) WRITE (IPELUN,2020) INUNIT
  2020    FORMAT (' ILLEGAL SOURCE UNIT CODE = ',I6)
          IFLG = 3
          RETURN
       END IF
-C
+
 C     CHECK FOR REPEAT OF OUTPUT SYSTEM
-C
+
    30 IOMOD = 1
       IF (IOSYS .EQ. 2) THEN
          IF (IOZONE .GT. 0) THEN
@@ -482,28 +486,28 @@ C
       END IF
       IOMOD = 0
       GO TO 80
-C
+
 C     SAVE OUTPUT SYSTEM PARAMETERS
-C
+
    35 IOSP = INSPH
       IOPJ = IOSYS
       IOZN = IOZONE
       DO 36 I=1,15
    36 PDIO(I) = TPARIO(I)
-C
+
 C CHECK CONSISTENCY BETWEEN UNITS OF MEASURE
-C
+
       IF (IOUNIT.LT.0 .OR. IOUNIT.GT.MAXUNT) THEN
          IF (IPEMSG .NE. 0) WRITE (IPELUN,2030) IOUNIT
  2030    FORMAT (' ILLEGAL TARGET UNIT CODE = ',I6)
          IFLG = 4
          RETURN
       END IF
-C
+
    80 IUNIT = SYSUNT(INSYS + 1)
-C
+
 C     CHANGE UNITS TO LEGISLATED UNITS USING TABLE
-C
+
       IF (INSPH .EQ. 0 .AND. INSYS .EQ. 2 .AND. INUNIT .EQ. 6) INUNIT=1
       IF (INSPH .EQ. 8 .AND. INSYS .EQ. 2 .AND. INUNIT .EQ. 6) THEN
          IND = 0
@@ -519,9 +523,9 @@ C
   100 COORD(1) = FACTOR * CRDIN(1)
       COORD(2) = FACTOR * CRDIN(2)
       IUNIT = SYSUNT(IOSYS + 1)
-C
+
 C     CHANGE UNITS TO LEGISLATED UNITS USING TABLE
-C
+
       IF (INSPH .EQ. 0 .AND. IOSYS .EQ. 2 .AND. IOUNIT .EQ. 6) IOUNIT=1
       IF (INSPH .EQ. 8 .AND. IOSYS .EQ. 2 .AND. IOUNIT .EQ. 6) THEN
          IND = 0
@@ -538,24 +542,24 @@ C
       CRDIO(1) = FACTOR * COORD(1)
       CRDIO(2) = FACTOR * COORD(2)
       RETURN
-C
+
 C COMPUTE TRANSFORMED COORDINATES AND ADJUST THEIR UNITS.
-C
+
   140 IF (INSYS .EQ. 0) GO TO 520
       IF (INZONE.GT.60 .OR. INSYS.EQ.1) GO TO 200
       IF (IPEMSG .NE. 0) WRITE (IPELUN,2040) INZONE
  2040 FORMAT (' ILLEGAL SOURCE ZONE NUMBER = ',I6)
       IFLG = 7
       RETURN
-C
+
 C INVERSE TRANSFORMATION.
-C
+
   200 IPROJ=INSYS
       ISPHER = INSPH
       IF (INSYS.GE.3) CALL SPHDZ0(INSPH,TPARIN)
-C
+
 C     CHECK FOR CHANGE IN ZONE FROM LAST USE OF THE INPUT PROJECTION
-C
+
       IF (INSYS .EQ. 1 .AND. INZONE .NE. SWITCH(9)) THEN
          SWITCH(1) = 0
          INMOD = 1
@@ -568,7 +572,7 @@ C
          SWITCH(INSYS) = 0
          INMOD = 1
       END IF
-C
+
       IF (INSYS .EQ. 1) THEN
          IF (INZONE.EQ.0.AND.TPARIN(1).NE.0.0D0) GO TO 211
          TPARIN(1) = 1.0D6*DBLE(6*INZONE-183)
@@ -583,7 +587,7 @@ C
          END IF
          CALL PJ01Z0 (COORD,CRDIO,INV)
       END IF
-C
+
       IF (INSYS .GT. 1) THEN
          IF (INMOD .NE. 0) THEN
             MSYS = INSPCS
@@ -637,7 +641,7 @@ C
              CALL PJ23Z0 (COORD,CRDIO,INV)
          END IF
       END IF
-C
+
   500 IFLG = IERROR
       DO 510 I = 1,15
   510 TPARIN(I) = PDIN(I)
@@ -656,15 +660,15 @@ C
  2050 FORMAT (' ILLEGAL TARGET ZONE NUMBER = ',I6)
       IFLG = 8
       RETURN
-C
+
 C FORWARD TRANSFORMATION.
-C
+
   540 IPROJ=IOSYS
       ISPHER = INSPH
       IF (IOSYS.GE.3) CALL SPHDZ0(INSPH,TPARIO)
-C
+
 C     CHECK FOR CHANGE IN ZONE FROM LAST USE OF THE OUTPUT PROJECTION
-C
+
       IF (IOSYS .EQ. 1 .AND. IOZONE .NE. SWITCH(9)) THEN
          SWITCH(1) = 0
          IOMOD = 1
@@ -677,7 +681,7 @@ C
          SWITCH(IOSYS) = 0
          IOMOD = 1
       END IF
-C
+
       IF (IOSYS .EQ. 1) THEN
          TPARIO(1) = COORD(1)
          TPARIO(2) = COORD(2)
@@ -691,7 +695,7 @@ C
          END IF
          CALL PJ01Z0 (COORD,CRDIO,FWD)
       END IF
-C
+
       IF (IOSYS .GT. 1) THEN
          IF (IOMOD .NE. 0) THEN
             MSYS = IOSPCS
@@ -745,32 +749,32 @@ C
              CALL PJ23Z0 (COORD,CRDIO,FWD)
          END IF
       END IF
-C
+
   900 IFLG = IERROR
       DO 910 I = 1,15
   910 TPARIO(I) = PDIO(I)
   920 CRDIO(1) = FACTOR * CRDIO(1)
       CRDIO(2) = FACTOR * CRDIO(2)
       RETURN
-C
+
       END
 C                   MLFNZ0
 C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION MLFNZ0 (E0,E1,E2,E3,PHI)
-C
+
 C FUNCTION TO COMPUTE CONSTANT (M).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       DATA TWO,FOUR,SIX /2.0D0,4.0D0,6.0D0/
-C
+
       MLFNZ0 = E0 * PHI - E1 * DSIN (TWO * PHI) + E2 * DSIN (FOUR * PHI)
      * - E3 * DSIN (SIX * PHI)
-C
+
       RETURN
       END
 C                   MSFNZ0
@@ -778,18 +782,18 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION MSFNZ0 (ECCENT,SINPHI,COSPHI)
-C
+
 C FUNCTION TO COMPUTE CONSTANT (SMALL M).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       DATA ONE /1.0D0/
-C
+
       CON = ECCENT * SINPHI
       MSFNZ0 = COSPHI / DSQRT (ONE - CON * CON)
-C
+
       RETURN
       END
 C                   PAKCZ0
@@ -797,16 +801,16 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION PAKCZ0 (PAK)
-C
+
 C SUBROUTINE TO CONVERT 2 DIGIT PACKED DMS TO 3 DIGIT PACKED DMS ANGLE.
-C
+
 C SGNA : SIGN OF ANGLE
 C DEGS : DEGREES PORTION OF ANGLE
 C MINS : MINUTES PORTION OF ANGLE
 C SECS : SECONDS PORTION OF ANGLE
-C
+
       IMPLICIT REAL*8 (A-H,O-Z)
       SAVE
       INTEGER   DEGS,MINS
@@ -815,7 +819,7 @@ C
       DATA CON3,CON4 /1000000.0D0,1000.0D0/
       DATA TOL /1.0D-3/
       DATA IBLANK,NEG /' ','-'/
-C
+
       SGNA = IBLANK
       IF (PAK .LT. ZERO) SGNA = NEG
       CON = DABS (PAK)
@@ -823,28 +827,28 @@ C
       CON = DMOD ( CON , CON1)
       MINS = IDINT ((CON / CON2) + TOL)
       SECS = DMOD (CON , CON2)
-C
+
       CON = DBLE (DEGS) * CON3 + DBLE (MINS) * CON4 + SECS
       IF (SGNA .EQ. NEG) CON = - CON
       PAKCZ0 = CON
       RETURN
-C
+
       END
 C                   PAKDZ0
 C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       SUBROUTINE PAKDZ0 (PAK,SGNA,DEGS,MINS,SECS)
-C
+
 C SUBROUTINE TO CONVERT PACKED DMS TO UNPACKED DMS ANGLE.
-C
+
 C SGNA : SIGN OF ANGLE
 C DEGS : DEGREES PORTION OF ANGLE
 C MINS : MINUTES PORTION OF ANGLE
 C SECS : SECONDS PORTION OF ANGLE
-C
+
       IMPLICIT REAL*8 (A-H,O-Z)
       SAVE
       REAL SECS
@@ -853,7 +857,7 @@ C
       DATA ZERO,CON1,CON2 /0.0D0,1000000.0D0,1000.0D0/
       DATA TOL /1.0D-4/
       DATA IBLANK,NEG /' ','-'/
-C
+
       SGNA = IBLANK
       IF (PAK .LT. ZERO) SGNA = NEG
       CON = DABS (PAK)
@@ -862,30 +866,30 @@ C
       MINS = IDINT ((CON / CON2) + TOL)
       SECS = SNGL ( DMOD (CON , CON2))
       RETURN
-C
+
       END
 C                   PAKRZ0
 C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION PAKRZ0 (ANG)
-C
+
 C FUNCTION TO CONVERT DMS PACKED ANGLE INTO RADIANS.
-C
+
       IMPLICIT REAL*8 (A-H,O-Z)
       SAVE
       PARAMETER ( SECRAD = 0.4848136811095359D-5 )
-C
+
 C CONVERT ANGLE TO SECONDS OF ARC
-C
+
       SEC = PAKSZ0 (ANG)
-C
+
 C CONVERT ANGLE TO RADIANS.
-C
+
       PAKRZ0 = SEC * SECRAD
-C
+
       RETURN
       END
 C                   PAKSZ0
@@ -893,11 +897,11 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION PAKSZ0 (ANG)
-C
+
 C FUNCTION TO CONVERT DMS PACKED ANGLE INTO SECONDS OF ARC.
-C
+
       IMPLICIT REAL*8 (A-H,M-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -908,9 +912,9 @@ C
       DATA ZERO,ONE /0.0D0,1.0D0/
       DATA C1,C2 /3600.0D0,60.0D0/
       DATA TOL /1.0D-4/
-C
+
 C SEPARATE DEGREE FIELD.
-C
+
       FACTOR = ONE
       IF (ANG .LT. ZERO) FACTOR = - ONE
       SEC = DABS(ANG)
@@ -918,31 +922,31 @@ C
       I = IDINT ((SEC / TMP) + TOL)
       IF (I .GT. 360) GO TO 020
       DEG = DBLE (I)
-C
+
 C SEPARATE MINUTES FIELD.
-C
+
       SEC = SEC - DEG * TMP
       TMP = CODE(2)
       I = IDINT ((SEC / TMP) + TOL)
       IF (I .GT. 60) GO TO 020
       MIN = DBLE (I)
-C
+
 C SEPARATE SECONDS FIELD.
-C
+
       SEC = SEC - MIN * TMP
       IF (SEC .GT. C2) GO TO 020
       SEC = FACTOR * (DEG * C1 + MIN * C2 + SEC)
       GO TO 040
-C
+
 C ERROR DETECTED IN DMS FORM.
-C
+
   020 WRITE (IPELUN,2000) ANG
  2000 FORMAT ('0ERROR PAKSZ0'/
      .        ' ILLEGAL DMS FIELD =',F15.3)
       STOP 16
-C
+
   040 PAKSZ0 = SEC
-C
+
       RETURN
       END
 C                   PHI1Z0
@@ -950,11 +954,11 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION PHI1Z0 (ECCENT,QS)
-C
+
 C FUNCTION TO COMPUTE LATITUDE ANGLE (PHI-1).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -963,10 +967,10 @@ C
       COMMON /PRINZ0/ IPEMSG,IPELUN,IPPARM,IPPLUN
       DATA HALF,ONE /0.5D0,1.0D0/
       DATA EPSLN,TOL,NIT /1.0D-7,1.0D-10,15/
-C
+
       PHI1Z0 = ASINZ0 (HALF * QS)
       IF (ECCENT .LT. EPSLN) RETURN
-C
+
       ECCNTS = ECCENT * ECCENT
       PHI = PHI1Z0
       DO 020 II = 1,NIT
@@ -982,25 +986,25 @@ C
       PHI1Z0 = PHI
       RETURN
   020 CONTINUE
-C
+
       IF (IPEMSG .EQ. 0) WRITE (IPELUN,2000) NIT,ECCENT,QS
  2000 FORMAT ('0ERROR PHI1Z0' /
      .        ' LATITUDE FAILED TO CONVERGE AFTER',I3,' ITERATIONS'/
      .        ' ECCENTRICITY =',D25.16,'   QS =',D25.16)
       IERROR = 001
       RETURN
-C
+
       END
 C                   PHI2Z0
 C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION PHI2Z0 (ECCENT,TS)
-C
+
 C FUNCTION TO COMPUTE LATITUDE ANGLE (PHI-2).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -1010,7 +1014,7 @@ C
       DATA HALF,ONE,TWO /0.5D0,1.0D0,2.0D0/
       DATA TOL,NIT /1.0D-10,15/
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
-C
+
       ECCNTH = HALF * ECCENT
       PHI = HALFPI - TWO * DATAN (TS)
       DO 020 II = 1,NIT
@@ -1023,25 +1027,25 @@ C
       PHI2Z0 = PHI
       RETURN
   020 CONTINUE
-C
+
       IF (IPEMSG .EQ. 0) WRITE (IPELUN,2000) NIT,ECCENT,TS
  2000 FORMAT ('0ERROR PHI2Z0' /
      .        ' LATITUDE FAILED TO CONVERGE AFTER',I3,' ITERATIONS'/
      .        ' ECCENTRICITY =',D25.16,'   TS =',D25.16)
       IERROR = 002
       RETURN
-C
+
       END
 C                   PHI3Z0
 C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION PHI3Z0 (ML,E0,E1,E2,E3)
-C
+
 C FUNCTION TO COMPUTE LATITUDE ANGLE (PHI-3).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -1050,7 +1054,7 @@ C
       COMMON /PRINZ0/ IPEMSG,IPELUN,IPPARM,IPPLUN
       DATA TWO,FOUR,SIX /2.0D0,4.0D0,6.0D0/
       DATA TOL,NIT /1.0D-10,15/
-C
+
       PHI = ML
       DO 020 II = 1,NIT
       DPHI = (ML + E1 * DSIN (TWO * PHI) - E2 * DSIN (FOUR * PHI)
@@ -1060,7 +1064,7 @@ C
       PHI3Z0 = PHI
       RETURN
   020 CONTINUE
-C
+
       IF (IPEMSG .EQ. 0) WRITE (IPELUN,2000) NIT,ML,E0,E1,E2,E3
  2000 FORMAT ('0ERROR PHI3Z0' /
      .        ' LATITUDE FAILED TO CONVERGE AFTER',I3,' ITERATIONS'/
@@ -1068,18 +1072,18 @@ C
      .        ' E1 =',D25.16,'   E2 =',D25.16,'   E3=',D25.16)
       IERROR = 003
       RETURN
-C
+
       END
 C                   PHI4Z0
 C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       SUBROUTINE PHI4Z0 (ECCNTS,E0,E1,E2,E3,A,B,C,PHI)
-C
+
 C FUNCTION TO COMPUTE LATITUDE ANGLE (PHI-4).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -1088,7 +1092,7 @@ C
       COMMON /PRINZ0/ IPEMSG,IPELUN,IPPARM,IPPLUN
       DATA ONE,TWO,FOUR,SIX /1.0D0,2.0D0,4.0D0,6.0D0/
       DATA TOL,NIT /1.0D-10,15/
-C
+
       PHI = A
       DO 020 II = 1,NIT
       SINPHI = DSIN (PHI)
@@ -1108,7 +1112,7 @@ C
       IF (DABS(DPHI) .GT. TOL) GO TO 020
       RETURN
   020 CONTINUE
-C
+
       IF (IPEMSG .EQ. 0) WRITE (IPELUN,2000) NIT,E0,E1,E2,E3,A,B,C,
      . ECCNTS
  2000 FORMAT ('0ERROR PHI4Z0' /
@@ -1120,28 +1124,28 @@ C
      .        ' ECCENTRICITY SQUARE =',D25.16)
       IERROR = 004
       RETURN
-C
+
       END
 C                   PJINIT
 C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       SUBROUTINE PJINIT (ISYS,ZONE,DATA)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       REAL SECS(5)
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN,ITEMP
       INTEGER   LAND, PATH, LIMIT, IND02, IND06, IND09, ISYS, KEEPZN
-      INTEGER   SWITCH(23),I,ZONE,DEGS(5),MINS(5)
+      INTEGER   SWITCH(23),I,IZ, ZONE,DEGS(5),MINS(5)
       INTEGER   ID, IND, ITYPE, MODE, N, MSYS
       INTEGER   ISPHER, LUNIT, LU27, LU83, LEN, NAD27(134), NAD83(134)
       CHARACTER*128 DATUM, FILE27, FILE83
       CHARACTER*32 PNAME
       CHARACTER*1 SGNA(5)
-C
+
       DIMENSION DATA(15),BUFFL(15)
       DIMENSION TABLE(9)
       DIMENSION PR(20),XLR(20)
@@ -1180,19 +1184,19 @@ C
       COMMON /PJ23/ A23,LON023,X023,Y023,ACOEF,BCOEF,EC,LAT023,
      .              CCHIO,SCHIO,N
       COMMON /TOGGLE/ SWITCH
-C
-      PARAMETER (  PI     = 3.14159265358979323846D0) 
-      PARAMETER (  HALFPI = 1.5707963267948966D0) 
-      PARAMETER (  DG1    = 0.01745329252D0) 
+
+      PARAMETER (  PI     = 3.14159265358979323846D0)
+      PARAMETER (  HALFPI = 1.5707963267948966D0)
+      PARAMETER (  DG1    = 0.01745329252D0)
       PARAMETER (  ZERO   = 0.0D0 )
       PARAMETER (  HALF   = 0.5D0 )
       PARAMETER (  ONE    = 1.0D0 )
-      PARAMETER (  TWO    = 2.0D0 ) 
-      PARAMETER (  EPSLN  = 1.0D-10 ) 
-      PARAMETER (  TOL    = 1.0D-7 ) 
-      PARAMETER (  TOL09  = 1.0D-5) 
-      PARAMETER (  NINTYD = 90000000.0D0) 
-C
+      PARAMETER (  TWO    = 2.0D0 )
+      PARAMETER (  EPSLN  = 1.0D-10 )
+      PARAMETER (  TOL    = 1.0D-7 )
+      PARAMETER (  TOL09  = 1.0D-5)
+      PARAMETER (  NINTYD = 90000000.0D0)
+
       DATA NAD27/0101,0102,5010,5300,0201,0202,0203,0301,0302,0401,0402,
      .           0403,0404,0405,0406,0407,0501,0502,0503,0600,0700,0901,
      .           0902,0903,1001,1002,5101,5102,5103,5104,5105,1101,1102,
@@ -1206,7 +1210,7 @@ C
      .           4502,4601,4602,4701,4702,4801,4802,4803,4901,4902,4903,
      .           4904,5001,5002,5003,5004,5005,5006,5007,5008,5009,5201,
      .           5202,5400/
-C
+
       DATA NAD83/0101,0102,5010,5300,0201,0202,0203,0301,0302,0401,0402,
      .           0403,0404,0405,0406,0000,0501,0502,0503,0600,0700,0901,
      .           0902,0903,1001,1002,5101,5102,5103,5104,5105,1101,1102,
@@ -1223,30 +1227,30 @@ C
 C ....................................................................
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                              .  U T M  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 1) THEN
-C
+
          IERROR = 0
          IF (SWITCH(1).NE.0 .AND. SWITCH(1).EQ.ZONE) RETURN
          SWITCH(1) = ZONE
          IF (SWITCH(9).NE.0.AND.SWITCH(9).EQ.ZONE.AND.DATA(14).EQ.SAVE)
      .   RETURN
          KEEPZN = ZONE
-         ZONE = IABS(ZONE)
+         IZ   = IABS(ZONE)
          SAVE = DATA(1)
-         IF (ZONE .EQ. 0) THEN
-            ZONE = IDINT( ( (DATA(1) * 180.0D0 / PI)
+         IF (IZ .EQ. 0) THEN
+            IZ  = IDINT( ( (DATA(1) * 180.0D0 / PI)
      .             + (TOL09 / 3600.D0) ) / 6.D0 )
             IND = 1
             IF (DATA(1) .LT. ZERO) IND = 0
-            ZONE = MOD ((ZONE + 30), 60) + IND
-            KEEPZN = ZONE
-            IF (DATA(2) .LT. ZERO) KEEPZN = -ZONE
+            IZ = MOD ((IZ + 30), 60) + IND
+            KEEPZN = IZ
+            IF (DATA(2) .LT. ZERO) KEEPZN = -IZ
          END IF
-         IF (ZONE.LT.1 .OR. ZONE.GT.60) THEN
+         IF (IZ.LT.1 .OR. IZ.GT.60) THEN
             IF (IPEMSG .EQ. 0) WRITE (IPELUN,140) KEEPZN
   140       FORMAT ('0ERROR PJ01Z0'/
      .              ' ILLEGAL ZONE NO. : ',I10)
@@ -1275,15 +1279,15 @@ C
          SWITCH(9) = 0
          GO TO 900
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                           .  STATE PLANE  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 2) THEN
-C
+
          IERROR = 0
          IF (SWITCH(2).NE.0 .AND. SWITCH(2).EQ.ZONE) RETURN
          IF (ISPHER .NE. 0 .AND. ISPHER .NE. 8) THEN
@@ -1347,9 +1351,9 @@ C
          E4Z = E4FNZ0(EZ)
          ITEMP = IPPARM
          IPPARM = 1
-C
+
 C     TRANSVERSE MERCATOR PROJECTION
-C
+
          IF (ITYPE .EQ. 1) THEN
             DATA(3) = TABLE(4)
             DATA(5) = PAKCZ0(TABLE(3))
@@ -1360,9 +1364,9 @@ C
             SWITCH(MSYS) = 0
             GO TO 900
          END IF
-C
+
 C     LAMBERT CONFORMAL PROJECTION
-C
+
          IF (ITYPE .EQ. 2) THEN
             DATA(3) = PAKCZ0(TABLE(6))
             DATA(4) = PAKCZ0(TABLE(5))
@@ -1374,9 +1378,9 @@ C
             SWITCH(MSYS) = 0
             GO TO 400
          END IF
-C
+
 C     POLYCONIC PROJECTION
-C
+
          IF (ITYPE .EQ. 3) THEN
             DATA(5) = PAKCZ0(TABLE(3))
             DATA(6) = PAKCZ0(TABLE(4))
@@ -1386,9 +1390,9 @@ C
             SWITCH(MSYS) = 0
             GO TO 700
          END IF
-C
+
 C     OBLIQUE MERCATOR PROJECTION
-C
+
          IF (ITYPE .EQ. 4) THEN
             DATA(3) = TABLE(4)
             DATA(4) = PAKCZ0(TABLE(6))
@@ -1401,17 +1405,17 @@ C
             SWITCH(MSYS) = 0
             GO TO 2000
          END IF
-C
+
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                    .  ALBERS CONICAL EQUAL AREA  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 3) THEN
-C
+
          IERROR = 0
          IF (SWITCH(3).NE.0 .AND. SWITCH(3).EQ.ZONE) RETURN
          SWITCH(3) = 0
@@ -1451,9 +1455,9 @@ C
          END IF
          C = MS1 * MS1 + NS03 * QS1
          RH003 = A03 * DSQRT (C - NS03 * QS0) / NS03
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LAT1,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LAT2,SGNA(2),DEGS(2),MINS(2),SECS(2))
          CALL RADDZ0 (LON003,SGNA(3),DEGS(3),MINS(3),SECS(3))
@@ -1476,15 +1480,15 @@ C
          SWITCH(3) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                     .  LAMBERT CONFORMAL CONIC  .
 C ......................................................................
-C
+
       IF (ISYS .NE. 4) GO TO 499
-C
+
   400    CONTINUE
          IERROR = 0
          IF (SWITCH(4).NE.0 .AND. SWITCH(4).EQ.ZONE) RETURN
@@ -1524,9 +1528,9 @@ C
          END IF
          F04 = MS1 / (NS04 * TS1 ** NS04)
          RH004 = A04 * F04 * TS0 ** NS04
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LAT1,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LAT2,SGNA(2),DEGS(2),MINS(2),SECS(2))
          CALL RADDZ0 (LON004,SGNA(3),DEGS(3),MINS(3),SECS(3))
@@ -1547,9 +1551,9 @@ C
          DATA(1) = A04
          DATA(2) = ES
          SWITCH(4) = ZONE
-C
+
 C     LIST STATE PLANE INITIALIZATION PARAMETERS IF NECESSARY
-C
+
          IF (ISYS .EQ. 2) THEN
             IPPARM = ITEMP
             IF (IERROR .NE. 0) RETURN
@@ -1559,19 +1563,19 @@ C
             SWITCH(2) = ZONE
             RETURN
          END IF
-C
+
          RETURN
 
 499   CONTINUE
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                            .  MERCATOR  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 5) THEN
-C
+
          IERROR = 0
          IF (SWITCH(5).NE.0 .AND. SWITCH(5).EQ.ZONE) RETURN
          SWITCH(5) = 0
@@ -1583,9 +1587,9 @@ C
          M1 = DCOS(LAT1) / (DSQRT( ONE - ES * DSIN(LAT1) **2))
          X005 = DATA(7)
          Y005 = DATA(8)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LAT1,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LON005,SGNA(2),DEGS(2),MINS(2),SECS(2))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,550) A05,ES,
@@ -1604,15 +1608,15 @@ C
          SWITCH(5) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                       .  POLAR STEREOGRAPHIC  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 6) THEN
-C
+
          IERROR = 0
          IF (SWITCH(6).NE.0 .AND. SWITCH(6).EQ.ZONE) RETURN
          SWITCH(6) = 0
@@ -1636,9 +1640,9 @@ C
             MCS = MSFNZ0 (E06,SINPHI,COSPHI)
             TCS = TSFNZ0 (E06,CON1,SINPHI)
          END IF
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON006,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LATC,SGNA(2),DEGS(2),MINS(2),SECS(2))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,650) A06,ES,
@@ -1657,15 +1661,15 @@ C
          SWITCH(6) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                            .  POLYCONIC  .
 C ......................................................................
-C
+
       IF (ISYS .NE. 7) GO TO  799
-C
+
   700    IERROR = 0
          IF (SWITCH(7).NE.0 .AND. SWITCH(7).EQ.ZONE) RETURN
          SWITCH(7) = 0
@@ -1681,9 +1685,9 @@ C
          X007 = DATA(7)
          Y007 = DATA(8)
          ML007 = MLFNZ0 (E007,E107,E207,E307,LAT007)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON007,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LAT007,SGNA(2),DEGS(2),MINS(2),SECS(2))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,750) A07,ES07,
@@ -1700,9 +1704,9 @@ C
          DATA(1) = A07
          DATA(2) = ES07
          SWITCH(7) = ZONE
-C
+
 C     LIST STATE PLANE INITIALIZATION PARAMETERS IF NECESSARY
-C
+
          IF (ISYS .EQ. 2) THEN
             IPPARM = ITEMP
             IF (IERROR .NE. 0) RETURN
@@ -1710,19 +1714,19 @@ C
             SWITCH(2) = ZONE
             RETURN
          END IF
-C
+
          RETURN
 
-799   CONTINUE         
-C
+799   CONTINUE
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                        .  EQUIDISTANT CONIC  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 8) THEN
-C
+
          IERROR = 0
          IF (SWITCH(8).NE.0 .AND. SWITCH(8).EQ.ZONE) RETURN
          SWITCH(8) = 0
@@ -1769,9 +1773,9 @@ C
          GL = ML1 + MS1 / NS08
          ML0 = MLFNZ0 (E008,E108,E208,E308,LAT0)
          RH008 = A08 * (GL - ML0)
-C
+
 C    LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LAT1,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LAT2,SGNA(2),DEGS(2),MINS(2),SECS(2))
          CALL RADDZ0 (LON008,SGNA(3),DEGS(3),MINS(3),SECS(3))
@@ -1810,15 +1814,15 @@ C
          SWITCH(8) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                       .  TRANSVERSE MERCATOR  .
 C ......................................................................
-C
+
       IF (ISYS .NE. 9) GO TO 999
-C
+
   900    CONTINUE
          IERROR = 0
          IF (DATA(1).NE.0.0D0.AND.DATA(1).NE.SAVE) SWITCH(9) = 0
@@ -1844,9 +1848,9 @@ C
             IND09 = 0
             ESP = ES09 / (ONE - ES09)
          END IF
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON009,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LAT009,SGNA(2),DEGS(2),MINS(2),SECS(2))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,950) A09,ES09,KS009,
@@ -1864,9 +1868,9 @@ C
          DATA(1) = A09
          DATA(2) = ES09
          SWITCH(9) = ZONE
-C
+
 C     LIST UTM PROJECTION INITIALIZATION PARAMETERS IF NECESSARY
-C
+
          IF (ISYS .EQ. 1) THEN
             IPPARM = ITEMP
             BUFFL(1) = A09
@@ -1889,9 +1893,9 @@ C
             SWITCH(1) = ZONE
             RETURN
          END IF
-C
+
 C     LIST STATE PLANE INITIALIZATION PARAMETERS IF NECESSARY
-C
+
          IF (ISYS .EQ. 2) THEN
             IPPARM = ITEMP
             IF (IERROR .NE. 0) RETURN
@@ -1899,19 +1903,19 @@ C
             SWITCH(2) = ZONE
             RETURN
          END IF
-C
+
          RETURN
 
 999   CONTINUE
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                          .  STEREOGRAPHIC  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 10) THEN
-C
+
          IERROR = 0
          IF (SWITCH(10).NE.0 .AND. SWITCH(10).EQ.ZONE) RETURN
          SWITCH(10) = 0
@@ -1922,9 +1926,9 @@ C
          Y010 = DATA(8)
          SINP10 = DSIN (LAT010)
          COSP10 = DCOS (LAT010)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON010,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LAT010,SGNA(2),DEGS(2),MINS(2),SECS(2))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,1050) A10,
@@ -1941,15 +1945,15 @@ C
          SWITCH(10) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                   .  LAMBERT AZIMUTHAL EQUAL-AREA  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 11) THEN
-C
+
          IERROR = 0
          IF (SWITCH(11).NE.0 .AND. SWITCH(11).EQ.ZONE) RETURN
          SWITCH(11) = 0
@@ -1960,9 +1964,9 @@ C
          Y011 = DATA(8)
          SINP11 = DSIN (LAT011)
          COSP11 = DCOS (LAT011)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON011,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LAT011,SGNA(2),DEGS(2),MINS(2),SECS(2))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,1150) A11,
@@ -1979,15 +1983,15 @@ C
          SWITCH(11) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                      .  AZIMUTHAL EQUIDISTANT  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 12) THEN
-C
+
          IERROR = 0
          IF (SWITCH(12).NE.0 .AND. SWITCH(12).EQ.ZONE) RETURN
          SWITCH(12) = 0
@@ -1998,9 +2002,9 @@ C
          Y012 = DATA(8)
          SINP12 = DSIN (LAT012)
          COSP12 = DCOS (LAT012)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON012,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LAT012,SGNA(2),DEGS(2),MINS(2),SECS(2))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,1250) A12,
@@ -2017,15 +2021,15 @@ C
          SWITCH(12) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                            .  GNOMONIC  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 13) THEN
-C
+
          IERROR = 0
          IF (SWITCH(13).NE.0 .AND. SWITCH(13).EQ.ZONE) RETURN
          SWITCH(13) = 0
@@ -2036,9 +2040,9 @@ C
          Y013 = DATA(8)
          SINP13 = DSIN (LAT013)
          COSP13 = DCOS (LAT013)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON013,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LAT013,SGNA(2),DEGS(2),MINS(2),SECS(2))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,1350) A13,
@@ -2055,15 +2059,15 @@ C
          SWITCH(13) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                          .  ORTHOGRAPHIC  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 14) THEN
-C
+
          IERROR = 0
          IF (SWITCH(14).NE.0 .AND. SWITCH(14).EQ.ZONE) RETURN
          SWITCH(14) = 0
@@ -2074,9 +2078,9 @@ C
          Y014 = DATA(8)
          SINP14 = DSIN (LAT014)
          COSP14 = DCOS (LAT014)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON014,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LAT014,SGNA(2),DEGS(2),MINS(2),SECS(2))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,1450) A14,
@@ -2093,15 +2097,15 @@ C
          SWITCH(14) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C             .  GENERAL VERTICAL NEAR-SIDE PERSPECTIVE  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 15) THEN
-C
+
          IERROR = 0
          IF (SWITCH(15).NE.0 .AND. SWITCH(15).EQ.ZONE) RETURN
          SWITCH(15) = 0
@@ -2113,9 +2117,9 @@ C
          Y015 = DATA(8)
          SINP15 = DSIN (LAT015)
          COSP15 = DCOS (LAT015)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON015,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LAT015,SGNA(2),DEGS(2),MINS(2),SECS(2))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,1550) A15,DATA(3),
@@ -2134,15 +2138,15 @@ C
          SWITCH(15) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                           .  SINUSOIDAL  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 16) THEN
-C
+
          IERROR = 0
          IF (SWITCH(16).NE.0 .AND. SWITCH(16).EQ.ZONE) RETURN
          SWITCH(16) = 0
@@ -2150,9 +2154,9 @@ C
          LON016 = PAKRZ0 (DATA(5))
          X016 = DATA(7)
          Y016 = DATA(8)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON016,SGNA(1),DEGS(1),MINS(1),SECS(1))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,1650) A16,
      .            SGNA(1),DEGS(1),MINS(1),SECS(1),
@@ -2167,15 +2171,15 @@ C
          SWITCH(16) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                         .  EQUIRECTANGULAR  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 17) THEN
-C
+
          IERROR = 0
          IF (SWITCH(17).NE.0 .AND. SWITCH(17).EQ.ZONE) RETURN
          SWITCH(17) = 0
@@ -2184,9 +2188,9 @@ C
          LON017 = PAKRZ0 (DATA(5))
          X017 = DATA(7)
          Y017 = DATA(8)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LAT1,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LON017,SGNA(2),DEGS(2),MINS(2),SECS(2))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,1750) A17,
@@ -2202,15 +2206,15 @@ C
          SWITCH(17) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                       .  MILLER CYLINDRICAL  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 18) THEN
-C
+
          IERROR = 0
          IF (SWITCH(18).NE.0 .AND. SWITCH(18).EQ.ZONE) RETURN
          SWITCH(18) = 0
@@ -2218,9 +2222,9 @@ C
          LON018 = PAKRZ0 (DATA(5))
          X018 = DATA(7)
          Y018 = DATA(8)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON018,SGNA(1),DEGS(1),MINS(1),SECS(1))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,1850) A18,
      .             SGNA(1),DEGS(1),MINS(1),SECS(1),
@@ -2235,15 +2239,15 @@ C
          SWITCH(18) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                        .  VAN DER GRINTEN I  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 19) THEN
-C
+
          IERROR = 0
          IF (SWITCH(19).NE.0 .AND. SWITCH(19).EQ.ZONE) RETURN
          SWITCH(19) = 0
@@ -2251,9 +2255,9 @@ C
          LON019 = PAKRZ0 (DATA(5))
          X019 = DATA(7)
          Y019 = DATA(8)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON019,SGNA(1),DEGS(1),MINS(1),SECS(1))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,1950) A19,
      .             SGNA(1),DEGS(1),MINS(1),SECS(1),
@@ -2268,15 +2272,15 @@ C
          SWITCH(19) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                    .  OBLIQUE MERCATOR (HOTINE)  .
 C ......................................................................
-C
+
       IF (ISYS .NE. 20) GO TO 2099
-C
+
  2000    IERROR = 0
          IF (SWITCH(20).NE.0 .AND. SWITCH(20).EQ.ZONE) RETURN
          SWITCH(20) = 0
@@ -2317,9 +2321,9 @@ C
             G = HALF * (F - ONE / F)
             GAMMA = ASINZ0 (DSIN (ALPHA) / D)
             LON020 = LONC - ASINZ0 (G * DTAN (GAMMA)) / BL
-C
+
 C     LIST INITIALIZATION PARAMETERS (CASE B).
-C
+
             CALL RADDZ0 (ALPHA,SGNA(1),DEGS(1),MINS(1),SECS(1))
             CALL RADDZ0 (LONC,SGNA(2),DEGS(2),MINS(2),SECS(2))
             CALL RADDZ0 (LAT0,SGNA(3),DEGS(3),MINS(3),SECS(3))
@@ -2339,9 +2343,9 @@ C
                DATA(1) = A
                DATA(2) = ES
                SWITCH(20) = ZONE
-C
+
 C     LIST STATE PLANE INITIALIZATION PARAMETERS IF NECESSARY
-C
+
                IF (ISYS .EQ. 2) THEN
                   IPPARM = ITEMP
                   IF (IERROR .NE. 0) RETURN
@@ -2349,7 +2353,7 @@ C
                   SWITCH(2) = ZONE
                   RETURN
                END IF
-C
+
                RETURN
             ELSE
                IF (IPEMSG .EQ. 0) WRITE (IPELUN,2040)
@@ -2426,15 +2430,15 @@ C
          RETURN
 
 2099  CONTINUE
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                       .       ROBINSON       .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 21) THEN
-C
+
          IERROR = 0
          IF (SWITCH(21).NE.0 .AND. SWITCH(21).EQ.ZONE) RETURN
          SWITCH(21) = 0
@@ -2484,9 +2488,9 @@ C
          XLR(20)=0.5322D0
          DO 2110 I=1,20
  2110    XLR(I)=XLR(I) * 0.9858D0
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON021,SGNA(1),DEGS(1),MINS(1),SECS(1))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,2150) A21,
      .             SGNA(1),DEGS(1),MINS(1),SECS(1),
@@ -2501,15 +2505,15 @@ C
          SWITCH(21) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C                      .  SPACE OBLIQUE MERCATOR  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 22) THEN
-C
+
          IERROR = 0
          IF (SWITCH(22).NE.0 .AND. SWITCH(22).EQ.ZONE) RETURN
          SWITCH(22) = 0
@@ -2520,9 +2524,9 @@ C
          Y022 = DATA(8)
          LAND = IDINT(DATA(3)+TOL)
          PATH = IDINT(DATA(4)+TOL)
-C
+
 C        CHECK IF LANDSAT NUMBER IS WITHIN RANGE 1 - 5
-C
+
          IF (LAND .GT. 0 .AND. LAND .LE. 5) THEN
             IF (LAND .LE. 3) LIMIT = 251
             IF (LAND .GE. 4) LIMIT = 233
@@ -2531,10 +2535,10 @@ C
             IERROR = 221
             RETURN
          END IF
-C
+
 C        CHECK IF PATH NUMBER IS WITHIN RANGE 1 - 251 FOR LANDSATS 1 - 3
 C        OR RANGE 1 - 233 FOR LANDSATS 4 - 5
-C
+
          IF (PATH .LE. 0 .OR. PATH .GT. LIMIT) THEN
             IF (IPEMSG .EQ. 0) WRITE (IPELUN,2240) LAND, PATH
  2240       FORMAT ('0ERROR PJ22Z0'/
@@ -2562,10 +2566,10 @@ C
          U=ESC/(ONE-ES22)
          XJ=(ONE-ES22)**3
          P22=P2/P1
-C
+
 C        COMPUTE FOURIER COEFFICIENTS.  LAM IS CURRENT VALUE OF
 C        LAMBDA DOUBLE-PRIME.
-C
+
          LAM=0
          CALL SERAZ0 (FB,FA2,FA4,FC1,FC3,LAM)
          SUMA2=FA2
@@ -2598,17 +2602,17 @@ C
          SUMB=SUMB+FB
          SUMC1=SUMC1+FC1
          SUMC3=SUMC3+FC3
-C
+
 C        THESE ARE THE VALUES OF FOURIER CONSTANTS.
-C
+
          A2=SUMA2/30.D0
          A4=SUMA4/60.D0
          B=SUMB/30.D0
          C1=SUMC1/15.D0
          C3=SUMC3/45.D0
-C
+
 C        LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,2250) A22,ES22,LAND,PATH,
      .                                          X022,Y022
  2250    FORMAT ('0INITIALIZATION PARAMETERS (SPACE OBL. MERCATOR',
@@ -2624,15 +2628,15 @@ C
          SWITCH(22) = ZONE
          RETURN
       END IF
-C
+
 C ......................................................................
 C             .  INITIALIZATION OF PROJECTION PARAMETERS  .
-C
+
 C          .  MODIFIED-STEREOGRAPHIC CONFORMAL (FOR ALASKA)  .
 C ......................................................................
-C
+
       IF (ISYS .EQ. 23) THEN
-C
+
          IERROR = 0
          IF (SWITCH(23).NE.0 .AND. SWITCH(23).EQ.ZONE) RETURN
          SWITCH(23) = 0
@@ -2661,9 +2665,9 @@ C
      .       (ONE+ESPHI))**(EC/TWO)) - HALFPI
          SCHIO=DSIN(CHIO)
          CCHIO=DCOS(CHIO)
-C
+
 C     LIST RESULTS OF PARAMETER INITIALIZATION.
-C
+
          CALL RADDZ0 (LON023,SGNA(1),DEGS(1),MINS(1),SECS(1))
          CALL RADDZ0 (LAT023,SGNA(2),DEGS(2),MINS(2),SECS(2))
          IF (IPPARM .EQ. 0) WRITE (IPPLUN,2350) A23,EC2,
@@ -2681,9 +2685,9 @@ C
          SWITCH(23) = ZONE
          RETURN
       END IF
-C
+
 C     INITIALIZATION OF PROJECTION COMPLETED
-C
+
       END
 C                   PJ01Z0
 C **********************************************************************
@@ -2692,10 +2696,10 @@ C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
 C                              *  U T M  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ01Z0 (COORD,CRDIO,INDIC)
-C
-C
+
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -2706,13 +2710,13 @@ C
       COMMON /PRINZ0/ IPEMSG,IPELUN,IPPARM,IPPLUN
       COMMON /TOGGLE/ SWITCH
       PARAMETER (FWD=0, INV=1)
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -2727,13 +2731,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -2746,7 +2750,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ02Z0
 C **********************************************************************
@@ -2755,9 +2759,9 @@ C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
 C                           *  STATE PLANE  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ02Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -2768,15 +2772,15 @@ C
       COMMON /PRINZ0/ IPEMSG,IPELUN,IPPARM,IPPLUN
       COMMON /PJ02/ ITYPE
       COMMON /TOGGLE/ SWITCH
-C
+
       PARAMETER (FWD=0, INV=1)
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -2787,42 +2791,42 @@ C
             IERROR = 023
             RETURN
          END IF
-C
+
 C     TRANSVERSE MERCATOR PROJECTION
-C
+
          IF (ITYPE .EQ. 1) THEN
             CALL PJ09Z0 (GEOG,PROJ,FWD)
          END IF
-C
+
 C     LAMBERT CONFORMAL PROJECTION
-C
+
          IF (ITYPE .EQ. 2) THEN
             CALL PJ04Z0 (GEOG,PROJ,FWD)
          END IF
-C
+
 C     POLYCONIC PROJECTION
-C
+
          IF (ITYPE .EQ. 3) THEN
             CALL PJ07Z0 (GEOG,PROJ,FWD)
          END IF
-C
+
 C     OBLIQUE MERCATOR PROJECTION
-C
+
          IF (ITYPE .EQ. 4) THEN
             CALL PJ20Z0 (GEOG,PROJ,FWD)
          END IF
-C
+
          CRDIO(1) = PROJ(1)
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -2831,36 +2835,36 @@ C
             IERROR = 025
             RETURN
          END IF
-C
+
 C     TRANSVERSE MERCATOR PROJECTION
-C
+
          IF (ITYPE .EQ. 1) THEN
             CALL PJ09Z0 (PROJ,GEOG,INV)
          END IF
-C
+
 C     LAMBERT CONFORMAL PROJECTION
-C
+
          IF (ITYPE .EQ. 2) THEN
             CALL PJ04Z0 (PROJ,GEOG,INV)
          END IF
-C
+
 C     POLYCONIC PROJECTION
-C
+
          IF (ITYPE .EQ. 3) THEN
             CALL PJ07Z0 (PROJ,GEOG,INV)
          END IF
-C
+
 C     OBLIQUE MERCATOR PROJECTION
-C
+
          IF (ITYPE .EQ. 4) THEN
             CALL PJ20Z0 (PROJ,GEOG,INV)
          END IF
-C
+
          CRDIO(1) = GEOG(1)
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ03Z0
 C **********************************************************************
@@ -2870,9 +2874,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                    *  ALBERS CONICAL EQUAL AREA  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ03Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -2887,13 +2891,13 @@ C **** PARAMETERS **** A,E,ES,LAT1,LAT2,LON0,LAT0,X0,Y0,NS,C,RH0 *******
       DATA TOL /1.0D-7/
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA ZERO,HALF,ONE /0.0D0,0.5D0,1.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -2914,13 +2918,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -2951,7 +2955,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ04Z0
 C **********************************************************************
@@ -2961,9 +2965,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                     *  LAMBERT CONFORMAL CONIC  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ04Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -2978,13 +2982,13 @@ C **** PARAMETERS **** A,E,ES,LAT1,LAT2,LON0,LAT0,X0,Y0,NS,F,RH0 *******
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA EPSLN /1.0D-10/
       DATA ZERO,ONE /0.0D0,1.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -3015,13 +3019,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -3049,7 +3053,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ05Z0
 C **********************************************************************
@@ -3059,9 +3063,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                            *  MERCATOR  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ05Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -3075,13 +3079,13 @@ C **** PARAMETERS **** A,E,ES,LON0,X0,Y0,NS,F,RH0,LAT1,M1 **************
       COMMON /TOGGLE/ SWITCH
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA EPSLN /1.0D-10/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -3105,13 +3109,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -3131,7 +3135,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ06Z0
 C **********************************************************************
@@ -3141,9 +3145,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                       *  POLAR STEREOGRAPHIC  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ06Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -3156,13 +3160,13 @@ C **** PARAMETERS **** A,E,ES,LON0,LATC,X0,Y0,E4,MCS,TCS,FAC,IND *******
       COMMON /PJ06/ A,LON0,X0,Y0,E,E4,FAC,MCS,TCS,IND
       COMMON /TOGGLE/ SWITCH
       DATA ZERO,ONE,TWO /0.0D0,1.0D0,2.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -3186,13 +3190,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -3221,7 +3225,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ07Z0
 C **********************************************************************
@@ -3231,9 +3235,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                            *  POLYCONIC  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ07Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -3247,13 +3251,13 @@ C **** PARAMETERS **** A,E,ES,LON0,LAT0,X0,Y0,E0,E1,E2,ML0 *************
       COMMON /TOGGLE/ SWITCH
       DATA TOL /1.0D-7/
       DATA ZERO,ONE /0.0D0,1.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -3281,13 +3285,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -3314,7 +3318,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ08Z0
 C **********************************************************************
@@ -3324,9 +3328,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                        *  EQUIDISTANT CONIC  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ08Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -3340,13 +3344,13 @@ C ** PARAMETERS * A,E,ES,LAT1,LAT2,LON0,LAT0,X0,Y0,E0,E1,E2,E3,NS,GL,RH0
       COMMON /TOGGLE/ SWITCH
       DATA ZERO,ONE /0.0D0,1.0D0/
       DATA EPSLN /1.0D-10/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -3365,13 +3369,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -3395,7 +3399,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ09Z0
 C **********************************************************************
@@ -3405,9 +3409,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                       *  TRANSVERSE MERCATOR  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ09Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -3424,13 +3428,13 @@ C **** PARAMETERS ** A,E,ES,KS0,LON0,LAT0,X0,Y0,E0,E1,E2,E3,ESP,ML0,IND
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA TEN /10.0D0/
       DATA EPSLN,NIT /1.0D-10,6/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -3458,7 +3462,7 @@ C
          CRDIO(1) = PROJ(1)
          CRDIO(2) = PROJ(2)
          RETURN
-C
+
   240    SINPHI = DSIN (LAT)
          COSPHI = DCOS (LAT)
          AL = COSPHI * DLON
@@ -3479,13 +3483,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -3512,7 +3516,7 @@ C
          CRDIO(1) = GEOG(1)
          CRDIO(2) = GEOG(2)
          RETURN
-C
+
   340    CON = (ML0 + Y / KS0) / A
          PHI = CON
          DO 360 I = 1,NIT
@@ -3555,7 +3559,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ10Z0
 C **********************************************************************
@@ -3565,9 +3569,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                          *  STEREOGRAPHIC  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ10Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -3582,13 +3586,13 @@ C **** PARAMETERS **** A,LON0,LAT0,X0,Y0,SINPH0,COSPH0 *****************
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA EPSLN /1.0D-10/
       DATA ZERO,ONE,TWO /0.0D0,1.0D0,2.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -3617,13 +3621,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -3662,7 +3666,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ11Z0
 C **********************************************************************
@@ -3672,9 +3676,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                   *  LAMBERT AZIMUTHAL EQUAL-AREA  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ11Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -3689,13 +3693,13 @@ C **** PARAMETERS **** A,LON0,LAT0,X0,Y0,SINPH0,COSPH0 *****************
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA EPSLN /1.0D-10/
       DATA ZERO,ONE,TWO /0.0D0,1.0D0,2.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -3725,13 +3729,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -3777,7 +3781,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ12Z0
 C **********************************************************************
@@ -3787,9 +3791,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                      *  AZIMUTHAL EQUIDISTANT  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ12Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -3804,13 +3808,13 @@ C **** PARAMETERS **** A,LON0,LAT0,X0,Y0,SINPH0,COSPH0 *****************
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA EPSLN /1.0D-10/
       DATA ZERO,ONE,TWO /0.0D0,1.0D0,2.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -3843,13 +3847,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -3894,7 +3898,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ13Z0
 C **********************************************************************
@@ -3904,9 +3908,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                            *  GNOMONIC  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ13Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -3921,13 +3925,13 @@ C **** PARAMETERS **** A,LON0,LAT0,X0,Y0,SINPH0,COSPH0 *****************
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA EPSLN /1.0D-10/
       DATA ZERO,ONE /0.0D0,1.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -3955,13 +3959,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -4000,7 +4004,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ14Z0
 C **********************************************************************
@@ -4010,9 +4014,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                          *  ORTHOGRAPHIC  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ14Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -4027,13 +4031,13 @@ C **** PARAMETERS **** A,LON0,LAT0,X0,Y0,SINPH0,COSPH0 *****************
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA EPSLN /1.0D-10/
       DATA ZERO,ONE /0.0D0,1.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -4061,13 +4065,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -4112,7 +4116,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ15Z0
 C **********************************************************************
@@ -4122,9 +4126,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C              *  GENERAL VERTICAL NEAR-SIDE PERSPECTIVE  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ15Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -4139,13 +4143,13 @@ C **** PARAMETERS **** A,P,LON0,LAT0,X0,Y0,SINPH0,COSPH0 ***************
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA EPSLN /1.0D-10/
       DATA ZERO,ONE /0.0D0,1.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -4173,13 +4177,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -4229,7 +4233,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ16Z0
 C **********************************************************************
@@ -4239,9 +4243,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                           *  SINUSOIDAL  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ16Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -4255,13 +4259,13 @@ C **** PARAMETERS **** A,LON0,X0,Y0 ************************************
       COMMON /TOGGLE/ SWITCH
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA EPSLN /1.0D-10/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -4278,13 +4282,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -4312,7 +4316,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ17Z0
 C **********************************************************************
@@ -4322,9 +4326,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                  *  EQUIRECTANGULAR   *
 C **********************************************************************
-C
+
       SUBROUTINE PJ17Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -4337,13 +4341,13 @@ C **** PARAMETERS **** A,LON0,X0,Y0,LAT1 *******************************
       COMMON /PJ17/ A,LON0,X0,Y0,LAT1
       COMMON /TOGGLE/ SWITCH
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -4360,13 +4364,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -4388,7 +4392,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ18Z0
 C **********************************************************************
@@ -4398,9 +4402,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                       *  MILLER CYLINDRICAL  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ18Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -4414,13 +4418,13 @@ C **** PARAMETERS **** A,LON0,X0,Y0 ************************************
       COMMON /TOGGLE/ SWITCH
       DATA FORTPI /0.78539816339744833D0/
       DATA ZERO,ONEQ,TWOH /0.0D0,1.25D0,2.5D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -4437,13 +4441,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -4459,7 +4463,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ19Z0
 C **********************************************************************
@@ -4469,9 +4473,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                        *  VAN DER GRINTEN I  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ19Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -4487,13 +4491,13 @@ C **** PARAMETERS **** A,LON0,X0,Y0 ************************************
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA EPSLN/1.0D-10/
       DATA ZERO,HALF,ONE,TWO,THREE/0.0D0,0.5D0,1.0D0,2.0D0,3.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -4538,15 +4542,15 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C     ALGORITHM DEVELOPED BY D.P. RUBINCAM, THE AMERICAN CARTOGRAPHER,
 C                1981, V. 8, NO. 2, P. 177-180.
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -4584,7 +4588,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ20Z0
 C **********************************************************************
@@ -4594,9 +4598,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                    *  OBLIQUE MERCATOR (HOTINE)  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ20Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN
@@ -4613,13 +4617,13 @@ C ********************** X0,Y0,GAMMA,LON0,AL,BL,EL *********************
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
       DATA TOL,EPSLN /1.0D-7,1.0D-10/
       DATA ZERO,HALF,ONE /0.0D0,0.5D0,1.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -4661,13 +4665,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -4701,7 +4705,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ21Z0
 C **********************************************************************
@@ -4711,9 +4715,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                       *       ROBINSON       *
 C **********************************************************************
-C
+
       SUBROUTINE PJ21Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN,IP1,NN
@@ -4729,13 +4733,13 @@ C **** PARAMETERS **** A,LON0,X0,Y0 ************************************
       DATA DG1 /0.01745329252D0/
       DATA PI /3.14159265358979323846D0/
       DATA EPSLN /1.0D-10/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -4748,11 +4752,11 @@ C
   120    LON = ADJLZ0 (GEOG(1) - LON0)
          P2=DABS(GEOG(2)/5.0D0/DG1)
          IP1=IDINT(P2-EPSLN)
-C
+
 C        STIRLING'S INTERPOLATION FORMULA (USING 2ND DIFF.)
 C            USED WITH LOOKUP TABLE TO COMPUTE RECTANGULAR COORDINATES
 C            FROM LAT/LONG.
-C
+
          P2=P2-DBLE(IP1)
          X=A*(XLR(IP1+2)+P2*(XLR(IP1+3)-XLR(IP1+1))/2.0D0
      .     +P2*P2*(XLR(IP1+3)-2.0D0*XLR(IP1+2)+XLR(IP1+1))/2.0D0)*LON
@@ -4765,13 +4769,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -4787,12 +4791,12 @@ C
          IP1 = IDINT(P2 - EPSLN)
          IF (IP1.EQ.0) IP1 = 1
          NN = 0
-C
+
 C     STIRLING'S INTERPOLATION FORMULA AS USED IN FORWARD TRANSFORMATION
 C     IS REVERSED FOR FIRST ESTIMATION OF LAT. FROM RECTANGULAR
 C     COORDINATES.  LAT. IS THEN ADJUSTED BY ITERATION UNTIL USE OF
 C     FORWARD SERIES PROVIDES CORRECT VALUE OF Y WITHIN TOLERANCE.
-C
+
   230    U = PR(IP1 + 3) - PR(IP1 + 1)
          V = PR(IP1 + 3) - 2.0D0 * PR(IP1 + 2) + PR(IP1 + 1)
          T = 2.0D0 * (DABS(YY) - PR(IP1 + 2))/ U
@@ -4819,10 +4823,10 @@ C
   245    FORMAT ('0ERROR PJ21Z0'/
      .           ' TOO MANY ITERATIONS FOR INVERSE ROBINSON')
   250    GEOG(2) = PHID * DG1
-C
+
 C        CALCULATE LONG. USING FINAL LAT. WITH TRANSPOSED FORWARD
 C        STIRLING'S INTERPOLATION FORMULA.
-C
+
          GEOG(1)=LON0+X/A/(XLR(IP1+2)+P2*(XLR(IP1+3)-XLR(IP1+1))/2.0D0
      .     +P2*P2*(XLR(IP1+3)-2.0D0*XLR(IP1+2)+XLR(IP1+1))/2.0D0)
          GEOG(1) = ADJLZ0(GEOG(1))
@@ -4830,7 +4834,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ22Z0
 C **********************************************************************
@@ -4840,9 +4844,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C                      *  SPACE OBLIQUE MERCATOR  *
 C **********************************************************************
-C
+
       SUBROUTINE PJ22Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN,PATH,LAND,NN,L
@@ -4859,13 +4863,13 @@ C **** PARAMETERS **** A,E,ES,LON0,LATC,X0,Y0,MCS,TCS,FAC,IND **********
       DATA DG1 /0.01745329252D0/
       DATA PI /3.14159265358979323846D0/
       DATA ZERO,ONE,TWO /0.0D0,1.0D0,2.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -4880,9 +4884,9 @@ C
          GO TO 230
   225    LON=GEOG(1)-129.30D0*DG1+PI*TWO/233.D0*DBLE(PATH)
   230    LAT=GEOG(2)
-C
+
 C        TEST FOR LAT. AND LONG. APPROACHING 90 DEGREES.
-C
+
          IF (LAT.GT.1.570796D0) LAT=1.570796D0
          IF (LAT.LT.-1.570796D0) LAT =-1.570796D0
          IF (LAT.GE.0) LAMPP=PI/TWO
@@ -4909,9 +4913,9 @@ C
          L=L+1
          IF (L.GT.50) GO TO 234
          GO TO 232
-C
+
 C        ADJUST FOR LANDSAT ORIGIN.
-C
+
   233    RLM=PI*(16.D0/31.D0+ONE/248.D0)
          RLM2=RLM+TWO*PI
          NN=NN+1
@@ -4925,15 +4929,15 @@ C
      .           ' 50 ITERATIONS WITHOUT CONVERGENCE.')
          IERROR = 223
   236    CONTINUE
-C
+
 C        LAMDP COMPUTED.  NOW COMPUTE PHIDP.
-C
+
          SP=DSIN(LAT)
          PHIDP=ASINZ0(((ONE-ES)*CA*SP-SA*DCOS(LAT)*DSIN(LAMT))/DSQRT(ONE
      .     -ES*SP*SP))
-C
+
 C        COMPUTE X AND Y
-C
+
          TANPH=DLOG(DTAN(PI/4.0D0+PHIDP/TWO))
          SD=DSIN(LAMDP)
          SDSQ=SD*SD
@@ -4950,13 +4954,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -4966,12 +4970,12 @@ C
          RETURN
   320    X = PROJ(1) -X0
          Y = PROJ(2) -Y0
-C
+
 C        COMPUTE TRANSFORMED LAT/LONG AND GEODETIC LAT/LONG, GIVEN X,Y.
-C
+
 C        BEGIN INVERSE COMPUTATION WITH APPROXIMATION FOR LAMDP.  SOLVE
 C        FOR TRANSFORMED LONG.
-C
+
          LAMDP=X/A/B
          NN=0
   325    SAV=LAMDP
@@ -4987,16 +4991,16 @@ C
          NN=NN+1
          IF (NN.EQ.50) GO TO 330
          GO TO 325
-C
+
 C        COMPUTE TRANSFORMED LAT.
-C
+
   330    SL=DSIN(LAMDP)
          FAC=DEXP(DSQRT(ONE+S*S/XJ/XJ)*(Y/A-C1*SL-C3*DSIN(3.0D0*LAMDP)))
          ACTAN=DATAN(FAC)
          PHIDP=TWO*(ACTAN-PI/4.0D0)
-C
+
 C        COMPUTE GEODETIC LATITUDE.
-C
+
          DD=SL*SL
          IF (DABS(DCOS(LAMDP)).LT.TOL) LAMDP=LAMDP-TOL
          SPP=DSIN(PHIDP)
@@ -5004,18 +5008,18 @@ C
          LAMT=DATAN(((ONE-SPPSQ/(ONE-ES))*DTAN(LAMDP)*CA-SPP*SA*DSQRT((
      .   ONE+Q*DD)*(ONE-SPPSQ)-SPPSQ*U)/DCOS(LAMDP))/(ONE-SPPSQ*(ONE+U))
      .   )
-C
+
 C        CORRECT INVERSE QUADRANT.
-C
+
          IF (LAMT.GE.0) SL=ONE
          IF (LAMT.LT.0) SL=-ONE
          IF (DCOS(LAMDP).GE.0) SCL=ONE
          IF (DCOS(LAMDP).LT.0) SCL=-ONE
          LAMT=LAMT-PI/TWO*(ONE-SCL)*SL
          LON=LAMT-P22*LAMDP
-C
+
 C        COMPUTE GEODETIC LATITUDE.
-C
+
          IF (DABS(SA).LT.TOL) LAT=ASINZ0(SPP/DSQRT((ONE-ES)*(ONE-ES)
      .      +ES*SPPSQ))
          IF (DABS(SA).LT.TOL) GO TO 335
@@ -5030,7 +5034,7 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   PJ23Z0
 C **********************************************************************
@@ -5040,9 +5044,9 @@ C **              MATHEMATICAL ANALYSIS BY JOHN SNYDER                **
 C **********************************************************************
 C            * MODIFIED-STEREOGRAPHIC CONFORMAL (FOR ALASKA) *
 C **********************************************************************
-C
+
       SUBROUTINE PJ23Z0 (COORD,CRDIO,INDIC)
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       INTEGER   IERROR,IPEMSG,IPELUN,IPPARM,IPPLUN,N,J,NN
@@ -5059,13 +5063,13 @@ C **** PARAMETERS **** A,E,ES,LON0,LAT0,X0,Y0,SINPH0,COSPH0 ************
       PARAMETER ( HALF   = 0.5D0 )
       DATA EPSLN /1.0D-10/
       DATA ZERO,ONE,TWO /0.0D0,1.0D0,2.0D0/
-C
+
 C ......................................................................
 C                      .  FORWARD TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 0) THEN
-C
+
          GEOG(1) = COORD(1)
          GEOG(2) = COORD(2)
          IERROR = 0
@@ -5076,15 +5080,15 @@ C
          IERROR = 232
          RETURN
   120    LON = ADJLZ0 (GEOG(1) - LON0)
-C
+
 C     CALCULATE X-PRIME AND Y-PRIME FOR OBLIQUE STEREOGRAPHIC PROJ.
 C          FROM LAT/LONG.
-C
+
          SINLON = DSIN (LON)
          COSLON = DCOS (LON)
          ESPHI = EC *DSIN(GEOG(2))
          CHI=TWO*DATAN(DTAN((HALFPI+GEOG(2))*HALF)*
-     &                 ((ONE-ESPHI)/(ONE+ESPHI))**(EC*HALF)) 
+     &                 ((ONE-ESPHI)/(ONE+ESPHI))**(EC*HALF))
      &          - HALFPI
          SCHI=DSIN(CHI)
          CCHI=DCOS(CHI)
@@ -5092,10 +5096,10 @@ C
          S=TWO/(ONE+G)
          XP=S*CCHI*SINLON
          YP=S*(CCHIO*SCHI-SCHIO*CCHI*COSLON)
-C
+
 C     USE KNUTH ALGORITHM FOR SUMMING COMPLEX TERMS, TO CONVERT
 C     OBLIQUE STEREOGRAPHIC TO MODIFIED-STEREOGRAPHIC COORD.
-C
+
          R=XP+XP
          S=XP*XP+YP*YP
          AR=ACOEF(N)
@@ -5123,13 +5127,13 @@ C
          CRDIO(2) = PROJ(2)
          RETURN
       END IF
-C
+
 C ......................................................................
 C                      .  INVERSE TRANSFORMATION  .
 C ......................................................................
-C
+
       IF (INDIC .EQ. 1) THEN
-C
+
          PROJ(1) = COORD(1)
          PROJ(2) = COORD(2)
          IERROR = 0
@@ -5142,11 +5146,11 @@ C
          XP=X
          YP=Y
          NN=0
-C
+
 C     USE KNUTH ALGORITHM FOR SUMMING COMPLEX TERMS, TO CONVERT
 C     MODIFIED-STEREOGRAPHIC CONFORMAL TO OBLIQUE STEREOGRAPHIC
 C     COORDINATES (XP,YP).
-C
+
   225    R=XP+XP
          S=XP*XP+YP*YP
          AR=ACOEF(N)
@@ -5194,9 +5198,9 @@ C
          IERROR = 235
          GO TO 238
   237    IF (DS.GT.EPSLN) GO TO 225
-C
+
 C     CONVERT OBLIQUE STEREOGRAPHIC COORDINATES TO LAT/LONG.
-C
+
   238    RH = DSQRT (XP * XP + YP * YP)
          Z = TWO * DATAN (RH / TWO)
          SINZ = DSIN (Z)
@@ -5229,29 +5233,29 @@ C
          CRDIO(2) = GEOG(2)
          RETURN
       END IF
-C
+
       END
 C                   QSFNZ0
 C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION QSFNZ0 (ECCENT,SINPHI,COSPHI)
-C
+
 C FUNCTION TO COMPUTE CONSTANT (SMALL Q).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       DATA HALF,ONE,TWO /0.5D0,1.0D0,2.0D0/
       DATA EPSLN /1.0D-7/
-C
+
       IF (ECCENT .LT. EPSLN) GO TO 020
       CON = ECCENT * SINPHI
       QSFNZ0 = (ONE - ECCENT * ECCENT) * (SINPHI / (ONE - CON * CON) -
      .         (HALF / ECCENT) * DLOG ((ONE - CON) / (ONE + CON)))
       RETURN
-C
+
   020 QSFNZ0 = TWO * SINPHI
       RETURN
       END
@@ -5260,15 +5264,15 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       SUBROUTINE RADDZ0 (RAD,SGNA,DEGS,MINS,SECS)
-C
+
 C SUBROUTINE TO CONVERT ANGLE FROM RADIANS TO SIGNED DMS
 C SGNA : SIGN OF ANGLE
 C DEGS : DEGREES PORTION OF ANGLE
 C MINS : MINUTES PORTION OF ANGLE
 C SECS : SECONDS PORTION OF ANGLE
-C
+
       REAL*8 RAD,CON,RADSEC,ZERO,TOL
       REAL SECS
       INTEGER   DEGS,MINS
@@ -5276,48 +5280,48 @@ C
       DATA RADSEC /206264.806247D0/
       DATA ZERO,TOL /0.0D0,1.0D-4/
       DATA BLANK,NEG /' ','-'/
-C
+
 C CONVERT THE ANGLE TO SECONDS.
-C
+
       CON = DABS(RAD) * RADSEC
       ISEC = IDINT(CON + TOL)
-C
+
 C DETERMINE THE SIGN OF THE ANGLE.
-C
+
       SGNA = BLANK
       IF (RAD .LT. ZERO .AND. CON .GE. 0.00005D0) SGNA = NEG
       IF (CON .LT. 0.00005D0) CON = ZERO
-C
+
 C COMPUTE DEGREES PART OF THE ANGLE.
-C
+
       INTG = ISEC / 3600
       DEGS = INTG
       ISEC = INTG * 3600
       CON = CON - DBLE(ISEC)
       ISEC = IDINT(CON + TOL)
-C
+
 C COMPUTE MINUTES PART OF THE ANGLE.
-C
+
       MINS = ISEC / 60
       ISEC = MINS * 60
       CON = CON - DBLE(ISEC)
-C
+
 C COMPUTE SECONDS PART OF THE ANGLE.
-C
+
       SECS = SNGL(CON)
-C
+
 C     INCREASE MINS IF SECS CLOSE TO 60.000
-C
+
       IF(SECS .LT. 59.9995D0) RETURN
       MINS = MINS + 1
       SECS = 0.0
-C
+
 C     INCREASE DEGS IF MINS EQUAL 60
-C
+
       IF(MINS .LE. 59) RETURN
       MINS = 0
       DEGS = DEGS + 1
-C
+
       RETURN
       END
 C                   SERAZ0
@@ -5325,13 +5329,13 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       SUBROUTINE SERAZ0 (FB,FA2,FA4,FC1,FC3,LAM)
-C
+
 C     COMPUTES INTEGRAL FUNCTION OF TRANSFORMED LONG. FOR FOURIER
 C     CONSTANTS A2, A4, B, C1, AND C3.
 C     LAM IS INTEGRAL VALUE OF TRANSFORMED LONG.
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       COMMON /NORM/ Q,T,U,W,ES,P22,SA,CA,XJ
@@ -5358,11 +5362,14 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       SUBROUTINE SPHDZ0(ISPH,PARM)
-C
+
 C     SUBROUTINE TO COMPUTE SPHEROID PARAMETERS
-C
+
+C       Modified Steve Howard, US EPA, 2008 to support spheres 19-21.
+C       Logic clean-up Carlie J. Coats, Jr., UNC IE, 2015
+
 C     ISPH IS THE SPHEROID CODE FROM THE FOLLOWING LIST:
 C     0 = CLARKE 1866           1 = CLARKE 1880
 C     2 = BESSEL                3 = NEW INTERNATIONAL 1967
@@ -5375,91 +5382,92 @@ C    14 = AUSTRALIAN NATIONAL  15 = KRASSOVSKY
 C    16 = HOUGH                17 = MERCURY 1960
 C    18 = MODIFIED MERC 1968   19 = SPHERE OF RADIUS 6370997 M
 C    20 = MM5 SPHERE R=6370000 21 = WRF-NMM SPHERE R=6371200
-C
+
 C    PARM IS ARRAY OF PROJECTION PARAMETERS:
 C       PARM(1) IS THE SEMI-MAJOR AXIS
 C       PARM(2) IS THE ECCENTRICITY SQUARED
-C
+
 C     IF ISPH IS NEGATIVE, USER SPECIFIED PROJECTION PARAMETERS ARE TO
 C     DEFINE THE RADIUS OF SPHERE OR ELLIPSOID CONSTANTS AS APPROPRIATE
-C
+
 C     IF ISPH = 0 , THE DEFAULT IS RESET TO CLARKE 1866
-C
+
 C ****                                                             *****
-C
+
       IMPLICIT REAL*8 (A-H,O-Z)
       SAVE
-      DIMENSION PARM(15),AXIS(22),BXIS(22)
-C
+      DIMENSION PARM(15)
+
       COMMON /ELLPZ0/ AZ,EZ,ESZ,E0Z,E1Z,E2Z,E3Z,E4Z
       COMMON /SPHRZ0/ AZZ
       COMMON /ERRMZ0/ IERROR
       COMMON /PRINZ0/ IPEMSG,IPELUN,IPPARM,IPPLUN
       COMMON /PROJZ0/ IPROJ
-C
-      DATA ZERO,ONE /0.0D0,1.0D0/
-C
-      DATA AXIS/6378206.4D0,6378249.145D0,6377397.155D0,6378157.5D0,
-     . 6378388.0D0,6378135.0D0,6377276.3452D0,6378145.0D0,6378137.0D0,
-     . 6377563.396D0,6377304.063D0,6377340.189D0,6378137.0D0,6378155.D0,
-     . 6378160.0D0,6378245.0D0,6378270.0D0,6378166.0D0,6378150.0D0,
-     . 6370997.0D0,6370000.0D0,6371200.0D0/
-C
-      DATA BXIS/6356583.8D0,6356514.86955D0,6356078.96284D0,
-     . 6356772.2D0,6356911.94613D0,6356750.519915D0,6356075.4133D0,
-     . 6356759.769356D0,6356752.314140D0,6356256.91D0,6356103.039D0,
-     . 6356034.448D0,6356752.314245D0,6356773.3205D0,6356774.719D0,
-     . 6356863.0188D0,6356794.343479D0,6356784.283666D0,6356768.337303D0
-     . ,6370997.0D0,6370000.0D0,6371200.0D0/
-C
+
+      REAL*8, PARAMETER :: ZERO = 0.0D0
+      REAL*8, PARAMETER :: ONE  = 1.0D0
+      REAL*8, PARAMETER :: AXIS(0:21) =
+     & (/ 6378206.4D0,6378249.145D0,6377397.155D0,6378157.5D0,
+     & 6378388.0D0,6378135.0D0,6377276.3452D0,6378145.0D0,6378137.0D0,
+     & 6377563.396D0,6377304.063D0,6377340.189D0,6378137.0D0,6378155.D0,
+     & 6378160.0D0,6378245.0D0,6378270.0D0,6378166.0D0,6378150.0D0,
+     & 6370997.0D0,6370000.0D0,6371200.0D0 /)
+
+      REAL*8, PARAMETER :: BXIS(0:21) =
+     & (/ 6356583.8D0,6356514.86955D0,6356078.96284D0,
+     & 6356772.2D0,6356911.94613D0,6356750.519915D0,6356075.4133D0,
+     & 6356759.769356D0,6356752.314140D0,6356256.91D0,6356103.039D0,
+     & 6356034.448D0,6356752.314245D0,6356773.3205D0,6356774.719D0,
+     & 6356863.0188D0,6356794.343479D0,6356784.283666D0,6356768.337303D0
+     & ,6370997.0D0,6370000.0D0,6371200.0D0 /)
+
       IF (ISPH.GE.0) GO TO 5
-C
+
 C     INITIALIZE USER SPECIFIED SPHERE AND ELLIPSOID PARAMETERS
-C
+
       AZZ = ZERO
-      AZ = ZERO
-      EZ = ZERO
+      AZ  = ZERO
+      EZ  = ZERO
       ESZ = ZERO
       E0Z = ZERO
       E1Z = ZERO
       E2Z = ZERO
       E3Z = ZERO
       E4Z = ZERO
-C
+
 C     FETCH FIRST TWO USER SPECIFIED PROJECTION PARAMETERS
-C
+
       A = DABS(PARM(1))
       B = DABS(PARM(2))
       IF (A .GT. ZERO .AND. B .GT. ZERO) GO TO 13
       IF (A .GT. ZERO .AND. B .LE. ZERO) GO TO 12
       IF (A .LE. ZERO .AND. B .GT. ZERO) GO TO 11
-C
+
 C     DEFAULT NORMAL SPHERE AND CLARKE 1866 ELLIPSOID
-C
-      JSPH = 1
+
       GO TO 10
-C
+
 C     DEFAULT CLARKE 1866 ELLIPSOID
-C
+
    11 A = AXIS(1)
       B = BXIS(1)
       GO TO 14
-C
+
 C     USER SPECIFIED RADIUS OF SPHERE
-C
+
    12 AZZ = A
       GO TO 15
-C
+
 C     USER SPECIFIED SEMI-MAJOR AND SEMI-MINOR AXES OF ELLIPSOID
-C
+
    13 IF (B .LE. ONE) GO TO 15
    14 ES = ONE - (B / A)**2
       GO TO 16
-C
+
 C     USER SPECIFIED SEMI-MAJOR AXIS AND ECCENTRICITY SQUARED
-C
-   15 ES = B
-   16 AZ = A
+
+   15 ES  = B
+   16 AZ  = A
       ESZ = ES
       EZ  = DSQRT(ES)
       E0Z = E0FNZ0(ES)
@@ -5470,32 +5478,32 @@ C
       PARM(1) = A
       PARM(2) = ES
       RETURN
-C
+
 C     CHECK FOR VALID SPHEROID SELECTION
-C
+
     5 CONTINUE
 
-C       According to Catherine Seppanen, UNC_CEP, the following 
+C       According to Catherine Seppanen, UNC_CEP, the following
 C       check is inadequate, and should be removed:
 C       -- CJC, 1/18/2004
 C      IF (PARM(1).NE.ZERO.AND.IPROJ.NE.1) RETURN
 
-      JSPH = IABS(ISPH) + 1
-      IF (JSPH.LE.22) GO TO 10
-      IERROR = 999
-      IF (IPEMSG .EQ. 0) WRITE (IPELUN,1) ISPH
-    1 FORMAT('0ERROR SPHDZ0:  SPHEROID CODE OF ',I5,' RESET TO 0')
-      ISPH = 0
-      JSPH = 1
-C
+      I = IABS(ISPH)
+      IF ( I.GT.21 ) THEN
+          IERROR = 999
+          IF (IPEMSG .EQ. 0) WRITE (IPELUN,1) ISPH
+    1     FORMAT('0ERROR SPHDZ0:  SPHEROID CODE OF ',I5,' RESET TO 0')
+          I = 0
+      END IF
+
 C     RETRIEVE A AND B AXES FOR SELECTED SPHEROID
-C
-   10 A = AXIS(JSPH)
-      B = BXIS(JSPH)
+
+   10 A = AXIS(I)
+      B = BXIS(I)
       ES = ONE - (B / A)**2
-C
+
 C     SET COMMON BLOCK PARAMETERS FOR SELECTED SPHEROID
-C
+
       AZZ = 6370000.0D0
       EZ  = DSQRT(ES)
       E0Z = E0FNZ0(ES)
@@ -5506,7 +5514,7 @@ C
       AZ  = A
       ESZ = ES
       IF (ES.EQ.ZERO) AZZ=A
-C
+
       PARM(1) = A
       PARM(2) = ES
       RETURN
@@ -5516,21 +5524,21 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       DOUBLE PRECISION FUNCTION TSFNZ0 (ECCENT,PHI,SINPHI)
-C
+
 C FUNCTION TO COMPUTE CONSTANT (SMALL T).
-C
+
       IMPLICIT REAL*8 (A-Z)
       SAVE
       DATA HALF,ONE /0.5D0,1.0D0/
       PARAMETER ( HALFPI = 1.5707963267948966D0 )
-C
+
       CON = ECCENT * SINPHI
       COM = HALF * ECCENT
       CON = ((ONE - CON) / (ONE + CON)) ** COM
       TSFNZ0 = DTAN (HALF * (HALFPI - PHI)) / CON
-C
+
       RETURN
       END
 C                   UNTFZ0
@@ -5538,46 +5546,46 @@ C **********************************************************************
 C ** GENERAL CARTOGRAPHIC TRANSFORMATION PACKAGE (GCTP) VERSION 2.0.2 **
 C ** U. S. GEOLOGICAL SURVEY - SNYDER, ELASSAL, AND LINCK    06/08/94 **
 C **********************************************************************
-C
+
       SUBROUTINE UNTFZ0 (INUNIT,IOUNIT,FACTOR,IFLG)
-C
+
 C SUBROUTINE TO DETERMINE CONVERGENCE FACTOR BETWEEN TWO LINEAL UNITS
-C
+
 C * INPUT ........
 C * INUNIT * UNIT CODE OF SOURCE.
 C * IOUNIT * UNIT CODE OF TARGET.
-C
+
 C * OUTPUT .......
 C * FACTOR * CONVERGENCE FACTOR FROM SOURCE TO TARGET.
 C * IFLG   * RETURN FLAG .EQ. 0 , NORMAL RETURN.
 C            RETURN FLAG .NE. 0 , ABNORMAL RETURN.
-C
+
       IMPLICIT REAL*8 (A-H,O-Z)
       SAVE
       DIMENSION FACTRS(6,6)
       COMMON /PRINZ0/ IPEMSG,IPELUN,IPPARM,IPPLUN
       PARAMETER (ZERO = 0.0D0, MAXUNT = 6)
       DATA FACTRS /0.1000000000000000D01 , 0.0000000000000000D00 ,
-     .             0.0000000000000000D00 , 0.2062648062470963D06 ,
-     .             0.5729577951308231D02 , 0.0000000000000000D00 ,
-     .             0.0000000000000000D00 , 0.1000000000000000D01 ,
-     .             0.3048006096012192D00 , 0.0000000000000000D00 ,
-     .             0.0000000000000000D00 , 0.1000002000004000D01 ,
-     .             0.0000000000000000D00 , 0.3280833333333333D01 ,
-     .             0.1000000000000000D01 , 0.0000000000000000D00 ,
-     .             0.0000000000000000D00 , 0.3280839895013124D01 ,
-     .             0.4848136811095360D-5 , 0.0000000000000000D00 ,
-     .             0.0000000000000000D00 , 0.1000000000000000D01 ,
-     .             0.2777777777777778D-3 , 0.0000000000000000D00 ,
-     .             0.1745329251994330D-1 , 0.0000000000000000D00 ,
-     .             0.0000000000000000D00 , 0.3600000000000000D04 ,
-     .             0.1000000000000000D01 , 0.0000000000000000D00 ,
-     .             0.0000000000000000D00 , 0.9999980000000000D00 ,
-     .             0.3048000000000000D00 , 0.0000000000000000D00 ,
-     .             0.0000000000000000D00 , 0.1000000000000000D01 /
-C
+     &             0.0000000000000000D00 , 0.2062648062470963D06 ,
+     &             0.5729577951308231D02 , 0.0000000000000000D00 ,
+     &             0.0000000000000000D00 , 0.1000000000000000D01 ,
+     &             0.3048006096012192D00 , 0.0000000000000000D00 ,
+     &             0.0000000000000000D00 , 0.1000002000004000D01 ,
+     &             0.0000000000000000D00 , 0.3280833333333333D01 ,
+     &             0.1000000000000000D01 , 0.0000000000000000D00 ,
+     &             0.0000000000000000D00 , 0.3280839895013124D01 ,
+     &             0.4848136811095360D-5 , 0.0000000000000000D00 ,
+     &             0.0000000000000000D00 , 0.1000000000000000D01 ,
+     &             0.2777777777777778D-3 , 0.0000000000000000D00 ,
+     &             0.1745329251994330D-1 , 0.0000000000000000D00 ,
+     &             0.0000000000000000D00 , 0.3600000000000000D04 ,
+     &             0.1000000000000000D01 , 0.0000000000000000D00 ,
+     &             0.0000000000000000D00 , 0.9999980000000000D00 ,
+     &             0.3048000000000000D00 , 0.0000000000000000D00 ,
+     &             0.0000000000000000D00 , 0.1000000000000000D01 /
+
       IF (INUNIT .GE. 0 .AND. INUNIT .LT. MAXUNT .AND.
-     .    IOUNIT .GE. 0 .AND. IOUNIT .LT. MAXUNT) THEN
+     &    IOUNIT .GE. 0 .AND. IOUNIT .LT. MAXUNT) THEN
          FACTOR = FACTRS(IOUNIT+1 , INUNIT+1)
          IF (FACTOR .NE. ZERO) THEN
             IFLG = 0
@@ -5600,5 +5608,5 @@ C
          IFLG = 11
          RETURN
       END IF
-C
+
       END

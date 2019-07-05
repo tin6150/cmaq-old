@@ -1,4 +1,4 @@
-# @(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/Makeinclude.Linux2_alpha,v 1.1 2000/11/28 21:54:49 smith_w Exp $
+# VERSION "$Id: Makeinclude.Linux2_alphadbg 1 2014-03-14 20:22:54Z coats $"
 #
 #       Linux for Alpha using the Digital/Cq/HP compiler suite,
 #       debugging enabled
@@ -9,6 +9,8 @@ FC   = fort
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
+
+MODI = -I       ## Module-include-directory command
 
 OMPFLAGS  = 
 OMPLIBS   = -lcxml

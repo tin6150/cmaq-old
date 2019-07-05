@@ -2,10 +2,11 @@
 /************************************************************************
 INCLUDE FILE  iodecl3.h
 
-    Version "@(#)$Header$"
+    Version "$Id: iodecl3.h 1 2014-03-14 20:22:54Z coats $"
     EDSS/Models-3 I/O API.
-    Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-    (C) 2003-2005 Baron Advanced Meteorological Systems.
+    Copyright (C) 1992-2002 MCNC,
+    (C) 1992-2002,2005-2013  Carlie J. Coats, Jr., and
+    (C) 2003-2010 Baron AAdvanced Meteorological Systems, LLC (BAMS)
     Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
     See file "LGPL.txt" for conditions of use.
 

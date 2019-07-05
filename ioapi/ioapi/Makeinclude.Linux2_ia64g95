@@ -1,10 +1,15 @@
-# @(#)$Header$
+# VERSION "$Id: Makeinclude.Linux2_ia64g95 1 2014-03-14 20:22:54Z coats $"
+#
+#  Linux IA64 (itanium) with g95 / gcc
+
 AR = ar
 CC = gcc
 FC = g95
 # FC = gfortran-ssa
 M4 = m4
 LINK = $(CC)
+
+MODI = -I       ## Module-include-directory command
 
 OMPFLAGS  = # -mp
 OMPLIBS   = # -lmp

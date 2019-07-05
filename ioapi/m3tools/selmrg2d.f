@@ -2,14 +2,14 @@
         PROGRAM SELMRG2D
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: selmrg2d.f 43 2014-09-12 14:06:19Z coats $"
 C EDSS/Models-3 M3TOOLS.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2002-2008 Baron Advanced Meteorological Systems. LLC.
+C (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line  119
+C  program body starts at line  93
 C
 C  DESCRIPTION:
 C       Merges selected layers of selected variables from a set of
@@ -27,36 +27,17 @@ C       Prototype 2/2000 by Carlie J. Coats, Jr., NCSC
 C       Version  11/2001 by CJC for I/O API Version 2.1
 C       Version  11/2005 by CJC:  eliminate unused vbles and functions
 C       Version   9/2008 by CJC:  VDESC should be CHARACTER*80 instead of *16
+C       Version  02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C***********************************************************************
+
+      USE M3UTILIO
 
       IMPLICIT NONE
 
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'      ! I/O API constants
-      INCLUDE 'FDESC3.EXT'      ! I/O API file description data structure
-      INCLUDE 'IODECL3.EXT'     ! I/O API function declarations
-
-
 C...........   PARAMETERS and their descriptions:
 
-        CHARACTER*16, PARAMETER:: FLAGVAR = 'FLAG'
-
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &  '$Id: selmrg2d.f 334 2008-09-25 14:55:15Z coats@bdsl $'
-     &  /
-
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        INTEGER      ENVINT, GETNUM, INDEX1, SEC2TIME, TIME2SEC
-        LOGICAL      GETYN
-        CHARACTER*16 PROMPTMFILE
-        REAL         GETREAL
-
-        EXTERNAL     ENVINT, GETNUM, GETREAL, GETYN, INDEX1,
-     &               PROMPTMFILE, SEC2TIME, TIME2SEC
-
+       CHARACTER*16, PARAMETER :: PNAME = 'SELMRG2D'
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -87,6 +68,7 @@ C...........   LOCAL VARIABLES and their descriptions:
 
         INTEGER         VGTYP      !  vertical coordinate type (VGSIGP3, ...)
         REAL            VGTOP      !  model-top, for sigma coord types.
+        REAL            VGLVS( MXLAYS3+1 )
 
         CHARACTER*16    GDNAM      ! grid name             (length NAMLEN3=16)
 
@@ -104,22 +86,14 @@ C...........   LOCAL VARIABLES and their descriptions:
         CHARACTER*256   MESG
         CHARACTER*256   CBUF
 
-C...........   STATEMENT FUNCTION:  REAL*8 "definitely unequal"
-
-        LOGICAL         DBLERR
-        REAL*8          P, Q
-
-        DBLERR( P, Q ) =
-     &      ( (P - Q)**2  .GT.  1.0E-10*( P*P + Q*Q + 1.0E-5 ) )
-
 
 C***********************************************************************
 C   begin body of program SELMRG2D
 
         I = INIT3()
-        WRITE( *,92000 )
+        WRITE( *, '( 5X, A )' )
      &' ',
-     &'Program SELMRG2D to merge selected layers of selected ',
+     &'Program SELMRG2D to merge selected layers of selected',
      &'variables from a set of gridded files over a commmon grid',
      &'and time period.',
      &' ',
@@ -137,28 +111,30 @@ C   begin body of program SELMRG2D
      &'    setenv <last  input name>    <path-names>',
      &'    setenv <output name>         <path-names>',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html  Comments and',
-     &'questions are welcome and can be sent to',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
      &' ',
-     &'    coats@baronams.com',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
-     &'    Carlie J. Coats, Jr.',
-     &'    920 Main Campus Drive, Suite 101',
-     &'    Raleigh, NC 27606',
+     &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: selmrg2d.f 43 2014-09-12 14:06:19Z coats                $',
      &' '
 
+
         IF ( .NOT. GETYN( 'Continue with program?', .TRUE. ) ) THEN
-            CALL M3EXIT( 'SELMRG2D', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Program terminated at user request', 2 )
         END IF
 
@@ -177,17 +153,17 @@ C   begin body of program SELMRG2D
 C...............  Open/Process the first input file
 
         INNAMES( 1 ) = PROMPTMFILE(  'Enter first input file', FSREAD3,
-     &                                INNAMES( 1 ), 'SELMRG2D' )
+     &                                INNAMES( 1 ), PNAME )
 
         IF ( .NOT. DESC3( INNAMES( 1 ) ) ) THEN
             MESG = 'Could not get file description for ' // INNAMES(1)
-            CALL M3EXIT( 'SELMRG2D', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         IF ( FTYPE3D .NE. GRDDED3 ) THEN
             MESG = 'File "' // TRIM( INNAMES(1) ) //
      &             '" not a gridded file'
-            CALL M3EXIT( 'SELMRG2D', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         FLAYS( 1 ) = NLAYS3D
@@ -205,6 +181,7 @@ C...............  Open/Process the first input file
         YCELL = YCELL3D
         VGTYP = VGTYP3D
         VGTOP = VGTOP3D
+        VGLVS( 1:NLAYS+1 ) = VGLVS3D( 1:NLAYS+1 )
         GDNAM = GDNAM3D
 
         SDATE  = SDATE3D
@@ -266,88 +243,26 @@ C...............  Open/Process the rest of the input data files
             F = F + 1
             INNAMES( F ) = PROMPTMFILE(
      &                        'Enter next input file, or "NONE"',
-     &                        FSREAD3, INNAMES( F ), 'SELMRG2D' )
+     &                        FSREAD3, INNAMES( F ), PNAME )
 
             IF ( INNAMES( F ) .EQ. 'NONE' ) GO TO 44
 
             IF ( .NOT. DESC3( INNAMES( F ) ) ) THEN
                 MESG = 'Could not get file description for ' //
      &                 INNAMES(F)
-                CALL M3EXIT( 'SELMRG2D', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( FTYPE3D .NE. GRDDED3 ) THEN
-                MESG = 'File "' // TRIM( INNAMES(F) ) //
-     &                 '" not a gridded file'
-                CALL M3EXIT( 'SELMRG2D', 0, 0, MESG, 2 )
-            END IF
-
-            FLAYS( F ) = NLAYS3D
-
-            IF ( NCOLS .NE. NCOLS3D ) THEN
-                MESG = 'NCOLS mismatch, file ' // INNAMES(F)
-                CALL M3MSG2( MESG )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
+            ELSE IF ( .NOT.FILCHK3( INNAMES( F ),  GRDDED3,
+     &                              NCOLS, NROWS, NLAYS, NTHIK3D) ) THEN
+                MESG = 'Inconsistent dimensions  for ' // INNAMES( F )
                 EFLAG = .TRUE.
-            END IF
-
-            IF ( NROWS .NE. NROWS3D ) THEN
-                MESG = 'NROWS mismatch, file ' // INNAMES(F)
-                CALL M3MSG2( MESG )
+                CALL M3MESG( MESG )
+            ELSE IF ( .NOT.GRDCHK3( INNAMES( F ),
+     &                      P_ALP, P_BET, P_GAM, XCENT, YCENT,
+     &                      XORIG, YORIG, XCELL, YCELL,
+     &                      NLAYS3D, VGTYP3D, VGTOP3D, VGLVS3D ) ) THEN
+                MESG = 'Inconsistent coord/grid  for ' // INNAMES( F )
                 EFLAG = .TRUE.
-            END IF
-
-            IF ( DBLERR( P_ALP, P_ALP3D ) ) THEN
-                MESG = 'P_ALP mismatch, file ' // INNAMES(F)
-                CALL M3MSG2( MESG )
-                EFLAG = .TRUE.
-            END IF
-
-            IF ( DBLERR( P_BET, P_BET3D ) ) THEN
-                MESG = 'P_BET mismatch, file ' // INNAMES(F)
-                CALL M3MSG2( MESG )
-                EFLAG = .TRUE.
-            END IF
-
-            IF ( DBLERR( P_GAM, P_GAM3D ) ) THEN
-                MESG = 'P_GAM mismatch, file ' // INNAMES(F)
-                CALL M3MSG2( MESG )
-                EFLAG = .TRUE.
-            END IF
-
-            IF ( DBLERR( XCENT, XCENT3D ) ) THEN
-                MESG = 'XCENT mismatch, file ' // INNAMES(F)
-                CALL M3MSG2( MESG )
-                EFLAG = .TRUE.
-            END IF
-
-            IF ( DBLERR( YCENT, YCENT3D ) ) THEN
-                MESG = 'YCENT mismatch, file ' // INNAMES(F)
-                CALL M3MSG2( MESG )
-                EFLAG = .TRUE.
-            END IF
-
-            IF ( DBLERR( XORIG, XORIG3D ) ) THEN
-                MESG = 'XORIG mismatch, file ' // INNAMES(F)
-                CALL M3MSG2( MESG )
-                EFLAG = .TRUE.
-            END IF
-
-            IF ( DBLERR( YORIG, YORIG3D ) ) THEN
-                MESG = 'YORIG mismatch, file ' // INNAMES(F)
-                CALL M3MSG2( MESG )
-                EFLAG = .TRUE.
-            END IF
-
-            IF ( DBLERR( XCELL, XCELL3D ) ) THEN
-                MESG = 'XCELL mismatch, file ' // INNAMES(F)
-                CALL M3MSG2( MESG )
-                EFLAG = .TRUE.
-            END IF
-
-            IF ( DBLERR( YCELL, YCELL3D ) ) THEN
-                MESG = 'YCELL mismatch, file ' // INNAMES(F)
-                CALL M3MSG2( MESG )
-                EFLAG = .TRUE.
+                CALL M3MESG( MESG )
             END IF
 
             WRITE( *, '( /5X, A, 120( /5X, I2, 6A, : ) )' )
@@ -443,14 +358,14 @@ C...............  Build the output file:
         END DO
 
         FNAME = PROMPTMFILE(  'Enter output file', FSUNKN3,
-     &                        'OUTFILE', 'SELMRG2D' )
+     &                        'OUTFILE', PNAME )
 
         ALLOCATE( INBUF ( NCOLS, NROWS ), STAT = STATUS )
 
         IF ( STATUS .NE. 0 ) THEN
             WRITE( MESG, '( A, I10)' )
      &           'Buffer allocation failed:  STAT=', STATUS
-            CALL M3EXIT( 'SELMRG2D', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
 
@@ -468,14 +383,14 @@ C...............  Perform the merge
      &                            JDATE, JTIME, INBUF ) ) THEN
                    MESG = 'Could not read "' // TRIM( VNAMI(V) ) //
      &                    '" from "' // TRIM( VFILE( V ) ) // '"'
-                   CALL M3EXIT( 'SELMRG2D', JDATE, JTIME, MESG, 2 )
+                   CALL M3EXIT( PNAME, JDATE, JTIME, MESG, 2 )
                END IF  !  if read failed
 
                IF ( .NOT. WRITE3( FNAME, VNAMO( V ),
      &                            JDATE, JTIME, INBUF ) ) THEN
                     MESG = 'Could not write "' // TRIM( VNAMO(V) ) //
      &                     '" to "' // TRIM( FNAME ) // '"'
-                    CALL M3EXIT( 'SELMRG2D', JDATE, JTIME, MESG, 2 )
+                    CALL M3EXIT( PNAME, JDATE, JTIME, MESG, 2 )
                 END IF  !  if write failed
 
             END DO              !  end loop on variables V for this time step
@@ -485,22 +400,9 @@ C...............  Perform the merge
         END DO          !  end loop on output time steps
 
 
-        CALL M3EXIT( 'SELMRG2D', 0, 0,
+        CALL M3EXIT( PNAME, 0, 0,
      &               'Successful completion of program SELMRG2D', 0 )
-C      STOP
+C       STOP
 
-C******************  FORMAT  STATEMENTS   ******************************
-
-C...........   Error and warning message formats..... 91xxx
-C...........   Informational (LOG) message formats... 92xxx
-
-92000   FORMAT ( 5X, A )
-
-
-C...........   Formatted file I/O formats............ 93xxx
-C...........   Internal buffering formats............ 94xxx
-C...........   Miscellaneous formats................. 95xxx
-
-
-        END
+        END PROGRAM SELMRG2D
 

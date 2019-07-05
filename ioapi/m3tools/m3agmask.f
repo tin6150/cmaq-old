@@ -2,14 +2,14 @@
         PROGRAM  M3AGMASK
 
 C***********************************************************************
-C Version "@(#)$Header$ $Id: m3agmask.f 49 2007-07-06 16:20:50Z coats@borel $"
+C Version "$Id: m3agmask.f 47 2014-10-03 22:21:37Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr, and
-C (C) 2002-2007 Baron Advanced Meteorological Systems, LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line 166
+C  program body starts at line 13
 C
 C  FUNCTION:
 C       Sums, give max, or gives average over a specified time period
@@ -28,61 +28,41 @@ C       GETNUM, NEXTIME, Models-3 I/O.
 C
 C  REVISION  HISTORY:
 C       Prototype 5/1997 by M Houyoux
+C
 C       Modified 11/1999 by Carlie J. Coats, Jr.:  max-value report
+C
 C       Version  11/2001 by CJC for I/O API Version 2.1
+C
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
+C
+C       Version 10/2014 by CJC:  Check status of ENV*() calls.
 C***********************************************************************
 
+      USE M3UTILIO
       IMPLICIT NONE
-
-C...........   INCLUDES:
-
-        INCLUDE 'PARMS3.EXT'  !  I/O parameter definitions
-        INCLUDE 'FDESC3.EXT'  !  file header data structures
-        INCLUDE 'IODECL3.EXT' !  I/O definitions and declarations
-
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER       ENVINT
-        LOGICAL       ENVYN
-        INTEGER       GETDATE
-        INTEGER       GETMENU
-        INTEGER       GETNUM
-        REAL          GETREAL
-        LOGICAL       GETYN
-        INTEGER       IARGC
-        INTEGER       INDEX1
-        INTEGER       JULIAN
-        CHARACTER*16  PROMPTMFILE
-        INTEGER       SEC2TIME
-        INTEGER       SECSDIFF
-        INTEGER       TIME2SEC
-        INTEGER       TRIMLEN
-
-        EXTERNAL  ENVINT, ENVYN, GETDATE, GETMENU, GETNUM, GETREAL,
-     &            GETYN, IARGC, INDEX1, JULIAN, PROMPTMFILE,
-     &            SEC2TIME, SECSDIFF, TIME2SEC, TRIMLEN
+         INTEGER :: IARGC
 
 C...........   PARAMETERS and their descriptions:
 
-        CHARACTER*16    BLANK16
-        INTEGER         M3AVE
-        INTEGER         M3MAX
-        INTEGER         M3SUM
-        INTEGER         MAXITEMS
-        INTEGER         MAXRECS
+        CHARACTER*16, PARAMETER :: PNAME    = 'M3AGMASK'
+        CHARACTER*16, PARAMETER :: BLANK16  = ' '
+        INTEGER,      PARAMETER :: M3SUM    =    1
+        INTEGER,      PARAMETER :: M3AVE    =    2
+        INTEGER,      PARAMETER :: M3MAX    =    3
+        INTEGER,      PARAMETER :: MAXRECS  = 5000
+        INTEGER,      PARAMETER :: MAXITEMS =    3
 
-        PARAMETER     ( BLANK16  = ' ',
-     &                  M3SUM    =    1,
-     &                  M3AVE    =    2,
-     &                  M3MAX    =    3,
-     &                  MAXRECS  = 5000,
-     &                  MAXITEMS =    3  )
+        CHARACTER*80, PARAMETER :: MENUITMS( MAXITEMS ) = !  buffer for operations menu items
+     &       (/  'Calculate   SUM   over time window    ',
+     &           'Calculate AVERAGE over time window    ',
+     &           'Determine MAXIMUM over time window    '   /)
 
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id:: m3agmask.f 49 2007-07-06 16:20:50Z coats@borel          $'
-     &  /
+        CHARACTER*2, PARAMETER :: SUFFIX( 6 ) =
+     &       (/  '_1', '_2', '_3', '_4', '_5', '_6' /)
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -151,15 +131,6 @@ C...........   LOCAL VARIABLES and their descriptions:
 
         LOGICAL         NPFLAG  !  iff no prompting for variables
 
-        CHARACTER*80    MENUITMS( MAXITEMS )!  buffer for operations menu items
-        DATA            MENUITMS /
-     &           'Sum over time window',
-     &           'Calculate average over time window',
-     &           'Determine maximum over time window'   /
-
-        CHARACTER*2     SUFFIX( 6 )
-        DATA            SUFFIX / '_1', '_2', '_3', '_4', '_5', '_6' /
-
 C.........................................................................
 C   begin body of program  M3AGMASK
 
@@ -191,48 +162,43 @@ C   begin body of program  M3AGMASK
      &  ' ',
      &  'USAGE:  M3AGMASK [INFILE OUTFILE MAXFILE] ',
      &  '(and then answer the prompts).',
-     &  ' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
+     &' ',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: m3agmask.f 47 2014-10-03 22:21:37Z coats                $',
      &' '
 
         ARGCNT = IARGC()
 
-        IF ( ARGCNT .NE. 0  .AND.  ARGCNT .NE. 3 ) THEN
-            CALL M3EXIT( 'M3AGMASK', 0, 0,
-     &                   'usage:  M3AGMASK [INFILE OUTFILE MAXFILE ]',
-     &                   2 )
-        END IF
-
         IF ( ARGCNT .EQ. 0 ) THEN       !  get names from user
 
             INAME = PROMPTMFILE( 'Enter logical name for  INPUT FILE',
-     &                           FSREAD3, 'INFILE', 'M3AGMASK' )
+     &                           FSREAD3, 'INFILE', PNAME )
 
-        ELSE		!  argcnt 3
+        ELSE IF ( ARGCNT .EQ. 3 ) THEN
 
             CALL GETARG( 1, ENVBUF )
             INAME = ENVBUF( 1:16 )
-            IF ( .NOT. OPEN3( INAME, FSREAD3, 'M3AGMASK' ) ) THEN
+            IF ( .NOT. OPEN3( INAME, FSREAD3, PNAME ) ) THEN
                 MESG = 'Could not open input file "'
-     &                       // INAME( 1:TRIMLEN( INAME ) ) // '"'
-                CALL M3EXIT( 'M3AGMASK', 0, 0, MESG, 2 )
+     &                       // TRIM( INAME ) // '"'
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             CALL GETARG( 2, ENVBUF )
@@ -241,13 +207,18 @@ C   begin body of program  M3AGMASK
             CALL GETARG( 3, ENVBUF )
             MNAME = ENVBUF( 1:16 )
 
+        ELSE
+
+            CALL M3EXIT( PNAME, 0, 0,
+     &               'usage:  M3AGMASK [INFILE OUTFILE MAXFILE ]', 2 )
+
         END IF
 
 
         IF ( .NOT. DESC3( INAME ) ) THEN
             MESG = 'Could not get description of input file "' //
-     &             INAME( 1:TRIMLEN( INAME ) ) // '"'
-            CALL M3EXIT( 'M3AGMASK', 0, 0, MESG, 2 )
+     &             TRIM( INAME ) // '"'
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         IF ( FTYPE3D .EQ. GRDDED3 ) THEN
@@ -256,9 +227,9 @@ C   begin body of program  M3AGMASK
             NLAYS = NLAYS3D
         ELSE
             WRITE( MESG, 94011 )
-     &      'Input file "', INAME( 1:TRIMLEN( INAME ) ),
+     &      'Input file "', TRIM( INAME ),
      &      '" has unsupported type', FTYPE3D
-            CALL M3EXIT( 'M3AGMASK', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         NVSAV  = NVARS3D
@@ -268,13 +239,13 @@ C   begin body of program  M3AGMASK
 
 C.......   Get max string-lengths for use in variables-listing:
 
-        VMAX = TRIMLEN( VNAME3D( 1 ) )
-        UMAX = TRIMLEN( UNITS3D( 1 ) )
-        DMAX = TRIMLEN( VDESC3D( 1 ) )
+        VMAX = LEN_TRIM( VNAME3D( 1 ) )
+        UMAX = LEN_TRIM( UNITS3D( 1 ) )
+        DMAX = LEN_TRIM( VDESC3D( 1 ) )
         DO  11  V = 1, NVARS3D
-            VMAX = MAX( VMAX , TRIMLEN( VNAME3D( V ) ) )
-            UMAX = MAX( UMAX , TRIMLEN( UNITS3D( V ) ) )
-            DMAX = MAX( DMAX , TRIMLEN( VDESC3D( V ) ) )
+            VMAX = MAX( VMAX , LEN_TRIM( VNAME3D( V ) ) )
+            UMAX = MAX( UMAX , LEN_TRIM( UNITS3D( V ) ) )
+            DMAX = MAX( DMAX , LEN_TRIM( VDESC3D( V ) ) )
 11      CONTINUE
 
 C.......  Determine if all variables are to be used
@@ -282,6 +253,10 @@ C.......  Determine if all variables are to be used
         NPFLAG = ENVYN( 'M3AGMASK_ALLV',
      &                  'true if no prompting for variables to output',
      &                  .FALSE., IOS )
+        IF ( IOS .GT. 0 ) THEN
+            CALL M3EXIT( PNAME, 0,0,
+     &                   'Bad environment variable "M3AGMASK_ALLV"', 2 )
+        END IF
 
 C.......  If no prompting set to total number of vars, or prompt
 
@@ -307,7 +282,7 @@ C.......  If no prompting set to total number of vars, or prompt
                 IF( MOD( NVARS,10 ) .EQ. 0 ) THEN
                     WRITE( *,92000 )
      &              ' ', 'The list of variables in file "'
-     &              // INAME( 1:TRIMLEN( INAME ) ) // '" is:', ' '
+     &              // TRIM( INAME ) // '" is:', ' '
                     WRITE( *,92010 )
      &              ( I,
      &                VNAME3D( I )( 1:VMAX ) // ' (' //
@@ -326,13 +301,12 @@ C...............   Optional renaming of this variable:
 
 122             CONTINUE
                     ALINE = 'Enter output-name for this variable [' //
-     &                  VNAME3D( V )( 1 : TRIMLEN( VNAME3D( V ) ) ) //
-     &                  '] >> '
-                    WRITE( *,95000 ) ALINE( 1:1+TRIMLEN( ALINE ) )
+     &                      TRIM( VNAME3D( V ) ) // '] >> '
+                    WRITE( *,95000 ) ALINE( 1:1+LEN_TRIM( ALINE ) )
                     READ ( *,93010,IOSTAT=IOS ) ANAME
 
                     IF ( IOS .GT. 0 ) THEN
-                        CALL M3WARN( 'M3AGMASK', 0, 0,
+                        CALL M3WARN( PNAME, 0, 0,
      &                  'Error reading output-name; please try again' )
                         GO TO 122
                     END IF
@@ -356,7 +330,7 @@ C...............   Optional renaming of this variable:
         END IF  ! If prompting or not
 
         IF ( NVARS .EQ. 0 ) THEN
-            CALL M3EXIT( 'M3AGMASK', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                  'No variables selected', 2 )
         END IF
 
@@ -364,9 +338,9 @@ C.......   Get starting date and time, and duration:
 
         IF ( TSTEP .EQ. 0 ) THEN        !  time-independent file
 
-            MESG = 'Input file "' // INAME( 1:TRIMLEN( INAME ) ) //
+            MESG = 'Input file "' // TRIM( INAME ) //
      &             '" is only one time step- no output written.'
-            CALL M3EXIT( 'M3AGMASK', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
         ELSE                            !  time-dependent file
 
@@ -378,11 +352,15 @@ C...........  Number NOUTS of periods to process, analysis type ATYPE
 
             PERIOD = ENVINT( 'M3AGMASK_PLEN', 'Output time step',
      &                        TSTEP, IOS )
+            IF ( IOS .GT. 0 ) THEN
+                CALL M3EXIT( PNAME, 0,0,
+     &                   'Bad environment variable "M3AGMASK_PLEN"', 2 )
+            END IF
             PERSEC = TIME2SEC( PERIOD )
             INSECS = TIME2SEC( TSTEP )
             IF ( MOD( PERSEC, INSECS ) .NE. 0 ) THEN
                 MESG =  'Output time step mismatch'
-                CALL M3EXIT( 'M3AGMASK', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             RUNSEC = MXREC3D * TIME2SEC( TSTEP )
@@ -394,7 +372,10 @@ C...........  Number NOUTS of periods to process, analysis type ATYPE
             BDATE = ENVINT( 'M3AGMASK_BDATE', 'Window start date',
      &                      SDATE, IOS )
 
-            IF( IOS .NE. 0 ) THEN
+            IF ( IOS .GT. 0 ) THEN
+                CALL M3EXIT( PNAME, 0,0,
+     &                 'Bad environment variable "M3AGMASK_BDATE"', 2 )
+            ELSE IF( IOS .NE. 0 ) THEN
                 MESG = 'Enter starting date for run (YYYYDDD|YYYYMMDD)'
                 BDATE  = GETDATE( BDATE, MESG )
 
@@ -410,7 +391,10 @@ C...........  Number NOUTS of periods to process, analysis type ATYPE
             BTIME = ENVINT( 'M3AGMASK_BTIME', 'Window start time',
      &                       STIME, IOS )
 
-            IF( IOS .NE. 0 )  THEN
+            IF ( IOS .GT. 0 ) THEN
+                CALL M3EXIT( PNAME, 0,0,
+     &                 'Bad environment variable "M3AGMASK_BTIME"', 2 )
+            ELSE IF( IOS .NE. 0 )  THEN
                 I = BTIME
                 BTIME  = GETNUM( 0, 239999, I,
      &                  'Enter starting time for run (HHMMSS)' )
@@ -419,7 +403,7 @@ C...........  Number NOUTS of periods to process, analysis type ATYPE
             T = SECSDIFF( SDATE, STIME, BDATE, BTIME )
             IF ( MOD( T, INSECS ) .NE. 0 ) THEN
                 MESG =  'Run-start not exact time step from file start'
-                CALL M3EXIT( 'M3AGMASK', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             RUNSEC = RUNSEC - T
@@ -430,7 +414,10 @@ C...........  Number NOUTS of periods to process, analysis type ATYPE
      &                       'Aggregation-period duration',
      &                        I, IOS )
 
-            IF( IOS .NE. 0 ) THEN
+            IF ( IOS .GT. 0 ) THEN
+                CALL M3EXIT( PNAME, 0,0,
+     &                 'Bad environment variable "M3AGMASK_WLEN"', 2 )
+            ELSE IF( IOS .NE. 0 ) THEN
                 I = WINLEN
                 WINLEN = GETNUM( 1, T, I,
      &                'Enter duration of aggregation-period (HHMMSS)' )
@@ -454,7 +441,10 @@ C...........  Number NOUTS of periods to process, analysis type ATYPE
      &                      'Type of analysis',
      &                       M3AVE, IOS )
 
-            IF( IOS .NE. 0 ) THEN
+            IF ( IOS .GT. 0 ) THEN
+                CALL M3EXIT( PNAME, 0,0,
+     &                   'Bad environment variable "M3AGMASK_TYPE"', 2 )
+            ELSE IF( IOS .NE. 0 ) THEN
                 ATYPE = GETMENU( MAXITEMS, ATYPE,
      &                        'Enter type of operation to perform',
      &                        MENUITMS )
@@ -480,7 +470,7 @@ C.......   Re-use all but the starting date&time of the input-file description.
                 VTYPE3D( V ) = VTYPE ( V )
             END DO
             ONAME = PROMPTMFILE( 'Enter logical name for AGG FILE',
-     &                           FSUNKN3, 'OUTFILE', 'M3AGMASK' )
+     &                           FSUNKN3, 'OUTFILE', PNAME )
 
             NVARS3D = 8 * NVARS
             I = 0
@@ -510,9 +500,9 @@ C.......   Re-use all but the starting date&time of the input-file description.
             END DO
 
             MNAME = PROMPTMFILE( 'Enter logical name for AGG-MAX FILE',
-     &                           FSUNKN3, 'MAXFILE', 'M3AGMASK' )
+     &                           FSUNKN3, 'MAXFILE', PNAME )
 
-        ELSE	!  argcnt = 3:
+        ELSE        !  argcnt = 3:
 
             NVARS3D = NVARS
             DO   V = 1, NVARS
@@ -521,10 +511,10 @@ C.......   Re-use all but the starting date&time of the input-file description.
                 VDESC3D( V ) = VDESC ( V )
                 VTYPE3D( V ) = VTYPE ( V )
             END DO
-            IF ( .NOT. OPEN3( ONAME, FSUNKN3, 'M3AGMASK' ) ) THEN
+            IF ( .NOT. OPEN3( ONAME, FSUNKN3, PNAME ) ) THEN
                 MESG = 'Could not open output AGG-file "' //
-     &                 ONAME( 1:TRIMLEN( ONAME ) ) // '"'
-                CALL M3EXIT( 'M3AGMASK', SDATE, STIME, MESG, 2 )
+     &                 TRIM( ONAME ) // '"'
+                CALL M3EXIT( PNAME, SDATE, STIME, MESG, 2 )
             END IF
 
             NVARS3D = 9 * NVARS
@@ -555,13 +545,13 @@ C.......   Re-use all but the starting date&time of the input-file description.
             END DO
             NVARS3D = I
 
-            IF ( .NOT. OPEN3( MNAME, FSUNKN3, 'M3AGMASK' ) ) THEN
+            IF ( .NOT. OPEN3( MNAME, FSUNKN3, PNAME ) ) THEN
                 MESG = 'Could not open output AGG-MAX file "' //
-     &                 MNAME( 1:TRIMLEN( MNAME ) ) // '"'
-                CALL M3EXIT( 'M3AGMASK', SDATE, STIME, MESG, 2 )
+     &                 TRIM( MNAME ) // '"'
+                CALL M3EXIT( PNAME, SDATE, STIME, MESG, 2 )
             END IF
 
-        END IF		!  if argcnt zero, or 2
+        END IF      !  if argcnt zero, or 2
 
 
 C.......   Count/Get the mask files and mask variables:
@@ -572,7 +562,7 @@ C.......   Count/Get the mask files and mask variables:
             WRITE( ANAME, '( A, I3.3 )' ) 'MASKFILE', I
             BNAME = PROMPTMFILE(
      &             'Enter the name for the next MASK FILE, or "NONE"',
-     &             FSREAD3, ANAME, 'M3AGMASK' )
+     &             FSREAD3, ANAME, PNAME )
             IF ( BNAME .NE. 'NONE ' ) THEN
                  NMASKS = NMASKS + 1
                  MASKS( NMASKS ) = BNAME
@@ -580,7 +570,7 @@ C.......   Count/Get the mask files and mask variables:
                  IF ( .NOT. DESC3( BNAME ) ) THEN
                      MESG = 'Could not get file description for "' //
      &                      TRIM( BNAME ) // '"'
-                     CALL M3EXIT( 'M3AGMASK', SDATE, STIME, MESG, 2 )
+                     CALL M3EXIT( PNAME, SDATE, STIME, MESG, 2 )
                  END IF
                  MASKV( NMASKS ) = VNAME3D( GETMENU( NVARS3D, 1,
      &                      'Enter number for the MASK VARIABLE',
@@ -599,7 +589,7 @@ C.......   Allocate masked-aggregation arrays:
      &             CDEX ( NOUTS, NMASKS ), STAT = I )
         IF ( I .NE. 0 ) THEN
             MESG = 'Allocation failure'
-            CALL M3EXIT( 'M3AGMASK', SDATE, STIME, MESG, 2 )
+            CALL M3EXIT( PNAME, SDATE, STIME, MESG, 2 )
         END IF
 
 
@@ -711,7 +701,7 @@ C...........   Sort the aggregate-maxes:
 
 322     CONTINUE            !  end loop on variables
 
-        CALL M3EXIT( 'M3AGMASK', 0, 0,
+        CALL M3EXIT( PNAME, 0, 0,
      &               'Program  M3AGMASK  completed successfully', 0 )
 
 
@@ -737,5 +727,5 @@ C...........   Miscellaneous formats................. 95xxx
 
 95000   FORMAT ( /5X , A , $ )          !  generic prompt format.
 
-        END
+        END PROGRAM  M3AGMASK
 

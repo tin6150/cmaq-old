@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/REQUIREMENTS.html,v 1.1.1.1 2001/12/05 20:25:39 coats Exp $ -->
+<!-- "$Id: REQUIREMENTS.html 11 2014-03-31 18:42:12Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> I/O&nbsp;API REQUIREMENTS</TITLE>
 </HEAD>
@@ -15,25 +15,19 @@
 
 <!--#include virtual="/INCLUDES/header.html" -->
 
-<CENTER>
 <H1>    
         EDSS and Models-3  I/O:  <BR>
         REQUIREMENTS,  DESIGN,  AND  IMPLEMENTATION 
 </H1>
-</CENTER>
 
-<BLOCKQUOTE>
-<A REL="author" HREF="/staff/coats/">
-Carlie J. Coats, Jr., Ph.D.</A> <BR>
-Baron Advanced Meteorological Systems, LLC.<BR>
-<EM>formerly:</EM> Environmental Programs, <BR>
+
+Carlie J. Coats, Jr., Ph.D. <BR>
+Environmental Programs, <BR>
 MCNC North Carolina Supercomputing Center <BR>
 Copyright 1992-2001 MCNC
-</BLOCKQUOTE>
 
 <H2> INTRODUCTION </H2>
 
-<BLOCKQUOTE>
 EDSS is a system designed to support decision making and related 
 activities (such as modeling) for environmental issues.  That means 
 that EDSS is more than just a model:  more, even, than a family 
@@ -113,13 +107,12 @@ at present is that parallel systems researchers are still groping
 for the &quot;right&quot; way to exploit such parallelism.  With sufficient 
 forethought, however, the requirements analysis and interface design 
 may survive even if the implementation does not.
-</BLOCKQUOTE>
+
 
 <H2> I.   REQUIREMENTS </H2>
 
     <H3> A:  Objective </H3>
 
-<BLOCKQUOTE>
 The objective of the Models-3/EDSS I/O API is to provide a single 
 generalized I/O structure class (with subclasses) with the data 
 structures and data access operations to fulfill the needs of Models-3 
@@ -127,12 +120,10 @@ and EDSS.  Initially, this class needs to serve the needs of meteorology,
 emissions, and air quality models, preprocessors, postprocessors, analysis 
 and visualization programs, and such other computational tools are used 
 within Models-3 and EDSS.  
-</BLOCKQUOTE>
 
 
     <H3> B:  Systems Requirements </H3>
 
-<BLOCKQUOTE>
 The I/O API must be callable from at least 
 <A HREF = "FORTRAN.html"> FORTRAN </A> and <A HREF = "C.html"> C </A>.  
 It must be stable over time and should be upward compatible with successive 
@@ -155,12 +146,10 @@ Files must contain sufficient self-description that they can
 &quot;stand alone;&quot; in particular, reading they should 
 not depend upon the availability of additional external 
 &quot;grid description &quot; or &quot;file dictionary&quot; software.
-</BLOCKQUOTE>
 
 
     <H3> C:  Data Types Supported </H3>
 
-<BLOCKQUOTE>
 For purposes of further analysis, we assume that data is organized 
 into logical files which are assumed to be <A HREF = "VBLE.html"> 
 multiple-variable data sets </A> having a common origin and common 
@@ -295,7 +284,9 @@ them yields that the the system must support the following:
           <STRONG><A HREF = "gefile.html">geospatial-element cell
           complexes (GECC)</A></STRONG>, which is a type efficiently
           supporting both (time-stepped and time-independent)
-          geospatial coverages and finite element data.
+          geospatial coverages and finite element data, and modeled
+          after the data structures used in the (pure) mathematical
+          field of geometric topology.
 </UL>        
         
 All files must contain all the information necessary to access the 
@@ -303,9 +294,9 @@ data contained in them.  This is important both for analysis, where
 it permits unified tools supporting a variety of files, and for 
 sharing data with others:  the only data needing to be transported to a 
 colleague's system is the file itself, and not a collection of 
-auxiliary files as with some current models.  At least the following 
-sorts of <A HREF = "INCLUDE.html#fdesc"> descriptive information </A> 
-are required:
+auxiliary files as with some current models.
+<A HREF = "INCLUDE.html#fdesc">At least the following sorts of
+descriptive information are required: </A> 
 <UL>
     <LI>  file description (text about this type of file)
 
@@ -368,11 +359,9 @@ are required:
 	<LI>  (for sigma-coordinates only:) the model-top
     </UL>
 </UL>
-</BLOCKQUOTE>
 
     <H3> D:  Functional Requirements </H3>
 
-<BLOCKQUOTE>
 The I/O API must support the access needs of both the environmental 
 models used to simulate situations of interest to decision makers and
 also the analysis and visualization tools used to distill insight 
@@ -452,24 +441,21 @@ quality model might be executing simultaneously on the same machine,
 for example).  Using only the globally-visible namespace provided by 
 the file system makes this impossible -- or difficult, at best -- in 
 many instances.
-</BLOCKQUOTE>
 
 
 <H2> II.  DESIGN </H2>
 
-<BLOCKQUOTE>
 The design of the Models-3/EDSS I/O API is given here in terms of its 
 externally visible properties, i.e., in terms of the conventions used, 
 the public INCLUDE-file interfaces, and the function-call interfaces for 
 the public routines in the I/O API.  This section documents these externally 
 visible properties from the <A HREF = "FORTRAN.html">FORTRAN</A> 
 programmers point of view, rather than from that of the 
-<A HREF = "C.html">C programmer, as documented in a separate section</A>. 
-</BLOCKQUOTE>
+<A HREF = "C.html">C programmer, as documented in a separate section</A>.   
+
 
     <H3> A:  Conventions </H3>
 
-<BLOCKQUOTE>
 There are a number of data structuring and manipulation conventions 
 used consistently throughout the Models-3 and EDSS systems, and which 
 affect the I/O API.  Among these are the representation of object-names, 
@@ -552,12 +538,10 @@ time deltas, and which handle arbitrary time deltas correctly.
 
 We recommend that the convention be adopted that all times are given
 in GMT; however, this policy is by no means required by the system.
-</BLOCKQUOTE>
 
 
     <H3> B:  Files -- Logical Names and Physical Names </H3>
 
-<BLOCKQUOTE>
 Rather than forcing the programmer to deal with hard-coded file 
 names or hard-coded unit numbers, the I/O API introduces the 
 concept of <A HREF = "LOGICALS.html"> logical file names </A>.  
@@ -571,13 +555,11 @@ For programming purposes, the significant facts are that the
 names should not contain blanks (except as padding at the end:  
 <CODE>'foo '</CODE> is OK; <CODE>'f  oo'</CODE> is not), and 
 when they are used in subroutine calls are FORTRAN character 
-strings at most 16 characters long.
-</BLOCKQUOTE>
+strings at most 16 characters long.                            
 
 
     <H3> C:  Data Structures for Input and Output </H3>
 
-<BLOCKQUOTE>
 Each logical file has header attributes describing itself, and a 
 sequence of time steps divided into logical data records accessed 
 by <A HREF = "VBLE.html"> variable and layer </A>.  
@@ -718,14 +700,14 @@ Together with the magic-number values, the types are:
               <CODE>INTEGER NSITES</CODE>
 	<LI>  array of site ID's           
               <CODE>INTEGER ID( MAX )</CODE>
-	<LI>  array of site level counts   INTEGER 
-              <CODE>NLVL( MAX )</CODE>
+	<LI>  array of site level counts
+              <CODE>INTEGER NLVL( MAX )</CODE>
 	<LI>  array of site X-locations    
               <CODE>DOUBLE PRECISION X( MAX )</CODE>
 	<LI>  array of site Y-locations    
               <CODE>DOUBLE PRECISION Y( MAX )</CODE>
-	<LI>  array of site Z-locations    DOUBLE PRECISION 
-              <CODE>Z( MAX )</CODE>
+	<LI>  array of site Z-locations
+              <CODE>DOUBLE PRECISION Z( MAX )</CODE>
 	<LI>  array of data                
               <CODE>REAL DATA( MXLVL, MAX, NLAYS, NVARS )</CODE>
     </UL>                                                       
@@ -749,17 +731,15 @@ Together with the magic-number values, the types are:
     below, where MXROW is the number of rows in the matrix and 
     MXCOL is the maximum number of active columns per row.             
     <UL>
-        <LI>  number of active cols per row     INTEGER  NC( MXROW )
-        <LI>  subscripts for active cols        INTEGER  IC( MXCOL, MXROW )
-        <LI>  coefficients for active cols      REAL     CC( MXCOL, MXROW )
+        <LI>  number of active cols per row <CODE>INTEGER  NC( MXROW )</CODE>
+        <LI>  subscripts for active cols <CODE>INTEGER  IC( MXCOL, MXROW )</CODE>
+        <LI>  coefficients for active cols <CODE>REAL     CC( MXCOL, MXROW )</CODE>
     </UL>
 </UL><P> 
-</BLOCKQUOTE>
 
 
     <H3> D:  Public Include-file Structures </H3>
 
-<BLOCKQUOTE>
 There are three public <A HREF = "INCLUDE.html"> INCLUDE </A> files 
 in the FORTRAN interface to the I/O API.  They are the following:
 <UL>
@@ -776,14 +756,12 @@ in the FORTRAN interface to the I/O API.  They are the following:
     <LI>  <STRONG>IODECL3.EXT</STRONG> contains declarations and usage 
     comments for the public routines in the FORTRAN I/O API.
 </UL><P> 
-</BLOCKQUOTE>
     
     
     <H3> 
     E:  Public Call Interfaces and Specifications 
     </H3>
 
-<BLOCKQUOTE>
 Except for INIT3(), which is an <CODE>INTEGER</CODE> function, the routines 
 in the I/O API are LOGICAL functions which return .TRUE. exactly when they 
 succeed (and .FALSE. otherwise).  In the examples below, the names 
@@ -920,12 +898,10 @@ notified when that happens.  A typical call looks like:
     ... SHUT3 failed.
     END IF
 </PRE><P> 
-</BLOCKQUOTE>
 
 
 <H2> III.  IMPLEMENTATION </H2>
 
-<BLOCKQUOTE>
 The first two Models-3/EDSS I/O API implementations are built on top of 
 UCAR's <A HREF = "http://www.unidata.ucar.edu/packages/netcdf/index.html">
 netCDF</A> library.  
@@ -956,12 +932,10 @@ the FORTRAN interface for use by graphics and analysis programs.
 directly calls the netCDF C API in order to read EDSS data sets -- 
 a potential source of inconsistency as EDSS expands and develops further.)   
 <P> 
-</BLOCKQUOTE>
 
 
 <H2> IV.  LIMITATIONS </H2>
 
-<BLOCKQUOTE>
 A major limitation of the present implementation is the limits 
 imposed by 32-bit addressing within most UNIX file systems.  Model 
 management and data indexing within Models-3 and EDSS would both be 
@@ -990,19 +964,17 @@ of settled practice.
 NOTE added OCT. 24, 1997:  
 <A HREF = "NEWSTUFF.html#datap">Various prototypes</A> for domain
 decomposition data parallel models have been implemented and we are 
-evaluating them as part of the 
-<A HREF = "/projects/ppar/index.html">Practical 
+evaluating them as part of the MCNC Environmental Program's
+<A HREF = "http://www.baronams.com:/projects/ppar/index.html">Practical 
 Parallel Project</A>
 </VAR>
 <P> 
-</BLOCKQUOTE>
 
 
 <H2> V.  FUTURE EXTENSIONS </H2>
 
     <H3> A:  Data Types </H3>
 
-<BLOCKQUOTE>
 One obvious kind of future extension is in the set of data types 
 supported.  There are several candidates, none of which is yet 
 sufficiently developed that we can specify them in detail.  A first 
@@ -1014,12 +986,11 @@ exchange-flux matrices to support air quality models incorporating
 the results of generalized-chemistry research being performed by 
 Prof. Harvey Jeffries of the University of North Carolina at Chapel Hill.
 <P>
-</BLOCKQUOTE>
+<EM></EM>
 
 
     <H3> B:  Communication for Parallel Computing </H3>
 
-<BLOCKQUOTE>
 <VAR>
 NOTE added OCT. 24, 1997:  
 <A HREF = "NEWSTUFF.html#coupl">The following has been 
@@ -1115,20 +1086,19 @@ while at the same time writing well-engineered, maintainable systems.
 
 <EM><STRONG>Added 1997: </STRONG>
 This extension, the
-<A HREF = "/projects/ppar/ioapi.html">coupling mode of the
-I/O&nbsp;API</A>, has been developed under the aegis of the
-<A HREF = "/projects/ppar/">Practical Parallel Computing Strategies
+<A HREF = "http://www.baronams.com:/projects/ppar/ioapi.html">coupling mode of the
+I/O&nbsp;API</A>, has been developed under the aegis of the MCNC
+Environmental Programs
+<A HREF = "http://www.baronams.com:/projects/ppar/">Practical Parallel Computing Strategies
 Project</A>, a project partially funded by US EPA.  It has proved
 very useful for constructing coupled modeling systems, such as that
-used for <A HREF = "/projects/SECMEP/">MCNC numerical air quality
-forecasting</A> and  for <A HREF = "/projects/dashmm/">coupled
+used for <A HREF = "http://www.baronams.com:/projects/SECMEP/">MCNC numerical air quality
+forecasting</A> and  for <A HREF = "http://www.baronams.com:/projects/dashmm/">coupled
 hydrological-meteorological modeling</A>.
 </EM> <P>
-</BLOCKQUOTE>
 
 <H3> Other Extensions </H3>
 
-<BLOCKQUOTE>
 At some point, it might be worthwhile to implement C++ interfaces
 with a full-blown class structure for files, variables, layers, 
 dates and times, etc., which fully supports the structure of the
@@ -1147,7 +1117,6 @@ element data, on cell complexes with either time-stepped and
 time-independent node coordinates.
 </EM>
 <P>
-</BLOCKQUOTE>
 
 <HR> <!------------------------------------------------------------>
 

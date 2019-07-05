@@ -1,18 +1,16 @@
 
-C.........................................................................
-C Version "@(#)$Header$"
-C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2005 Baron Advanced Meteorological Systems
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
       SUBROUTINE CBARNES1( NG, LAT, LON,
      &                     N, YLAT, XLON, Z, WL50, GRID)
 
 C***********************************************************************
-C    subroutine body starts at line  143
+C Version "$Id: cbarnes1.F 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
+C    subroutine body starts at line  119
 C
 C  FUNCTION:
 C
@@ -53,7 +51,10 @@ C   12/95   Modified by CJC to fit EDSS/Models-3 conventions from
 C           the UAM BEIS CGRID1().  Uses "exact" spherical-geometry
 C           distance formula.
 C   08/2000 Bug-fix by CJC in SAVED-variables list.
-C   03/2004 Back tolinar-approx distance formula
+C   03/2004 Back to linar-approx distance formula
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
+C       Version    9/2014 by CJC:  modifications for OpenMP parallel
 C***********************************************************************
 
         IMPLICIT NONE
@@ -62,38 +63,24 @@ C***********************************************************************
 
 C.......   ARGUMENTS:
 
-        INTEGER    NG		!  Number of output values (=NCOLS*NROWS)
-        REAL       LAT( NG )	!  single-indexed output latitudes
-        REAL       LON( NG )	!  single-indexed output longitudes
-        INTEGER    N		!  number of input values
-        REAL       YLAT( N )	!  input latitudes
-        REAL       XLON( N )	!  input longitudes
-        REAL       Z   ( N )	!  input values
-        REAL       WL50		!  50 Percent filtered wavelength  (KM)
-        REAL       GRID( NG )	!  output values
-
-
-C...........   EXTERNAL FUNCTIONS:
-
-#ifdef _CRAY
-#define AUTO_ARRAYS 1
-#endif
-
-#if ! AUTO_ARRAYS
-        INTEGER         MALLOC
-#endif
-
+        INTEGER, INTENT(IN   ) :: NG		!  Number of output values (=NCOLS*NROWS)
+        REAL   , INTENT(IN   ) :: LAT( NG )	!  single-indexed output latitudes
+        REAL   , INTENT(IN   ) :: LON( NG )	!  single-indexed output longitudes
+        INTEGER, INTENT(IN   ) :: N		!  number of input values
+        REAL   , INTENT(IN   ) :: YLAT( N )	!  input latitudes
+        REAL   , INTENT(IN   ) :: XLON( N )	!  input longitudes
+        REAL   , INTENT(IN   ) :: Z   ( N )	!  input values
+        REAL   , INTENT(IN   ) :: WL50		!  50 Percent filtered wavelength  (KM)
+        REAL   , INTENT(  OUT) :: GRID( NG )	!  output values
 
 C...........   PARAMETERS:
 
-        REAL       G, GINV, R0LN50, ALOG10, R2DSQ, AC
-
-      PARAMETER   ( G      =  0.4          ,
-     &              GINV   =  2.5          ,
-     &              R0LN50 =  2.1058923    ,
-     &              ALOG10 =  2.3025850929 ,
-     &              R2DSQ =  RPI180 * RPI180 ,  !  radian**2 ~~> deg**2 
-     &              AC     =  30.0 * ALOG10 / D2KMSQ )
+        REAL, PARAMETER :: G      =  0.4
+        REAL, PARAMETER :: GINV   =  2.5
+        REAL, PARAMETER :: R0LN50 =  2.1058923
+        REAL, PARAMETER :: ALOG10 =  2.3025850929
+        REAL, PARAMETER :: R2DSQ  =  RPI180 * RPI180
+        REAL, PARAMETER :: AC     =  30.0 * ALOG10 / D2KMSQ
 
 
 C...........   LOCAL VARIABLES:
@@ -115,62 +102,46 @@ C...........   LOCAL VARIABLES:
 
 C...........   STATE VARIABLES:
 
-        REAL       WL501
-        DATA       WL501  /  -1.0  /  !  last value of WL50
-
-        REAL       C4K           !  Gauss constant for first pass
-        REAL       GC4K          !  Gauss constant for second pass
-        REAL       RMAXA         !  maximum scanning radii, for first
-        REAL       RMAXB         !  and second passes
-        REAL       ANUMA         !  numerator, beyond scanning radius,
-        REAL       ANUMB         !  for first and second passes
-
-        SAVE       WL501, C4K, RMAXA, ANUMA, GC4K, RMAXB, ANUMB
-
-#if ! AUTO_ARRAYS
-        INTEGER         LSIZE
-        POINTER         ( P, DZ )
- 
-        DATA            LSIZE  /  -1  /  !  last value of N
-        SAVE            P, LSIZE
-#endif
+        REAL, SAVE :: WL501 = -1.0  !  last value of WL50
+        REAL, SAVE :: C4K           !  Gauss constant for first pass
+        REAL, SAVE :: GC4K          !  Gauss constant for second pass
+        REAL, SAVE :: RMAXA         !  maximum scanning radii, for first
+        REAL, SAVE :: RMAXB         !  and second passes
+        REAL, SAVE :: ANUMA         !  numerator, beyond scanning radius,
+        REAL, SAVE :: ANUMB         !  for first and second passes
 
 
 C..................................................................
 C.......   begin body of  CBARNES1:
 
-#if ! AUTO_ARRAYS
-        IF ( N .GT. LSIZE ) THEN
-            IF ( LSIZE .GT. 0 )  CALL FREE( P )
-            P = MALLOC( 8 * N )
-            IF ( P .EQ. 0 )
-     &           CALL M3EXIT( 'TSHIFT', 0, 0,
-     &                        'Memory allocation error', 2 )
-            LSIZE = N
-        END IF
-#endif
-
 C...........   Calculate the scaling filter parameter
 
-          IF  ( WL50 .NE. WL501 )  THEN
+      IF  ( WL50 .NE. WL501 )  THEN
 
-              C  =  R0LN50 * ( WL50 / PI )**2
+          C  =  R0LN50 * ( WL50 / PI )**2
 
-              C4K   = -D2KMSQ / C
-              RMAXA =  C * AC           !   exp ( c4k * rmaxa ) = 1.0e-30
-              ANUMA =  1.0E-30 * RMAXA
+          C4K   = -D2KMSQ / C
+          RMAXA =  C * AC           !   exp ( c4k * rmaxa ) = 1.0e-30
+          ANUMA =  1.0E-30 * RMAXA
 
-              GC4K  =  GINV * C4K
-              RMAXB =  RMAXA * G
-              ANUMB =  1.0E-30 * RMAXB
+          GC4K  =  GINV * C4K
+          RMAXB =  RMAXA * G
+          ANUMB =  1.0E-30 * RMAXB
 
-              WL501 = WL50                        !  Record "WL50"
+          WL501 = WL50                        !  Record "WL50"
 
-          END IF
+      ELSE IF ( N .LE. 0 ) THEN
+          CALL M3EXIT( 'CBARNESN', 0, 0, 'NP=0 points input', 2 )
+      END IF
 
 
 C.......   Prediction pass:  Scan each input data point and construct
 C.......   estimated error  DZ  at that point:
+
+!$OMP   PARALLEL DO
+!$OMP&    DEFAULT( NONE ),
+!$OMP&     SHARED( N, XLON, YLAT, RMAXA, ANUMA, C4K, Z, DZ ),
+!$OMP&    PRIVATE( NN, MM, XA, YA, CY, WTOT1, FTOT1, XB, YB, DSQ, W1  )
 
       DO  222  NN = 1 , N
 
@@ -196,11 +167,6 @@ C.......   estimated error  DZ  at that point:
 
 111       CONTINUE              !  end loop on sites M
 
-          IF ( WTOT1 .EQ. 0.0  ) THEN
-              WRITE ( MESG,94010 ) NN, YA, XA, N
-              CALL M3EXIT( 'CBARNES1', 0, 0, MESG, 2 )
-          END IF
-
           DZ ( NN ) = Z ( NN )  -  FTOT1 / WTOT1
 
 222   CONTINUE          !  end prediction loop on sites NN
@@ -209,6 +175,13 @@ C.......   estimated error  DZ  at that point:
 C.......   Grid-prediction pass:  generate estimate using first set of
 C.......   weights, and correction using error estimates  DZ and second
 C.......   set of weights
+
+!$OMP   PARALLEL DO
+!$OMP&    DEFAULT( NONE ),
+!$OMP&     SHARED( NG, N, LAT, LON, XLON, YLAT, RMAXA, RMAXB,
+!$OMP&             ANUMA, ANUMB, C4K, GC4K, Z, DZ, GRID ),
+!$OMP&    PRIVATE( J, NN, XG, YG, CY, FTOT1, FTOT2, WTOT1, WTOT2,
+!$OMP&             XA, YA, DSQ, W1, W2  )
 
       DO  555  J = 1 , NG
 
@@ -247,11 +220,6 @@ C.......   Scan each input data point
            
 333       CONTINUE          !  end loop on data sites nn
 
-          IF ( WTOT1 .EQ. 0.0  .OR.  WTOT2 .EQ. 0.0 ) THEN
-                WRITE ( MESG,94020 ) J , N
-                CALL M3EXIT( 'CBARNES1', 0, 0, MESG, 2 )
-          END IF
-
           GRID( J ) = FTOT1 / WTOT1  +  FTOT2 / WTOT2
 
 555   CONTINUE          !  end loop on rows J
@@ -259,18 +227,4 @@ C.......   Scan each input data point
 
       RETURN
 
-C*************************  MESSAGE  FORMATS  **************************
-
-
-C.......   Internal buffering formats     94xxx
-
-
-94010 FORMAT ( 'Weights total zero at site', I5, 2X, 
-     &         'at lat-lon', F7.2, ':', F7.2, 2X,
-     &         'input count=', I6 )
-
-94020 FORMAT ( 'Weights total zero at J=', I9, 2X,
-     &         'input count=', I9 )
-
-
-      END
+      END SUBROUTINE CBARNES1

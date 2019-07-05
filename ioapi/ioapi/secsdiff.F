@@ -1,15 +1,15 @@
 
-        INTEGER  FUNCTION  SECSDIFF ( ADATE, ATIME, ZDATE, ZTIME )
+        INTEGER  FUNCTION SECSDIFF ( ADATE, ATIME, ZDATE, ZTIME )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: secsdiff.F 45 2014-09-12 20:05:29Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2007 Baron Advanced Meteorological Systems
+C (C) 2003-2010 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  function body starts at line  45
+C  function body starts at line  67
 C
 C  FUNCTION:  returns the time interval (seconds) between ADATE:ATIME
 C             and ZDATE:ZTIME
@@ -28,26 +28,29 @@ C       uses a 360-day "year"
 C
 C       Version 1/2007 by CJC:  simplification; handle negative 
 C       *DATE arguments correctly
+C
+C       Modified 03/2010 by CJC: F90 changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         ADATE, ATIME
-        INTEGER         ZDATE, ZTIME
+        INTEGER, INTENT(IN   ) :: ADATE, ATIME
+        INTEGER, INTENT(IN   ) :: ZDATE, ZTIME
 
 
 C...........   PARAMETERS and their descriptions:
 
-        INTEGER         YDAYS   !  "normal"-year # of days
-        INTEGER         LDAYS   !      leap-year # of days
+        !  "normal"-year, leap-year # of days
 
 #ifdef IO_360
-        PARAMETER     ( YDAYS = 360, LDAYS = 360 )
+        INTEGER, PARAMETER :: YDAYS = 360
+        INTEGER, PARAMETER :: LDAYS = 360
 #endif
 #ifndef IO_360
-        PARAMETER     ( YDAYS = 365, LDAYS = 366 )
+        INTEGER, PARAMETER :: YDAYS = 365
+        INTEGER, PARAMETER :: LDAYS = 366
 #endif
 
 
@@ -127,5 +130,5 @@ C.......   Now add corrections for differences in years:
 
         RETURN
 
-        END
+        END FUNCTION SECSDIFF
 

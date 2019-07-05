@@ -2,14 +2,14 @@
         PROGRAM MTXCALC
 
 C***********************************************************************
-C Version "%W% %P% %G% %U% $Id: mtxcalc.f 607 2010-02-19 12:57:18Z coats@bdsl $"
+C Version "$Id: mtxcalc.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line  176
+C  program body starts at line  171
 C
 C  DESCRIPTION:
 C       Take GRIDDESC names for input and output grids, and produce
@@ -42,8 +42,8 @@ C       Version    8/2008 by CJC:  USE M3UTILIO, MATXATTS to put
 C       grid-attributes into matrix.
 C       Version   12/2008 by CJC:  heuristic to compensate for WMO screw-up
 C       that declares all longitudes should be positive
-C       Version   02/2010 by CJC:  bug-fix for output transverse or eqatorial
-C       Mercator projections.  Problem reported by Steve Kim, UCambridge, UK.
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C***********************************************************************
 
       USE M3UTILIO
@@ -51,25 +51,18 @@ C***********************************************************************
 
       IMPLICIT NONE
 
-
 C...........   PARAMETERS and their descriptions:
 
-      REAL*8      PI
-      REAL*8      PI180
-      REAL*8      REARTH
-      REAL*8      DG2M   ! latitude degrees to meters
+      REAL*8, PARAMETER :: PI     = 3.14159 26535 89793 23846 26433 83279 D0
+      REAL*8, PARAMETER :: PI180  = PI / 180.0
+      REAL*8, PARAMETER :: REARTH = 6367333.0D0
+      REAL*8, PARAMETER :: DG2M   = REARTH * PI180
 
-      PARAMETER ( PI     = 3.14159 26535 89793 23846 26433 83279 D0 ,
-     &            PI180  = PI / 180.0,
-     &            REARTH = 6367333.0D0 ,
-     &            DG2M   = REARTH * PI180 )
-
+      CHARACTER*16, PARAMETER :: PNAME = 'MTXCALC'
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER     IARGC
-        EXTERNAL    IARGC
-
+        INTEGER :: IARGC
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -207,7 +200,6 @@ C   begin body of program MTXCALC
      & ' ',
      & 'The following input and output coordinate systems are',
      & 'supported:',
-     &  ' ',
      & '    Latitude-Longitude    ',
      & '    Lambert Conformal Conic',
      & '    UTM                   ',
@@ -215,31 +207,30 @@ C   begin body of program MTXCALC
      & '    Transverse Mercator   ',
      & '    Equatorial Mercator   ',
      & '    Albers Equal-Area Conic',
-     &  ' ',
-     &'See URL  http://www.emc.mcnc.org/products/ioapi/AA.html#tools',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2008 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
+     &' ',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
-     &' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &'$Id:: mtxcalc.f 607 2010-02-19 12:57:18Z coats@bdsl           $',
-     &'Program release tag: $Name$',
+     &'$Id:: mtxcalc.f 44 2014-09-12 18:03:16Z coats                 $',
      &' '
 
         IF ( .NOT. GETYN( 'Continue with program?', .TRUE. ) ) THEN
-            CALL M3EXIT( 'MTXCALC', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Program terminated at user request', 2 )
         ELSE IF ( ARGCNT .EQ. 2 ) THEN
             CALL GETARG( 1, IGRID )
@@ -249,15 +240,15 @@ C   begin body of program MTXCALC
             CALL GETSTR( 'Enter name for output grid', 'OGRID', OGRID )
         ELSE
             MESG= 'Usage error:  incorrect number of arguments'
-            CALL M3EXIT( 'MTXCALC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         MATDEV = PROMPTFFILE(
      &  'Enter logical name for ASCII MATRIX file, or "NONE"',
-     &           .FALSE., .TRUE., 'MATTXT', 'MTXCALC' )
+     &           .FALSE., .TRUE., 'MATTXT', PNAME )
         IF ( MATDEV .EQ. -1 ) THEN
             MESG= 'Error opening ASCII matrix file'
-            CALL M3EXIT( 'MTXCALC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         ELSE IF ( MATDEV .GE. 0 ) THEN
             WRITE( MATDEV, '(A)' )
      &        '# Fractions for sparse transform matrix'
@@ -279,7 +270,7 @@ C.......   Read the input and output grid parameters from GRIDDESC:
 
             MESG   = 'Grid "' // TRIM( IGRID ) //
      &               '" not found in GRIDDESC file'
-            CALL M3EXIT( 'MTXCALC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
         END IF  ! if dscgrid() failed for input grid
 
@@ -311,7 +302,7 @@ C.......   Read the input and output grid parameters from GRIDDESC:
 
             MESG   = 'Grid "' // TRIM( OGRID ) //
      &               '" not found in GRIDDESC file'
-            CALL M3EXIT( 'MTXCALC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
         END IF                  ! if dscgrid() failed for output grid
 
@@ -370,13 +361,13 @@ C.......   Compute sampling ratios:
         END IF
         NX = ENVINT( 'COL_REFINEMENT', 'column-factor', C, STATUS )
         IF ( STATUS .GT. 0 ) THEN
-            CALL M3EXIT( 'IC_ADJUST', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &          'Bad environment variable "COL_REFINEMENT"', 2 )
         END IF
 
         NY = ENVINT( 'ROW_REFINEMENT','row-factor', R, STATUS )
         IF ( STATUS .GT. 0 ) THEN
-            CALL M3EXIT( 'IC_ADJUST', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &          'Bad environment variable "ROW_REFINEMENT"', 2 )
         END IF
 
@@ -610,7 +601,7 @@ C.......   Set up arguments for GTP0:
             CALL M3MSG2( MESG )
             WRITE( MESG, '( A, I4, 2X, A, A )' )
      &          'Grid type', GDTYP1,'not supported'
-            CALL M3EXIT( 'MTXCALC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
         END IF  ! if non-Lam grid
 
@@ -793,7 +784,7 @@ C.......   Set up arguments for GTP0:
             CALL M3MSG2( MESG )
             WRITE( MESG, '( A, I4, 2X, A )' )
      &      'Requested grid type', GDTYP2, 'not supported'
-            CALL M3EXIT( 'MTXCALC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
         END IF                  ! if dscgrid() failed, or if non-Lambert grid
 
@@ -812,7 +803,7 @@ C.......   Allocate scratch buffers:
 
         IF ( ISTAT .NE. 0 ) THEN
             MESG   = 'Work-buffer allocation failure'
-            CALL M3EXIT( 'MTXCALC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF                  ! if allocate failed
 
 
@@ -853,7 +844,7 @@ C.......   Compute fractions:
 
                 IF ( IFLG .NE. 0 ) THEN
                     MESG = 'Failure in GTPZ0  for ' // IGRID
-                    CALL M3EXIT( 'MTXCALC', 0, 0, MESG, 2 )
+                    CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                 END IF
 
                 X = CRDIO( 1 )  -  XORIG2  -  XADJ
@@ -894,10 +885,10 @@ C.......   Compute fractions:
             WRITE( MESG, '( A, I12, 2X, A, I12 )' )
      &            'Size-allocation overflow:  allocated', NFRACS,
      &            'actual', N
-            CALL M3EXIT( 'MTXCALC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         ELSE IF ( N .EQ. 0 ) THEN
             MESG = 'NO INTERSECTION FOUND:  Number of coeffs = 0'
-            CALL M3EXIT( 'MTXCALC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
         WRITE( MESG, '( A, I12 )' ) 'Number of coeffs', N
         CALL M3MSG2( MESG )
@@ -911,7 +902,7 @@ C.......   (writing ASCII output file, if requested)
 
         IF ( ISTAT .NE. 0 ) THEN
             MESG   = 'Output-buffer allocation failure'
-            CALL M3EXIT( 'MTXCALC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF                  ! if allocate failed
 
         CALL BLDMATRIX( K, N, ICEL, OCEL, FRAC,
@@ -946,7 +937,7 @@ C.......   Open output file and write out the output sparse matrix:
             FDESC3D( N ) = ' '
         END DO
 
-        IF ( .NOT. OPEN3( 'MATRIX', FSUNKN3, 'MTXCALC' ) ) THEN
+        IF ( .NOT. OPEN3( 'MATRIX', FSUNKN3, PNAME ) ) THEN
             EFLAG = .TRUE.
             MESG = 'Could not open output SPARSE MATRIX file'
             CALL M3MESG( MESG )
@@ -985,13 +976,13 @@ C...............  Shut down program:
             MESG  = 'Success in program MTXCALC'
             ISTAT = 0
         END IF
-        CALL M3EXIT( 'MTXCALC', 0, 0, MESG, ISTAT )
+        CALL M3EXIT( PNAME, 0, 0, MESG, ISTAT )
 
         END PROGRAM MTXCALC
 
 C===========================================================================
 
-	SUBROUTINE  BLDMATRIX( M, N, ICEL, OCEL, FRAC,
+        SUBROUTINE  BLDMATRIX( M, N, ICEL, OCEL, FRAC,
      &                         MATDEV, NCOLS1, NCOLS2,
      &                         ICNT, INDX, COEF )
 
@@ -1015,7 +1006,7 @@ C===========================================================================
 
         K = 0
 
-        IF ( MATDEV .LT. 0 ) THEN	!  then do NOT write ASCII coeffs
+        IF ( MATDEV .LT. 0 ) THEN   !  then do NOT write ASCII coeffs
 
             DO  I = 1, M
 
@@ -1032,7 +1023,7 @@ C===========================================================================
 
             END DO              !  end loop on output rows I
 
-        ELSE		!  matdev > 0:  write ASCII coeffs-file to unit MATDEV
+        ELSE        !  matdev > 0:  write ASCII coeffs-file to unit MATDEV
 
             WRITE( MATDEV, '( A4, 5A12 )' )
      &              '#    ',
@@ -1064,7 +1055,7 @@ C===========================================================================
 
             END DO              !  end loop on output rows I
 
-        END IF		!  if matdev < 0, or not
+        END IF          !  if matdev < 0, or not
 
         RETURN
 

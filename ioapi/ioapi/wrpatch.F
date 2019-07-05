@@ -1,18 +1,16 @@
 
-C.........................................................................
-C Version "@(#)$Header$"
-C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2004 Baron Advanced Meteorological Systems
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
         LOGICAL FUNCTION WRPATCH( FID, VID, TSTAMP, STEP2, 
      &                            SIZE_MAP, GRID_MAP, BUFFER )
 
 C***********************************************************************
-C  function body starts at line  87
+C Version "$Id: wrpatch.F 1 2014-03-14 20:22:54Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
+C  function body starts at line  86
 C
 C  FUNCTION:
 C       writes tile of data defined by data  SIZE_MAP, GRID_MAP
@@ -39,6 +37,8 @@ C       Adapted from WRGRDDED_P and WRPATCH and modified to ensure
 C       correctness of time-stamp handling (which must be performed
 C       by a separate WRTFLAG call subsequent to completion of all
 C       the WRPATCH calls).
+C
+C       Modified 03/2010 by CJC: F9x changes
 C***********************************************************************
 
       IMPLICIT NONE
@@ -52,13 +52,13 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         FID             !  file index within the STATE3 commons
-        INTEGER         VID             !  vble index within the STATE3 commons
-        INTEGER         TSTAMP( 2 )     !  ( jdate yyyyddd, jtime hhmmss )
-        INTEGER         STEP2           !  file record number (maybe mod 2)
-        INTEGER         GRID_MAP(2)     !  starting corners for grid-patch
-        INTEGER         SIZE_MAP(3)     !  diagonals for grid-patch
-        REAL            BUFFER(*)       !  buffer array for input
+        INTEGER, INTENT(IN   ) :: FID             !  file index within the STATE3 commons
+        INTEGER, INTENT(IN   ) :: VID             !  vble index within the STATE3 commons
+        INTEGER, INTENT(IN   ) :: TSTAMP( 2 )     !  ( jdate yyyyddd, jtime hhmmss )
+        INTEGER, INTENT(IN   ) :: STEP2           !  file record number (maybe mod 2)
+        INTEGER, INTENT(IN   ) :: GRID_MAP(2)     !  starting corners for grid-patch
+        INTEGER, INTENT(IN   ) :: SIZE_MAP(3)     !  diagonals for grid-patch
+        REAL   , INTENT(IN   ) :: BUFFER(*)       !  buffer array for input
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -72,12 +72,11 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         INTEGER         INDX            !  subscript location in BUFFER(*)
         LOGICAL         AFLAG
 
-        INTEGER         TYPSIZE( 6 )    !  sizeof( variable ) / sizeof( real )
 #if _CRAY || REAL8
-        DATA            TYPSIZE / 1, 1, 1, 1, 1, 1 /
+        INTEGER, PARAMETER :: TYPSIZE( 6 ) = (/ 1, 1, 1, 1, 1, 1 /)
 #endif
 #if ! ( _CRAY || REAL8 )
-        DATA            TYPSIZE / 1, 1, 1, 1, 1, 2 /
+        INTEGER, PARAMETER :: TYPSIZE( 6 ) = (/ 1, 1, 1, 1, 1, 2 /)
 #endif
 
 
@@ -169,5 +168,5 @@ C...........   Perform the writes, according to VID
         WRPATCH = .TRUE.        ! (if you get to here)
         RETURN
 
-        END
+        END FUNCTION WRPATCH
 

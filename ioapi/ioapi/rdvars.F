@@ -1,16 +1,14 @@
 
-C.........................................................................
-C Version "@(#)$Header$"
-C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003 Baron Advanced Meteorological Systems
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
         LOGICAL FUNCTION RDVARS( FID, VID, DIMS, DELS, DELTA, BUFFER )
 
 C***********************************************************************
+C Version "$Id: rdvars.F 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
 C  function body starts at line  121
 C
 C  FUNCTION:
@@ -47,7 +45,9 @@ C       Modified 10/2003 by CJC for I/O API version 3:  support for
 C       native-binary BINFIL3 file type; uses INTEGER NAME2FID
 C
 C       Modified  4/2004 by CJC for I/O API version 3:  fix bug in
-C       ALLAYS-ALVARS case; correct ALVARS warning messages.
+C       ALLAYS-ALVARS case; correct ALLVARS warning messages.
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
@@ -61,18 +61,17 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         FID             !  file index within the STATE3 commons
-        INTEGER         VID             !  variable index or -1 == ALL
-        INTEGER         DIMS( 5 )       !  corner arg array for NCVGT()
-        INTEGER         DELS( 5 )       !  corner arg array for NCVGT()
-        INTEGER         DELTA           !  d(INDX) / d(NCVGTcall)
-        REAL            BUFFER(*)       !  buffer array for input
+        INTEGER, INTENT(IN   ) :: FID             !  file index within the STATE3 commons
+        INTEGER, INTENT(IN   ) :: VID             !  variable index or -1 == ALL
+        INTEGER, INTENT(IN   ) :: DIMS( 5 )       !  corner arg array for NCVGT()
+        INTEGER, INTENT(IN   ) :: DELS( 5 )       !  corner arg array for NCVGT()
+        INTEGER, INTENT(IN   ) :: DELTA           !  d(INDX) / d(NCVGTcall)
+        REAL   , INTENT(  OUT) :: BUFFER(*)       !  buffer array for input
 
 
 C...........   EXTERNAL FUNCTIONs:
 
-        INTEGER         RDBVARS
-        EXTERNAL        RDBVARS
+        INTEGER, EXTERNAL :: RDBVARS
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -87,9 +86,8 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         LOGICAL         EFLAG
         CHARACTER*256   MESG
         
-        INTEGER         STEPDEX( -2:9 )
-        DATA            STEPDEX         !   DIMS-subscript for timestep
-     &        /
+        INTEGER, PARAMETER :: STEPDEX( -2:9 ) =
+     &       (/
      &        IMISS3,   !  out-of-range
      &        3,        !  CUSTOM3
      &        IMISS3,   !  DCTNRY3:  should not go through RDVARS()
@@ -102,14 +100,13 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
      &        4,        !  TSRIES3
      &        4,        !  PTRFLY3
      &        IMISS3    !  out-of-range
-     &        /
-        
-        INTEGER		TYPSIZE( 6 )    !  sizeof( variable ) / sizeof( real )
-#if ( _CRAY || REAL8 )
-        DATA            TYPSIZE / 1, 1, 1, 1, 1, 1 /
+     &        /)
+
+#if _CRAY || REAL8
+        INTEGER, PARAMETER :: TYPSIZE( 6 ) = (/ 1, 1, 1, 1, 1, 1 /)
 #endif
 #if ! ( _CRAY || REAL8 )
-        DATA            TYPSIZE / 1, 1, 1, 1, 1, 2 /
+        INTEGER, PARAMETER :: TYPSIZE( 6 ) = (/ 1, 1, 1, 1, 1, 2 /)
 #endif
 
 
@@ -241,5 +238,5 @@ C...........   Error and warning message formats..... 91xxx
 91010   FORMAT ( 3 ( A , :, 2X ) , I5, // )
 
 
-        END
+        END FUNCTION RDVARS
 

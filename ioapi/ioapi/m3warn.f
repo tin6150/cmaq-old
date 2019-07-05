@@ -1,17 +1,15 @@
 
-C.........................................................................
-C Version "@(#)$Header$"
+        SUBROUTINE M3WARN( CALLER, JDATE, JTIME, MSGTXT )
+
+C***********************************************************************
+C Version "$Id: m3warn.f 1 2014-03-14 20:22:54Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2004 Baron Advanced Meteorological Systems
+C (C) 2003-2012 by Baron Advanced Meteorological Systems.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-
-        SUBROUTINE  M3WARN( CALLER, JDATE, JTIME, MSGTXT )
-
-C***********************************************************************
-C  subroutine body starts at line  65
+C  subroutine body starts at line  64
 C
 C  FUNCTION:  Generate simple warning messages for Models-3 core;
 C
@@ -32,6 +30,8 @@ C                       factors through M3MSG2
 C       Modified  5/2003 by CJC:  factor all messages through M3MSG2()
 C       Modified  4/2004 by CJC:  factor through M3PARAG() -- fixes
 C       multi-thread sequencing problem.
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
+C       Modified  8/2012 by CJC: enhanced date&time message 
 C***********************************************************************
 
       IMPLICIT NONE
@@ -43,15 +43,14 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)   CALLER          !  name of the caller
-        INTEGER         JDATE, JTIME    !  model date&time for the error
-        CHARACTER*(*)   MSGTXT          !  error message
+        CHARACTER*(*), INTENT(IN   ) :: CALLER          !  name of the caller
+        INTEGER      , INTENT(IN   ) :: JDATE, JTIME    !  model date&time for the error
+        CHARACTER*(*), INTENT(IN   ) :: MSGTXT          !  error message
 
                  
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        CHARACTER*24    DT2STR
-        EXTERNAL        DT2STR
+        CHARACTER*24, EXTERNAL :: DT2STR
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -67,7 +66,9 @@ C   begin body of subroutine  M3WARN
         MESG( 3 ) = MSGTXT
 
         IF ( JDATE .GT. 0  .OR.  JTIME .GT. 0 ) THEN
-            MESG( 4 ) = 'M3WARN:  DTBUF ' // DT2STR( JDATE, JTIME )
+            WRITE( MESG( 4 ), '(  3A, I7, A, I6.6, A )' )  
+     &          'M3WARN:  DTBUF ', DT2STR( JDATE, JTIME ), 
+     &          '(', JDATE, ':', JTIME, ')'
             MESG( 5 ) = ' '
             CALL M3PARAG( 4, MESG )
         ELSE
@@ -77,4 +78,4 @@ C   begin body of subroutine  M3WARN
 
         RETURN
 
-        END
+        END SUBROUTINE M3WARN

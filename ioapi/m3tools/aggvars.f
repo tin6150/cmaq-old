@@ -4,19 +4,20 @@
      &                     OFILE, ONAME )
 
 C***********************************************************************
-C Version "@(#)$Header$"
-C EDSS/Models-3 M3TOOLS.  Copyright (C) 1992-2002 MCNC, and
-C 2003 Baron Advanced Meteorological Services
+C Version "$Id: aggvars.f 44 2014-09-12 18:03:16Z coats $"
+C EDSS/Models-3 M3TOOLS.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C       subroutine body starts at line  98
+C       subroutine body starts at line  100
 C
 C  FUNCTION:
 C       Aggregate time steps as either sum, average, max, or min.
 C
 C  PRECONDITIONS REQUIRED:
-C       Valid date&times JDATE:JTIME, time-step TSTEP, duration ASTEPS. 
+C       Valid date&times JDATE:JTIME, time-step TSTEP, duration ASTEPS.
 C       PARAMETERs M3SUM, M3AVG, M3MAX match corresponding values in caller.
 C       ATYPE is one of M3SUM, M3AVG, M3MAX.
 C       Files IFILE, OFILE already OPEN3()'ed and contain INAME, ONAME
@@ -40,15 +41,17 @@ C       allocation; use on-the-stack F90 "Auto" work variables.
 C
 C       Version  11/2004 by CJC:  add MIN as an aggregation option
 C
-C       Version  11/2005 by CJC:  eliminate unused vbles
+C       Version  11/2005 by CJC:  eliminate unused vbles.
+C
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
+C
+C       Version 11/2013 by CJC:  OpenMP parallel
 C***********************************************************************
 
+      USE M3UTILIO
+
       IMPLICIT NONE
-
-C...........   INCLUDES:
-
-        INCLUDE 'PARMS3.EXT'  !  I/O parameter definitions
-        INCLUDE 'IODECL3.EXT' !  I/O definitions and declarations
 
 C...........   PARAMETERS
 
@@ -102,15 +105,19 @@ C   begin body of VINITAGG entry:
         IF ( VTYPE .EQ. M3INT ) THEN
 
             IF( ATYPE .EQ. M3MAX ) THEN
+!$OMP           PARALLEL DO DEFAULT( NONE ), SHARED( VSIZE, IGRD ),
+!$OMP&                      PRIVATE( I )
                 DO I = 1, VSIZE
                     IGRD( I ) = -1999999999
                 END DO
             ELSE IF( ATYPE .EQ. M3MIN ) THEN
+!$OMP           PARALLEL DO DEFAULT( NONE ), SHARED( VSIZE, IGRD ),
+!$OMP&                      PRIVATE( I )
                 DO I = 1, VSIZE
                     IGRD( I ) = 1999999999
                 END DO
             ELSE
-                WRITE( MESG, '( A, I12, 2X, A )' ) 
+                WRITE( MESG, '( A, I12, 2X, A )' )
      &               'Aggregation type', ATYPE, 'not supported for INT'
                 CALL M3WARN( ANAME, JDATE, JTIME, MESG )
                 RETURN
@@ -129,12 +136,20 @@ C   begin body of VINITAGG entry:
 
                 ELSE IF( ATYPE .EQ. M3MAX ) THEN
 
+!$OMP               PARALLEL DO
+!$OMP&                   DEFAULT( NONE ),
+!$OMP&                    SHARED( VSIZE, IGRD, ISCR ),
+!$OMP&                   PRIVATE( I )
                     DO I = 1, VSIZE
                         IGRD( I ) = MAX( IGRD( I ), ISCR( I ) )
                     END DO
 
                 ELSE IF( ATYPE .EQ. M3MIN ) THEN
 
+!$OMP               PARALLEL DO
+!$OMP&                   DEFAULT( NONE ),
+!$OMP&                    SHARED( VSIZE, IGRD, ISCR ),
+!$OMP&                   PRIVATE( I )
                     DO I = 1, VSIZE
                         IGRD( I ) = MIN( IGRD( I ), ISCR( I ) )
                     END DO
@@ -146,7 +161,7 @@ C   begin body of VINITAGG entry:
             END DO              !  end loop on time steps
 
             IF ( N .EQ. 0 ) THEN
-                WRITE( MESG, '( A, I9.7, A, I6.6 )' ) 
+                WRITE( MESG, '( A, I9.7, A, I6.6 )' )
      &                 'No data starting at', JDATE, ':', JTIME
                 CALL M3WARN( ANAME, JDATE, JTIME, MESG )
                 RETURN
@@ -161,21 +176,33 @@ C   begin body of VINITAGG entry:
         ELSE IF ( VTYPE .EQ. M3REAL ) THEN
 
             IF( ATYPE .EQ. M3MAX ) THEN
+!$OMP           PARALLEL DO
+!$OMP&               DEFAULT( NONE ),
+!$OMP&                SHARED( VSIZE, RGRD ),
+!$OMP&               PRIVATE( I )
                 DO I = 1, VSIZE
                     RGRD( I ) = BADVAL3         !  -9.999E36 is VERY < 0
                 END DO
             ELSE IF( ATYPE .EQ. M3MIN ) THEN
+!$OMP           PARALLEL DO
+!$OMP&               DEFAULT( NONE ),
+!$OMP&                SHARED( VSIZE, RGRD ),
+!$OMP&               PRIVATE( I )
                 DO I = 1, VSIZE
                     RGRD( I ) = -BADVAL3         !  9.999E36 is HUGE
                 END DO
             ELSE IF( ATYPE .EQ. M3SUM .OR.
      &               ATYPE .EQ. M3AVG ) THEN
+!$OMP           PARALLEL DO
+!$OMP&               DEFAULT( NONE ),
+!$OMP&                SHARED( VSIZE, RGRD ),
+!$OMP&               PRIVATE( I )
                  DO I = 1, VSIZE
                     RGRD( I ) = 0.0
                 END DO
             ELSE
-                WRITE( MESG, '( A, I12, 2X, A )' ) 
-     &                'Aggregation type', ATYPE, 'not supported' 
+                WRITE( MESG, '( A, I12, 2X, A )' )
+     &                'Aggregation type', ATYPE, 'not supported'
                 CALL M3WARN( ANAME, JDATE, JTIME, MESG )
                 RETURN
             END IF
@@ -194,18 +221,30 @@ C   begin body of VINITAGG entry:
                 ELSE IF( ATYPE .EQ. M3SUM .OR.
      &                   ATYPE .EQ. M3AVG ) THEN
 
+!$OMP               PARALLEL DO
+!$OMP&                   DEFAULT( NONE ),
+!$OMP&                    SHARED( VSIZE, RGRD, RSCR ),
+!$OMP&                   PRIVATE( I )
                     DO I = 1, VSIZE
                         RGRD( I ) = RGRD( I ) + RSCR( I )
                     END DO
 
                 ELSE IF( ATYPE .EQ. M3MAX ) THEN
 
+!$OMP               PARALLEL DO
+!$OMP&                   DEFAULT( NONE ),
+!$OMP&                    SHARED( VSIZE, RGRD, RSCR ),
+!$OMP&                   PRIVATE( I )
                     DO I = 1, VSIZE
                         RGRD( I ) = MAX( RGRD( I ), RSCR( I ) )
                     END DO
 
                 ELSE IF( ATYPE .EQ. M3MIN ) THEN
 
+!$OMP               PARALLEL DO
+!$OMP&                   DEFAULT( NONE ),
+!$OMP&                    SHARED( VSIZE, RGRD, RSCR ),
+!$OMP&                   PRIVATE( I )
                     DO I = 1, VSIZE
                         RGRD( I ) = MIN( RGRD( I ), RSCR( I ) )
                     END DO
@@ -217,7 +256,7 @@ C   begin body of VINITAGG entry:
             END DO              !  end loop on time steps
 
             IF ( N .EQ. 0 ) THEN
-                WRITE( MESG, '( A, I9.7, A, I6.6 )' ) 
+                WRITE( MESG, '( A, I9.7, A, I6.6 )' )
      &                 'No data starting at', JDATE, ':', JTIME
                 CALL M3WARN( ANAME, JDATE, JTIME, MESG )
                 RETURN
@@ -226,6 +265,10 @@ C   begin body of VINITAGG entry:
             IF( ATYPE .EQ. M3AVG ) THEN
 
                 RDIV = 1.0 /FLOAT( N )
+!$OMP           PARALLEL DO
+!$OMP&               DEFAULT( NONE ),
+!$OMP&                SHARED( VSIZE, RGRD, RDIV ),
+!$OMP&               PRIVATE( I )
                 DO  I = 1, VSIZE
                     RGRD( I ) = RGRD( I ) * RDIV
                 END DO
@@ -241,21 +284,33 @@ C   begin body of VINITAGG entry:
         ELSE IF ( VTYPE .EQ. M3DBLE ) THEN
 
             IF( ATYPE .EQ. M3MAX ) THEN
+!$OMP           PARALLEL DO
+!$OMP&               DEFAULT( NONE ),
+!$OMP&                SHARED( VSIZE, DGRD ),
+!$OMP&               PRIVATE( I )
                 DO I = 1, VSIZE
                     DGRD( I ) = BADVAL3
                 END DO
             ELSE IF( ATYPE .EQ. M3MIN ) THEN
+!$OMP           PARALLEL DO
+!$OMP&               DEFAULT( NONE ),
+!$OMP&                SHARED( VSIZE, DGRD ),
+!$OMP&               PRIVATE( I )
                 DO I = 1, VSIZE
                     DGRD( I ) = -BADVAL3
                 END DO
             ELSE IF( ATYPE .EQ. M3SUM .OR.
      &               ATYPE .EQ. M3AVG ) THEN
+!$OMP           PARALLEL DO
+!$OMP&               DEFAULT( NONE ),
+!$OMP&                SHARED( VSIZE, DGRD ),
+!$OMP&               PRIVATE( I )
                 DO I = 1, VSIZE
                     DGRD( I ) = 0.0
                 END DO
             ELSE
-                WRITE( MESG, '( A, I12, 2X, A )' ) 
-     &                'Aggregation type', ATYPE, 'not supported' 
+                WRITE( MESG, '( A, I12, 2X, A )' )
+     &                'Aggregation type', ATYPE, 'not supported'
                     CALL M3WARN( ANAME, JDATE, JTIME, MESG )
                     RETURN
             END IF
@@ -275,17 +330,32 @@ C   begin body of VINITAGG entry:
                 ELSE IF( ATYPE .EQ. M3SUM .OR.
      &                   ATYPE .EQ. M3AVG ) THEN
 
+!$OMP               PARALLEL DO
+!$OMP&                  DEFAULT( NONE ),
+!$OMP&                   SHARED( VSIZE, DGRD, DSCR ),
+!$OMP&                  PRIVATE( I )
+
                     DO I = 1, VSIZE
                         DGRD( I ) = DGRD( I ) + DSCR( I )
                     END DO
 
                 ELSE IF( ATYPE .EQ. M3MAX ) THEN
 
+!$OMP               PARALLEL DO
+!$OMP&                  DEFAULT( NONE ),
+!$OMP&                   SHARED( VSIZE, DGRD, DSCR ),
+!$OMP&                  PRIVATE( I )
+
                     DO I = 1, VSIZE
                         DGRD( I ) = MAX( DGRD( I ), DSCR( I ) )
                     END DO
 
                 ELSE IF( ATYPE .EQ. M3MIN ) THEN
+
+!$OMP               PARALLEL DO
+!$OMP&                  DEFAULT( NONE ),
+!$OMP&                   SHARED( VSIZE, DGRD, DSCR ),
+!$OMP&                  PRIVATE( I )
 
                     DO I = 1, VSIZE
                         DGRD( I ) = MIN( DGRD( I ), DSCR( I ) )
@@ -298,7 +368,7 @@ C   begin body of VINITAGG entry:
             END DO              !  end loop on time steps
 
             IF ( N .EQ. 0 ) THEN
-                WRITE( MESG, '( A, I9.7, A, I6.6 )' ) 
+                WRITE( MESG, '( A, I9.7, A, I6.6 )' )
      &                 'No data starting at', JDATE, ':', JTIME
                 CALL M3WARN( ANAME, JDATE, JTIME, MESG )
                 RETURN
@@ -307,6 +377,12 @@ C   begin body of VINITAGG entry:
             IF( ATYPE .EQ. M3AVG ) THEN
 
                 DDIV = 1.0D0 / DBLE( N )
+
+!$OMP           PARALLEL DO
+!$OMP&               DEFAULT( NONE ),
+!$OMP&                SHARED( VSIZE, DGRD, DDIV ),
+!$OMP&               PRIVATE( I )
+
                 DO  I = 1, VSIZE
                     DGRD( I ) = DGRD( I ) * DDIV
                 END DO
@@ -320,7 +396,7 @@ C   begin body of VINITAGG entry:
             END IF
 
         ELSE            !  vtype not m3int,m3real,m3dble
- 
+
             WRITE( MESG, '( A, I10, 2X, 2A )' )
      &           'Unknown type', VTYPE, 'for variable', INAME
             CALL M3EXIT( ANAME, JDATE, JTIME, MESG, 2 )
@@ -329,5 +405,5 @@ C   begin body of VINITAGG entry:
 
         RETURN
 
-        END
+        END  SUBROUTINE AGGVAR
 

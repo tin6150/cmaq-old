@@ -2,14 +2,14 @@
         PROGRAM AIRNOW2M3
 
 C***********************************************************************
-C Version "@(#)$Header$ $Id: airnow2m3.f 49 2007-07-06 16:20:50Z coats@borel $"
+C Version "$Id: airnow2m3.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr, and
-C (C) 2002-2007 Baron Advanced Meteorological Systems, LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line  105
+C  program body starts at line  101
 C
 C  DESCRIPTION:
 C       Read an ASCII  monitor-location file and a monitor-data file, and
@@ -20,23 +20,21 @@ C       Input ASCII files have agreed-upon AIRNOW format
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
 C       I/O API
-C	READHDR starts at line 536
-C	SKIPBLK starts at line 714
+C       READHDR starts at line 536
+C       SKIPBLK starts at line 714
 C
 C  REVISION  HISTORY:
 C       10/1999:  Prototype by Carlie J. Coats, Jr., MCNC, for TNRCC data
-C	08/2000:  Version for EPA AIRNOW data also performs gridding--CJC
-C	09/2000:  Gridding functionality split out into program OBS_GRID--CJC
-C	03/2002:  Version for PAVE/I/O API distribution
+C       08/2000:  Version for EPA AIRNOW data also performs gridding--CJC
+C       09/2000:  Gridding functionality split out into program OBS_GRID--CJC
+C       03/2002:  Version for PAVE/I/O API distribution
+C
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C***********************************************************************
 
+      USE M3UTILIO
       IMPLICIT NONE
-
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'      ! I/O API constants
-      INCLUDE 'FDESC3.EXT'      ! I/O API file description data structure
-      INCLUDE 'IODECL3.EXT'     ! I/O API function declarations
 
 
 C...........   PARAMETERS and their descriptions:
@@ -45,17 +43,7 @@ C...........   PARAMETERS and their descriptions:
         REAL,         PARAMETER::    D3600   = 1.0 / 3600.0
         CHARACTER*16, PARAMETER::    NCF_OBS = 'NCF_OBS'
 
-
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        LOGICAL         GETYN, ISDSTIME
-        REAL            ENVREAL
-        INTEGER         FIND1, GETEFILE, GETNUM, ISDST, JSTEP3, JULIAN,
-     &                  LBLANK, STR2INT
-
-        EXTERNAL        ENVREAL, FIND1, GETEFILE, GETNUM, GETYN,
-     &                  ISDSTIME, JSTEP3, JULIAN, LBLANK, STR2INT
-
+       CHARACTER*16, PARAMETER :: PNAME = 'AIRNOW2M3'
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -102,10 +90,6 @@ C...........   LOCAL VARIABLES and their descriptions:
         CHARACTER*256   MESG
         CHARACTER*16    VNAME
 
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id:: airnow2m3.f 49 2007-07-06 16:20:50Z coats@borel         $'
-     &  /
 
 C***********************************************************************
 C   begin body of program dummy
@@ -127,34 +111,35 @@ C   begin body of program dummy
      &' ',
      &'    setenv RADIUS    <filtering radius (km)>',
      &' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    137 E. Franklin St. Suite 602 Room 613-C',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: airnow2m3.f 44 2014-09-12 18:03:16Z coats               $',
      &' '
 
         LDEV = INIT3()
         IF ( .NOT.GETYN( 'Continue with program?', .TRUE. ) ) THEN
-            CALL M3EXIT( 'AIRNOW2M3', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Terminated at user request.', 2 )
         END IF
-        MDEV = GETEFILE( 'MONITORS', .TRUE., .TRUE., 'AIRNOW2M3' )
+        MDEV = GETEFILE( 'MONITORS', .TRUE., .TRUE., PNAME )
 
-        DDEV = GETEFILE( 'MON_OBS',  .TRUE., .TRUE., 'AIRNOW2M3' )
+        DDEV = GETEFILE( 'MON_OBS',  .TRUE., .TRUE., PNAME )
 
 
         !!  Current values, for defaults:
@@ -204,7 +189,7 @@ C...........  monitor-observation file to FDESC3 file header:
                 WRITE( MESG, '(A, I9, 2X, A, I9, 2X, A )' )
      &              'I/O error', STATUS, 'encountered at line', M,
      &              'of MONITOR-LOCATION FILE'
-                CALL M3EXIT( 'AIRNOW2M3', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
             ELSE IF ( LINE(1:1) .EQ. '#' ) THEN
 
@@ -231,7 +216,7 @@ C...........  monitor-observation file to FDESC3 file header:
                 WRITE( MESG, '(A, I9, 2X, A, I9, 2X, A )' )
      &              'I/O error', STATUS, 'encountered at line', M,
      &              'of MONITOR-OBSERVATIONS FILE'
-                CALL M3EXIT( 'AIRNOW2M3', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
             ELSE IF ( LINE(1:1) .EQ. '#' ) THEN
 
@@ -298,8 +283,8 @@ C...........  Create/Open output file:
         NVARS3D = N
         GDNAM3D = 'LATLON'
 
-        IF ( .NOT. OPEN3( 'NCF_OBS', FSUNKN3, 'AIRNOW2M3' ) ) THEN
-            CALL M3EXIT( 'AIRNOW2M3', 0, 0,
+        IF ( .NOT. OPEN3( 'NCF_OBS', FSUNKN3, PNAME ) ) THEN
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Could not open file "NCF_OBS"', 2 )
         END IF
 
@@ -316,8 +301,7 @@ C...........  Allocate working arrays:
      &              O3( NMONS, NHRS ), STAT = STATUS )
 
         IF ( STATUS .NE. 0 ) THEN
-            CALL M3EXIT( 'AIRNOW2M3', 0, 0,
-     &                   'Buffer allocation failure', 2 )
+            CALL M3EXIT( PNAME, 0, 0, 'Buffer allocation failure', 2 )
         END IF
 
         DO  M = 1, NHRS
@@ -345,7 +329,7 @@ C...........  Read and sort ID's in monitor-location file:
      &              'I/O error', STATUS,
      &              'encountered reading line', M,
      &              'of MONITOR-LOCATION FILE'
-                CALL M3EXIT( 'AIRNOW2M3', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
             ELSE IF ( LINE( 1:1 ) .NE. '#' ) THEN
 
@@ -394,10 +378,10 @@ C...........  Read and sort ID's in monitor-location file:
 77      CONTINUE        !  end loop reading monitor locations
 
         IF ( EFLAG ) THEN
-            CALL M3EXIT( 'AIRNOW2M3', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Error reading LOC-file', 2 )
         ELSE IF ( N .NE. NMONS ) THEN
-            CALL M3EXIT( 'AIRNOW2M3', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Error counting IDs in LOC-file', 2 )
         END IF
 
@@ -439,7 +423,7 @@ C...........  Read monitor-observation file:  first the header, then the data
      &              'I/O error', STATUS,
      &              'encountered reading line', M,
      &              'of MONITOR-OBSERVATION FILE'
-                CALL M3EXIT( 'AIRNOW2M3', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             IF ( BUFF( 1:8 ) .EQ. 'END_DATA' ) GO TO 99
@@ -449,7 +433,7 @@ C...........  Read monitor-observation file:  first the header, then the data
                 WRITE( MESG, '(3 A, I9, 2X, A)' )
      &              'Bad Monitor-ID "', BUFF( 22:30 ),
      &              '" at line', M, 'of OBS-FILE'
-                CALL M3EXIT( 'AIRNOW2M3', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             N  = FIND1( LL, NMONS, MONS )           !  subscript
@@ -468,7 +452,7 @@ C...........  Read monitor-observation file:  first the header, then the data
      &              'I/O error', STATUS,
      &              'reading monitor data at line', M,
      &              'of MONITOR-OBSERVATION FILE'
-                CALL M3EXIT( 'AIRNOW2M3', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             READ( DDEV, '(A)', END = 99, IOSTAT=STATUS ) BUFF
@@ -478,12 +462,12 @@ C...........  Read monitor-observation file:  first the header, then the data
                 WRITE( MESG, '(3 A, I9, 2X, A)' )
      &              'Bad Monitor-ID "', BUFF( 22:30 ),
      &              '" at line', M, 'of OBS-FILE'
-                CALL M3EXIT( 'AIRNOW2M3', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             ELSE IF ( LL .NE. II ) THEN
                 WRITE( MESG, '(3 A, I9, 2X, A)' )
      &              'Bad Monitor-ID "', BUFF( 22:30 ),
      &              '" at line', M, 'of OBS-FILE'
-                CALL M3EXIT( 'AIRNOW2M3', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             DO  P = 1, NHRS
@@ -502,7 +486,7 @@ C...........  Read monitor-observation file:  first the header, then the data
 99      CONTINUE        !  end loop reading monitor data
 
         IF ( EFLAG ) THEN
-            CALL M3EXIT( 'AIRNOW2M3', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Error reading OBS-file', 2 )
         END IF
 
@@ -522,25 +506,25 @@ C...........  Write output file:
             IF ( .NOT.WRITE3( NCF_OBS, 'MONITOR_ID',
      &                        JDATE, JTIME, MONS ) ) THEN
                 MESG = 'Error writing variable MONITOR_ID'
-                CALL M3EXIT( 'AIRNOW2M3', JDATE, JTIME, MESG, 2 )
+                CALL M3EXIT( PNAME, JDATE, JTIME, MESG, 2 )
             END IF
 
             IF ( .NOT.WRITE3( NCF_OBS, 'LAT',
      &                        JDATE, JTIME, LAT ) ) THEN
                 MESG = 'Error writing variable '
-                CALL M3EXIT( 'AIRNOW2M3', JDATE, JTIME, MESG, 2 )
+                CALL M3EXIT( PNAME, JDATE, JTIME, MESG, 2 )
             END IF
 
             IF ( .NOT.WRITE3( NCF_OBS, 'LON',
      &                        JDATE, JTIME, LON ) ) THEN
                 MESG = 'Error writing variable '
-                CALL M3EXIT( 'AIRNOW2M3', JDATE, JTIME, MESG, 2 )
+                CALL M3EXIT( PNAME, JDATE, JTIME, MESG, 2 )
             END IF
 
             IF ( .NOT.WRITE3( NCF_OBS, 'O3',
      &                        JDATE, JTIME, O3(1,P) ) ) THEN
                 MESG = 'Error writing variable '
-                CALL M3EXIT( 'AIRNOW2M3', JDATE, JTIME, MESG, 2 )
+                CALL M3EXIT( PNAME, JDATE, JTIME, MESG, 2 )
             END IF
 
             CALL NEXTIME( JDATE, JTIME, 10000 )
@@ -549,13 +533,12 @@ C...........  Write output file:
         END DO          !  end loop on output time steps
 
 
-        CALL M3EXIT( 'AIRNOW2M3', 0, 0,
+        CALL M3EXIT( PNAME, 0, 0,
      &       'Successful completion of program AIRNOW2M3', 0 )
 
-        END PROGRAM AIRNOW2M3
 
+      CONTAINS  !!-----------------------------------------------------------------
 
-!-----------------------------------------------------------------
 
         SUBROUTINE READHDR( DDEV, SDATE, STIME, NHRS, NMONS, YYYY000,
      &                      M, VNAME )
@@ -659,7 +642,7 @@ C...........  Write output file:
                    WRITE( MESG, '(A, I9, 2X, A, 2X, A )' )
      &                  'Bad "NUMSTEPS"  at line', M,
      &                  'of MONITOR-OBSERVATION FILE:', BUFF( 1:40 )
-                    CALL M3EXIT( 'AIRNOW2M3/READHDR', 0,0,MESG,2 )
+                    CALL M3EXIT( RNAME, 0,0,MESG,2 )
                 ELSE IF ( NUMT .LT. NHRS ) THEN
                    WRITE( MESG, '(A, I9, 2X, A, 2X, A )' )
      &                  'Too-small "NUMSTEPS"  at line', M,
@@ -733,7 +716,7 @@ C...........  Write output file:
         END SUBROUTINE READHDR
 
 
-!!---------------------------------------------------------!!
+        !!---------------------------------------------------------!!
 
         SUBROUTINE SKIPBLK( DDEV, M )
         IMPLICIT NONE
@@ -765,4 +748,6 @@ C...........  Write output file:
 
         RETURN
         END SUBROUTINE SKIPBLK
+
+      END PROGRAM AIRNOW2M3
 

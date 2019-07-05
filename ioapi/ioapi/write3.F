@@ -1,17 +1,15 @@
-
-C.........................................................................
-C Version "@(#)$Header$"
-C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2004 Baron Advanced Meteorological Systems
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
          
         LOGICAL FUNCTION WRITE3( FNAME, VNAME, JDATE, JTIME, BUFFER )
 
 C***********************************************************************
-C  function body starts at line  161
+C Version "$Id: write3.F 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
+C  function body starts at line  158
 C
 C  FUNCTION:  writes all the data from BUFFER() for timestep JDATE:JTIME
 C             (formatted YYYYDDD and HHMMSS) to the Models-3 data file
@@ -71,6 +69,8 @@ C       LOGICAL SYNCFID
 C
 C       Modified 9/2004 by CJC for virtual INTERP bug-fix: change to
 C       READ3V / WRITE3V interfaces
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
@@ -87,35 +87,31 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*) FNAME      !  logical file name
-        CHARACTER*(*) VNAME      !  logical file name
-        INTEGER       JDATE      !  date, formatted YYYYDDD
-        INTEGER       JTIME      !  time, formatted HHMMSS
-        REAL          BUFFER(*)  !  output buffer array
+        CHARACTER*(*), INTENT(IN   ) :: FNAME      !  logical file name
+        CHARACTER*(*), INTENT(IN   ) :: VNAME      !  logical file name
+        INTEGER      , INTENT(IN   ) :: JDATE      !  date, formatted YYYYDDD
+        INTEGER      , INTENT(IN   ) :: JTIME      !  time, formatted HHMMSS
+        REAL         , INTENT(IN   ) :: BUFFER(*)  !  output buffer array
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        LOGICAL       ENVYN      !  get YES/NO environment variable
-        INTEGER       INDEX1     !  look up names in name tables
-        INTEGER       INIT3      !  initialize I/O system files.
-        INTEGER       JSTEP3     !  compute time step record numbers
-        INTEGER       NAME2FID   !  fname~~> fid lookup
-        LOGICAL       SYNCFID    !  disk-synch
-        INTEGER       TRIMLEN    !  trimmed string length
-        LOGICAL       WRDICT3    !  read time steps for  DCTNRY3 files
-        LOGICAL       WRBUF3     !  read time steps for BUFFERED files
-        LOGICAL       WRCUSTOM   !  read time steps for CUSTOM3 files
-        LOGICAL       WRGRDDED   !  read time steps for GRDDED3 files
-        LOGICAL       WRBNDARY   !  read time steps for BNDARY3 files
-        LOGICAL       WRIDDATA   !  read time steps for IDDATA3 files
-        LOGICAL       WRPROFIL   !  read time steps for PROFIL3 files
-        LOGICAL       WRGRNEST   !  read time steps for GRNEST3 files
-        LOGICAL       WRSMATRX   !  read time steps for SMATRX3 files
-
-        EXTERNAL      ENVYN, INDEX1, INIT3, JSTEP3, NAME2FID, SYNCFID,
-     &                TRIMLEN, WRBUF3,  WRDICT3, WRGRDDED, WRBNDARY,
-     &                WRIDDATA, WRGRNEST, WRSMATRX
+        LOGICAL, EXTERNAL :: ENVYN      !  get YES/NO environment variable
+        INTEGER, EXTERNAL :: INDEX1     !  look up names in name tables
+        INTEGER, EXTERNAL :: INIT3      !  initialize I/O system files.
+        INTEGER, EXTERNAL :: JSTEP3     !  compute time step record numbers
+        INTEGER, EXTERNAL :: NAME2FID   !  fname~~> fid lookup
+        LOGICAL, EXTERNAL :: SYNCFID    !  disk-synch
+        LOGICAL, EXTERNAL :: WRDICT3    !  read time steps for  DCTNRY3 files
+        LOGICAL, EXTERNAL :: WRBUF3     !  read time steps for BUFFERED files
+        LOGICAL, EXTERNAL :: WRCUSTOM   !  read time steps for CUSTOM3 files
+        LOGICAL, EXTERNAL :: WRGRDDED   !  read time steps for GRDDED3 files
+        LOGICAL, EXTERNAL :: WRBNDARY   !  read time steps for BNDARY3 files
+        LOGICAL, EXTERNAL :: WRIDDATA   !  read time steps for IDDATA3 files
+        LOGICAL, EXTERNAL :: WRPROFIL   !  read time steps for PROFIL3 files
+        LOGICAL, EXTERNAL :: WRGRNEST   !  read time steps for GRNEST3 files
+        LOGICAL, EXTERNAL :: WRSMATRX   !  read time steps for SMATRX3 files
+        EXTERNAL          :: INITBLK3        !!  BLOCK DATA to initialize STATE3 commons
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -133,9 +129,8 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 
 C...........   STATIC Variables:
 
-        CHARACTER*7   TYPNAMES( -3 : 6 )
-        DATA          TYPNAMES
-     &      / 'UNKNOWN',        !  -3:  file type error
+        CHARACTER*7, PARAMETER :: TYPNAMES( -3 : 7 ) =
+     &     (/ 'UNKNOWN',        !  -3:  file type error
      &        'DGRAPH3',        !  -2:  known file types
      &        'CUSTOM3',        !  -1:    "
      &        'DCTNRY3',        !   0:    "
@@ -144,16 +139,15 @@ C...........   STATIC Variables:
      &        'IDDATA3',        !   3:    "
      &        'PROFIL3',        !   4:    "
      &        'GRNEST3',        !   5:    "
-     &        'SMATRX3' /       !   6:    "
+     &        'SMATRX3',        !   6:    "
+     &        'UNKNOWN' /)      !   7:    "
 
-        LOGICAL       FIRSTIME
-        LOGICAL       LOGFLAG
-        DATA          FIRSTIME, LOGFLAG  / .TRUE., .TRUE. /
+        LOGICAL, SAVE :: FIRSTIME = .TRUE.
+        LOGICAL, SAVE :: LOGFLAG  = .TRUE.
 
 #ifdef IOAPICPL
         INTEGER       COUNT, TYPE
-        LOGICAL       WRITE3V
-        EXTERNAL      WRITE3V
+        LOGICAL, EXTERNAL :: WRITE3V
 #endif
 
 C***********************************************************************
@@ -161,8 +155,8 @@ C   begin body of function  WRITE3
 C......,....   Check that Models-3 I/O has been initialized; get STATE3
 C......,....   subscript for FNAME; check length of vname argument
 
-        FLEN  = TRIMLEN( FNAME )
-        VLEN  = TRIMLEN( VNAME )
+        FLEN  = LEN_TRIM( FNAME )
+        VLEN  = LEN_TRIM( VNAME )
         FID   = NAME2FID( FNAME )
 
         EFLAG = ( FID .LE. 0 )
@@ -438,5 +432,5 @@ C...........   Internal buffering formats..... 93xxx
 
 93020   FORMAT ( A, :, I9, ':', I6.6, :, 2X, A, :, I10.6 )
 
-        END
+        END FUNCTION WRITE3
 

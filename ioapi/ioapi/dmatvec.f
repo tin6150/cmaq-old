@@ -1,14 +1,15 @@
 
-C.........................................................................
-C Version "@(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/dmatvec.f,v 1.2 2000/11/28 21:22:38 smith_w Exp $"
-C EDSS/Models-3 I/O API.  Copyright (C) 1992-1999 MCNC
+        SUBROUTINE DMATVEC( N, A, V, C )
+
+C***********************************************************************
+C Version "$Id: dmatvec.f 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems, and
+C (C) 2014 UNC Institute for the Environment.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-
-        SUBROUTINE  DMATVEC( N, A, V, C )
-
-C***********************************************************************
 C  subroutine body starts at line  44
 C
 C  FUNCTION:  apply a diagonal matrix to a vector
@@ -18,19 +19,19 @@ C
 C  SUBROUTINES AND FUNCTIONS CALLED:  none
 C
 C  REVISION  HISTORY:
-C	prototype 2/95 by CJC
-C
+C       prototype 2/1995 by CJC
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
+C       Version   9/2014 by CJC:  modifications for OpenMP parallel
 C***********************************************************************
 
       IMPLICIT NONE
 
 C...........   ARGUMENTS and their descriptions:
-        
-        INTEGER		N		! length of input vector
-        REAL 		A( N )		! diagonal coeff matrix
-        REAL		V( N )		! input  vector
-        REAL		C( N )		! output vector
 
+        INTEGER, INTENT(IN   ) :: N		! length of input vector
+        REAL   , INTENT(IN   ) :: A( N )		! diagonal coeff matrix
+        REAL   , INTENT(IN   ) :: V( N )		! input  vector
+        REAL   , INTENT(  OUT) :: C( N )		! output vector
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         
@@ -40,12 +41,17 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 C***********************************************************************
 C   begin body of subroutine  DMATVEC
 
-        DO  22  R = 1, N
+!$OMP   PARALLEL DO
+!$OMP&    DEFAULT( NONE ),
+!$OMP&     SHARED( N, C, A, V ),
+!$OMP&    PRIVATE( R )
+
+        DO  R = 1, N
             
             C( R ) = A( R ) * V( R )
         
-22      CONTINUE
+        END DO
 
         RETURN
-        END
+        END SUBROUTINE DMATVEC
 

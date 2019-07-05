@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/MTXBLEND.html,v 1.1.1.1 2001/12/05 20:25:36 coats Exp $ -->
+<!-- "$Id: MTXBLEND.html 6 2014-03-20 17:30:58Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> Program MTXBLEND </TITLE>
 </HEAD>
@@ -14,10 +14,6 @@
       MARGINWIDTH="15">
 
 <H1>    Program MTXBLEND </H1>
-
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
 
 <H2> Usage </H2>
 <PRE>
@@ -101,8 +97,8 @@ you may redirect into the program in the script, or may become a
 One such script, to merge data from a UK 10-kilometer gridded emissions
 file with data from a Euorpean 36-kilometer gridded emissions file, is
 given below:
-:  
 <P> 
+
 <BLOCKQUOTE>
 <PRE>
 #!/bin/csh
@@ -129,7 +125,7 @@ setenv OUT_DATA   "/env/data/coats/EU/94mrg.${BASEGRID}.ncf -v"
 #
 unsetenv LOGFILE
 set UI=/tmp/mtxblend.$$
-echo "Yes, continue with program"   &gt; $UI
+echo "Yes, continue with program"   &gt;&amp; $UI
 echo "NONE"                         &gt;&gt; $UI          #  no synch file
 echo "MATRIX_FILE"                  &gt;&gt; $UI          # output grid name
 echo "IN_DATA"                      &gt;&gt; $UI          # new input file name
@@ -146,8 +142,7 @@ echo "UI command-line input:"
 cat ${UI}
 echo '------------------------------------------------------------------'
 
-# time ${BIN}/mtxblend &lt; ${UI}
-cvd mtxblend.debug &
+time ${BIN}/mtxblend &lt; ${UI}
 
 set foo=$status
 

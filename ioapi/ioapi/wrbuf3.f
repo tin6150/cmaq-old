@@ -2,7 +2,7 @@
         LOGICAL FUNCTION WRBUF3( FID, VID, JDATE, JTIME, STEP, BUFFER )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: wrbuf3.f 45 2014-09-12 20:05:29Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
 C (C) 2003-2010 by Baron Advanced Meteorological Systems.
@@ -39,9 +39,7 @@ C       unification
 C
 C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C
-C       Bug-fix 04/2011 by CJC:  argument-list fix for BUFPUT3()
-C
-C       Bug-fix 08/2011 by CJC:  bug-fix for "all-variables" case
+C       Bug-fix 04/2011 vy CJC:  argument-list fix for BUFPUT3()
 C***********************************************************************
 
       IMPLICIT NONE
@@ -127,7 +125,7 @@ C   begin body of function  WRBUF3
 
                 IF ( JSTEP .NE. 0 ) THEN
 
-                    ILAST3( VID,FID ) = IDUM
+                    ILAST3( VID,FID ) = 1 - IDUM
                     LDATE3( VID,FID ) = NDATE3( VID,FID )
                     LTIME3( VID,FID ) = NTIME3( VID,FID )
                     NDATE3( VID,FID ) = JDATE
@@ -242,6 +240,9 @@ C   begin body of function  WRBUF3
                 ELSE IF ( NDATE3( V,FID ) .EQ. ADATE  .AND.  
      &                    NTIME3( V,FID ) .EQ. ATIME ) THEN ! advance 1 timestep
 
+                    WFLAG = ( 0 .NE. BUFPUT3( FID, V, SIZE,
+     &                                        1-IDUM , BUFFER( I ) ) )
+
                     IF ( JSTEP .NE. 0 ) THEN
 
                         ILAST3( V,FID ) = IDUM
@@ -262,6 +263,9 @@ C   begin body of function  WRBUF3
 
                 ELSE IF ( LDATE3( V,FID ) .EQ. ZDATE  .AND.  
      &                    LTIME3( V,FID ) .EQ. ZTIME ) THEN  ! retreat 1 time step
+
+                    WFLAG = ( 0 .NE. BUFPUT3( FID, V, SIZE,
+     &                                        IDUM , BUFFER( I ) ) )
 
                     ILAST3( V,FID ) = IDUM      !  case must be time-dependent
                     NDATE3( V,FID ) = LDATE3( V,FID )
@@ -312,28 +316,10 @@ C   begin body of function  WRBUF3
 
                 END IF!  if "advance 1", "retreat 1", or not "last" or "next"
 
-                IF ( VTYPE3( V,FID ) .EQ. M3REAL ) THEN
+                WFLAG = ( 0 .NE. BUFPUT3( FID, V, SIZE, IDUM, 
+     &                                    TSTEP3( FID ), BUFFER( I ) ) )
 
-                    WFLAG = ( 0 .NE. BUFPUT3 ( FID, V,
-     &                                        SIZE, IDUM, TSTEP,
-     &                                        BUFFER( I ) ) ) 
-                    I = I + SIZE    !  set up for next variable's slice of buffer()
-
-                ELSE IF ( VTYPE3( V,FID ) .EQ. M3INT ) THEN
-
-                    WFLAG = ( 0 .NE. BUFPUT3I( FID, V,
-     &                                         SIZE, IDUM, TSTEP,
-     &                                         BUFFER( I ) ) )
-                    I = I + SIZE
-
-                ELSE IF ( VTYPE3( V,FID ) .EQ. M3DBLE ) THEN
-
-                    WFLAG = ( 0 .NE. BUFPUT3D( FID, V,
-     &                                         SIZE, IDUM, TSTEP,
-     &                                         BUFFER( I ) ) )
-                    I = I + 2*SIZE
-
-                END IF          !!  if M3REAL; or M3INT; or M3DBLE
+                I = I + SIZE    !  set up for next variable's slice of buffer()
 
                 IF( .NOT. WFLAG ) THEN
 

@@ -1,14 +1,15 @@
 
-C.........................................................................
-C Version "@(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/bmatvec.f,v 1.2 2000/11/28 21:22:31 smith_w Exp $"
-C EDSS/Models-3 I/O API.  Copyright (C) 1992-1999 MCNC
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
         SUBROUTINE  BMATVEC( M, N, P, IX, AX, V, C )
 
 C***********************************************************************
+C Version "$Id: bmatvec.f 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 Baron Advanced Meteorological Systems, and
+C (C) 2014 UNC Institute for the Environment.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
 C  subroutine body starts at line  76
 C
 C  FUNCTION:  apply a 4-band sparse matrix to an array ("layered vector")
@@ -48,21 +49,21 @@ C
 C  SUBROUTINES AND FUNCTIONS CALLED:  none
 C
 C  REVISION  HISTORY:
-C       prototype 12/95 by CJC
-C
+C       prototype 12/1995 by CJC
+C       Version    9/2014 by CJC:  modifications for OpenMP parallel
 C***********************************************************************
 
       IMPLICIT NONE
 
 C...........   ARGUMENTS and their descriptions:
-        
-        INTEGER         M               ! length of input  vector
-        INTEGER         N               ! length of output vector
-        INTEGER         P               ! number of layers
-        INTEGER         IX( 4,N )       ! index array
-        REAL            AX( 4,N )       ! 4-band coeff matrix
-        REAL            V( M,P )        ! P-layered input  vector
-        REAL            C( P,N )        ! P-layered output vector
+
+        INTEGER, INTENT(IN   ) :: M               ! length of input  vector
+        INTEGER, INTENT(IN   ) :: N               ! length of output vector
+        INTEGER, INTENT(IN   ) :: P               ! number of layers
+        INTEGER, INTENT(IN   ) :: IX( 4,N )       ! index array
+        REAL   , INTENT(IN   ) :: AX( 4,N )       ! 4-band coeff matrix
+        REAL   , INTENT(IN   ) :: V( M,P )        ! P-layered input  vector
+        REAL   , INTENT(  OUT) :: C( P,N )        ! P-layered output vector
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -73,22 +74,27 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 C***********************************************************************
 C   begin body of subroutine  BMATVEC
 
-        DO  22  S = 1, N
+!$OMP   PARALLEL DO
+!$OMP&    DEFAULT( NONE ),
+!$OMP&     SHARED( N, P, IX, AX, V, C ),
+!$OMP&    PRIVATE( S, L, J1, J2, J3, J4 )
+
+        DO  S = 1, N
             
             J1 = IX( 1,S )
             J2 = IX( 2,S )
             J3 = IX( 3,S )
             J4 = IX( 4,S )
 
-            DO  11  L = 1, P
+            DO  L = 1, P
                 C( L,S ) = AX( 1,S ) * V( J1,L )  +
      &                     AX( 2,S ) * V( J2,L )  +
      &                     AX( 3,S ) * V( J3,L )  +
      &                     AX( 4,S ) * V( J4,L )
-11          CONTINUE
-        
-22      CONTINUE
+            END DO
+
+        END DO
 
         RETURN
-        END
+        END SUBROUTINE BMATVEC
 

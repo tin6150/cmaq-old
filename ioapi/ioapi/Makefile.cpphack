@@ -1,10 +1,11 @@
 #.........................................................................
-# VERSION "@(#)$Header$"
-#    EDSS/Models-3 I/O API Version 3.
+# VERSION "$Id: Makefile.cpphack 186 2015-04-28 19:20:36Z coats $"
+#    EDSS/Models-3 I/O API Version 3.1
 #.........................................................................
 # COPYRIGHT
-#    (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-#    (C) 2003-2004 by Baron Advanced Meteorological Systems.
+#    (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+#    (C) 2003-2004 by Baron Advanced Meteorological Systems, and
+#    (C) 2005-2014 Carlie J. Coats, Jr.
 #    Distributed under the GNU Lesser PUBLIC LICENSE version 2.1
 #    See file "LGPL.txt" for conditions of use.
 #.........................................................................
@@ -22,7 +23,7 @@
 #               source, M3Tools source, HTML documentation, and
 #               (machine-specific) object/library/executable
 #               directories.
-#       IODIR  is where the I/O API source "lives"
+#       IODIR   is where the I/O API source "lives"
 #       OBJDIR  is where the ".o" and "libioapi.a" files will be built.
 #               Note that its default depends upon the machine/compiler
 #               architecture type, specified by environment variable BIN
@@ -85,13 +86,11 @@ include ${IODIR}/Makeinclude.${BIN}
 
 DEFINEFLAGS = -DIOAPICPL=1 $(ARCHFLAGS) $(PARFLAGS)
 
-VFLAG  = -DVERSION='3.0-cpl'
+VFLAG  = -DVERSION='3.1-cpl'
 
 CFLAGS = -I$(PVM_ROOT)/include $(DEFINEFLAGS) $(COPTFLAGS) $(VFLAG)
 FFLAGS = $(DEFINEFLAGS) $(FOPTFLAGS) $(OMPFLAGS) -I${IODIR}
-CPPFLAGS = -traditional $(DEFINEFLAGS) -I${IODIR}
 
-CPP = cpp
 VPATH = ${OBJDIR}
 
 CSRC = \
@@ -125,27 +124,27 @@ lustr.f	      m3warn.f      name2fid.f    opnlist3.f    pcoef.f	      \
 pgrdsum.f     pmatvec.f     poly.f        promptdfile.f promptffile.f \
 promptgrid.f  promptmfile.f rdatt3.f      rdbndary.f    rdbuf3.f      \
 rdcustom.f    rddict3.f     rdgrdded.f    rdiddata.f    rdsmatrx.f    \
-rdtflag.f     readsmet.f    realist.f     scanint.f     sec2time.f    \
-setsphere.f   str2dble.f    skipl.f       smatvec.f     str2int.f     \
-str2real.f    strlist.f     sync3.f       syncfid.f     synchtao.f    \
-time2sec.f    trimlen.f     ungridb.f     ungridi.f     upcase.f      \
-utm2ll.f      wratt3.f      wrbndary.f    wrbuf3.f      wrcustom.f    \
-wrdict3.f     wrgrdded.f    wriddata.f    wrsmatrx.f    wrtflag.f     \
-xtbuf3.f      xtract3.f     year4.f       
+rdtflag.f     readsmet.f    realist.f     runspec.f     scanint.f     \
+sec2time.f    setsphere.f   str2dble.f    skipl.f       smatvec.f     \
+splitline.f   str2int.f     str2real.f    strlist.f     sync3.f       \
+syncfid.f     synchtao.f    time2sec.f    trimlen.f     ungridb.f     \
+ungridi.f     upcase.f      utm2ll.f      wratt3.f      wrbndary.f    \
+wrbuf3.f      wrcustom.f    wrdict3.f     wrgrdded.f    wriddata.f    \
+wrsmatrx.f    wrtflag.f     xtbuf3.f      xtract3.f     year4.f       \
+chkbuf3.f
 
 FSRC = \
 cbarnes1.F    cbarnesN.F    check3.F      crtfil3.F     crlf.F       \
 crtkf.F       currec.F      daymon.F      ddtvar3.F     ddtvar3v.F   \
-desc3.F      \
-getdate.F     getdfile.F    getefile.F    getffile.F    init3.F      \
-initlog3.F    interp3.F     intpqv.F      isdstime.F    jstep3.F     \
+desc3.F       getdate.F     getdfile.F    getefile.F    getffile.F   \
+init3.F       initlog3.F    interp3.F     isdstime.F    jstep3.F     \
 julian.F      junit.F       kfread.F      kfwrite.F     m3abort.F    \
 m3err.F       m3exit.F      m3msg2.F      mmddyy.F      nextime.F    \
 open3.F       opnfil3.F     opnlog3.F     opnkf.F       rdgrnest.F   \
 rdprofil.F    rdvars.F      read3.F       read4d.F      secsdiff.F   \
-shut3.F       single_thread.F \
-updtvir3.F    wkday.F       wrgrnest.F    write3.F      write4d.F    \
-wrpatch.F     wrprofil.F    wrvars.F      yr2day.F
+shut3.F       wkday.F       wrgrnest.F    write3.F      write4d.F    \
+wrpatch.F     wrprofil.F    wrvars.F      yr2day.F                   \
+ddtvar3v.F    interp3v.F    intpqv.F      updtvir3.F    single_thread.F
 
 MSRC = m3utilio.f matxatts.f
 
@@ -164,23 +163,23 @@ ${FIXDIR}/PARMS3.EXT   ${FIXDIR}/STATE3.EXT
 
 LIB = libioapi.a
 
-MOD  = $(MSRC:.f=.o)
-FCPP = $(FSRC:.F=.f)
-fOBJ = $(fSRC:.f=.o)
-FOBJ = $(FCPP:.f=.o)
-COBJ = $(CSRC:.c=.o)
 MOBJ = $(MSRC:.f=.o)
 MODS = $(MSRC:.f=.mod)
-OBJ  = $(fSRC:.f=.o) $(FSRC:.F=.o) $(CSRC:.c=.o) $(M4SRC:.m4=.o)  ${MOBJ}
+fOBJ = $(fSRC:.f=.o)
+FOBJ = $(FSRC:.F=.o)
+COBJ = $(CSRC:.c=.o)
+OOBJ = $(M4SRC:.m4=.o)
+OBJ  = $(fSRC:.f=.o) $(FSRC:.F=.o) $(CSRC:.c=.o) $(M4SRC:.m4=.o) ${MOBJ}
 
 ######################################################################
 
-all: ${OBJDIR} fcpp ${LIB} ${MOBJ} # fixed_src
+all: ${OBJDIR} ${LIB} ${MODS} # fixed_src
+
+mod:  ${MODS}
 
 clean:  ${OBJDIR}
-	cd ${OBJDIR}; rm $(fOBJ); rm $(FOBJ); rm $(COBJ) $(OOBJ); rm ${LIB} ; \
-	rm ${MOBJ} ${MODS}
-	cd ${IODIR}; ${FCPP} rm *.o core* *.mod
+	cd ${OBJDIR}; rm $(fOBJ); rm $(FOBJ); rm $(MOBJ) $(COBJ) $(OOBJ); rm ${LIB} ${MODS}
+	cd ${SRCDIR}; rm *.o core* *.mod *.MOD
 
 install: ${INSTDIR}
 	echo "Installing in ${INSTDIR}" ; cd ${OBJDIR}; cp ${LIB} ${INSTDIR}
@@ -188,46 +187,28 @@ install: ${INSTDIR}
 gtar:
 	cd ${BASEDIR}; make gtar
 
-mod:  ${MOBJ}
+bins:
+	make BIN=Linux2_x86_64
+	make BIN=Linux2_x86_64g95
+	make BIN=Linux2_x86_64sun
+	make BIN=Linux2_x86_64ifort
+	make BIN=Linux2_x86_64g95dbg
+	make BIN=Linux2_x86_64sundbg
+	make BIN=Linux2_x86_64ifortdbg
 
-fcpp: ${FCPP}
+binclean:
+	make BIN=Linux2_x86_64          clean
+	make BIN=Linux2_x86_64g95       clean
+	make BIN=Linux2_x86_64sun       clean
+	make BIN=Linux2_x86_64ifort     clean
+	make BIN=Linux2_x86_64g95dbg    clean
+	make BIN=Linux2_x86_64sundbg    clean
+	make BIN=Linux2_x86_64ifortdbg  clean
 
 fixed_src:  ${FIXDIR} $(fix_EXT)
 
-nametest: ${LIB} ${OBJDIR}/libnetcdf.a
-	${IODIR}/nm_test.csh ${OBJDIR}/${LIB} ${OBJDIR}/libnetcdf.a nf_open
-
-
-SGI:
-	make BIN=IRIX6n32        all
-	make BIN=IRIX6n32f90     all
-	make BIN=IRIX6n32f90dbg  all
-	make BIN=IRIX64          all
-	make BIN=IRIX64f90       all
-	make BIN=IRIX64f90dbg    all
-
-SUN:
-	make BIN=SunOS5       f77
-	make BIN=SunOS5f90    all
-
-IA64:
-	make BIN=Linux2_ia64          all
-	make BIN=Linux2_ia64ifort     all
-	make BIN=Linux2_ia64ifortdbg  all
-
-X86:
-	make BIN=Linux2_x86        all
-	make BIN=Linux2_x86dbg     all
-	make BIN=Linux2_x86g95     all
-	make BIN=Linux2_x86ifc     all
-	make BIN=Linux2_x86ifcdbg  all
-	make BIN=Linux2_x86pg      all
-
-X86_64:
-	make BIN=Linux2_x86_64         all
-	make BIN=Linux2_x86_64dbg      all
-	make BIN=Linux2_x86_64path     all
-	make BIN=Linux2_x86_64pathdbg  all
+nametest: ${LIB} ${OBJDIR}/libnetcdff.a
+	${SRCDIR}/nm_test.csh ${OBJDIR}/${LIB} ${OBJDIR}/libnetcdff.a nf_open
 
 
 #  ---------------------------  Dependencies:  --------------------------
@@ -254,22 +235,26 @@ X86_64:
 .f.o:  ${EXTS} ${IODIR}/Makeinclude.${BIN}
 	cd ${OBJDIR}; $(FC) -c $(FFLAGS) ${IODIR}/$<
 
+.f.mod:  ${EXTS} ${IODIR}/Makeinclude.${BIN}
+	cd ${OBJDIR}; $(FC) -c $(FFLAGS) ${IODIR}/$<
 
-#  gctp requires "SAVE all variables" flag:
-
-gctp.o: ${IODIR}/gctp.f ${IODIR}/Makeinclude.${BIN}
-	cd ${OBJDIR}; $(FC) -c $(FSFLAGS) $(FFLAGS) ${IODIR}/gctp.f
 
 # init3() needs the library-version:
+#  gctp requires "SAVE all variables" flag;
+#  matxatts USEs M3UTILIO
 
 init3.o:  ${EXTS} ${IODIR}/Makeinclude.${BIN}
 	echo $(VFLAG)
 	cd ${OBJDIR}; $(FC) -c $(FPPFLAGS) $(FFLAGS) $(VFLAG) ${IODIR}/init3.F -o $@
 
-matxatts.o:  m3utilio.o
+gctp.o: ${IODIR}/gctp.f ${IODIR}/Makeinclude.${BIN}
+	cd ${OBJDIR}; $(FC) -c $(FSFLAGS) $(FFLAGS) ${IODIR}/gctp.f
+
+matxatts.o:  m3utilio.mod
+runspec.o :  m3utilio.mod
 
 
-${LIB}: ${OBJ} # ${MOD}
+${LIB}: ${OBJ}
 	cd ${OBJDIR}; $(AR) $(ARFLAGS) ${LIB} ${OBJ} ; ranlib ${LIB}
 
 ${OBJDIR}:

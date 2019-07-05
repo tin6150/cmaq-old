@@ -1,10 +1,10 @@
 /**********************************************************************
-VERSION "@$Id: envgets.c 1166 2012-02-04 14:54:50Z coats@bdsl $"
+VERSION "$Id: envgets.c 1 2014-03-14 20:22:54Z coats $"
     EDSS/Models-3 I/O API.
 
 COPYRIGHT
     (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-    (C) 2003-2005 Baron Advanced Meteorological Systems.
+    (C) 2003-2010 Baron Advanced Meteorological Systems.
     Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
     See file "LGPL.txt" for conditions of use.
 
@@ -68,6 +68,7 @@ REVISION HISTORY:
     Version   4/2005 by CJC:  Bug-fix in envync() from David Wong, US EPA,
     Modified 11/2005 by CJC:  extra name-mangling for Absoft Pro Fortran:
     upper-case Fortran  symbols, prepend _C to common blocks.
+    Modified 11/2013 by CJC:  Expand BUFLEN to 64K
 **********************************************************************/
 
 #include "iodecl3.h"
@@ -353,6 +354,7 @@ void envstrc( const char * lname,
             length = ( length < elen ? length : elen ) ;
             strncat( mesg, evalue, length ) ;
             strncat( mesg, "'", (size_t)1 ) ;
+            m3mesgc( mesg ) ; 
             *status = 0 ;
             }
         else{
@@ -365,6 +367,7 @@ void envstrc( const char * lname,
             length = ( length < elen ? length : elen ) ;
             strncat( mesg, evalue, length ) ;
             strncat( mesg, "'", (size_t)1 ) ;
+            m3mesgc( mesg ) ; 
             *status = -1 ;
             }                           /** END:  lname defined but empty **/
         }                       /** END:  lname defined     **/
@@ -378,6 +381,7 @@ void envstrc( const char * lname,
         length = ( length < elen ? length : elen ) ;
         strncat( mesg, evalue, length ) ;
         strncat( mesg, "'", (size_t)1 ) ;
+            m3mesgc( mesg ) ; 
         *status = -2 ;
         }                       /** END:  lname defined or not **/
 

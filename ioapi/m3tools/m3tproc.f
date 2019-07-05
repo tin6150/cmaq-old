@@ -2,14 +2,14 @@
         PROGRAM  M3TPROC
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: m3tproc.f 47 2014-10-03 22:21:37Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2002-2007 Baron Advanced Meteorological Systems. LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line 161
+C  program body starts at line 144
 C
 C  FUNCTION:
 C       Sums, give max, or gives average over a specified time period
@@ -52,36 +52,23 @@ C       Version  7/2006 by CJC:  correct fencepost problem with NRECS
 C
 C       Version  2/2007:  Bug-fix for All-Variables case. from
 C       George Pouliot, US EPA
+C
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
+C
+C       Version 01/2013 by CJC:  use new LASTTIME() to find EDATE:ETIME
+C
+C       Version 10/2014 by CJC:  Check status of ENV*() calls.
+C       PARAMETER menu-arguments.
 C***********************************************************************
+
+      USE M3UTILIO
 
       IMPLICIT NONE
 
-C...........   INCLUDES:
-
-        INCLUDE 'PARMS3.EXT'  !  I/O parameter definitions
-        INCLUDE 'FDESC3.EXT'  !  file header data structures
-        INCLUDE 'IODECL3.EXT' !  I/O definitions and declarations
-
-
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER       CURREC
-        INTEGER       ENVINT
-        LOGICAL       ENVYN
-        INTEGER       GETMENU
-        INTEGER       GETNUM
-        LOGICAL       GETYN
-        INTEGER       IARGC
-        INTEGER       JSTEP3
-        CHARACTER*16  PROMPTMFILE
-        INTEGER       SEC2TIME
-        INTEGER       TIME2SEC
-        INTEGER       TRIMLEN
-
-        EXTERNAL  CURREC, ENVINT, ENVYN, GETMENU, GETNUM,
-     &            GETYN, IARGC, JSTEP3, PROMPTMFILE,
-     &            SEC2TIME, TIME2SEC, TRIMLEN
-
+        INTEGER :: IARGC
 
 C...........   PARAMETERS and their descriptions:
 
@@ -90,13 +77,19 @@ C...........   PARAMETERS and their descriptions:
         INTEGER, PARAMETER ::  M3MAX = 3
         INTEGER, PARAMETER ::  M3MIN = 4
 
-        CHARACTER*16, PARAMETER ::  BLANK16 = ' '
+        CHARACTER*48, PARAMETER ::  MENUITMS( M3MIN ) =
+     &      (/  'Calculate   sum   over time window',
+     &          'Calculate average over time window',
+     &          'Determine maximum over time window',
+     &          'Determine minimum over time window'   /)
 
+        CHARACTER*8, PARAMETER ::  OPNAMES( M3MIN ) =
+     &         (/  'SUM', 'BAR', 'MAX', 'MIN'  /)
+
+        CHARACTER*16, PARAMETER :: BLANK16 = ' '
+        CHARACTER*16, PARAMETER :: PNAME   = 'M3TPROC'
         CHARACTER*64, PARAMETER :: BAR =
      &'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-'
-
-        CHARACTER*80, PARAMETER :: PROGVER =
-     &'$Id:: m3tproc.f 49 2007-07-06 16:20:50Z coats@borel           $'
 
 
 C...........   LOCAL VARIABLES and their descriptions:
@@ -142,23 +135,14 @@ C...........   LOCAL VARIABLES and their descriptions:
         INTEGER         VMAX    !  string length for names
         INTEGER         ITYPE
 
+        LOGICAL         EFLAG
         LOGICAL         NPFLAG  !  iff no prompting for variables
-
-        CHARACTER*48 ::  MENUITMS( M3MIN )
-        DATA             MENUITMS
-     &       /  'Calculate   sum   over time window',
-     &          'Calculate average over time window',
-     &          'Determine maximum over time window',
-     &          'Determine minimum over time window'   /
-
-        CHARACTER*48 ::  OPNAMES( M3MIN )
-        DATA             OPNAMES
-     &         /  'SUM', 'BAR', 'MAX', 'MIN'  /
 
 C.........................................................................
 C   begin body of program  M3TPROC
 
         LOGDEV = INIT3()
+        EFLAG  = .FALSE.
         WRITE ( *, '( 5X,  A )' )
      &  ' ',
      &  'Program M3TPROC to sum, average, or find the maximum values',
@@ -174,47 +158,48 @@ C   begin body of program  M3TPROC
      &  ' ',
      &  'USAGE:  m3tproc [INFILE OUTFILE] ',
      &  '(and then answer the prompts).',
+     &' ',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
      &  ' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
-     &' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: m3tproc.f 47 2014-10-03 22:21:37Z coats                 $',
      &' '
 
         ARGCNT = IARGC()
 
         IF ( ARGCNT .EQ. 1  .OR.  ARGCNT .GT. 2 ) THEN
-            CALL M3EXIT( 'M3TPROC', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'usage:  m3tproc [INFILE OUTFILE]', 2 )
         END IF
 
         IF ( ARGCNT .EQ. 0 ) THEN       !  get names from user
 
             IFILE = PROMPTMFILE( 'Enter logical name for  INPUT FILE',
-     &                           FSREAD3, 'INFILE', 'M3TPROC' )
+     &                           FSREAD3, 'INFILE', PNAME )
 
-        ELSE		!  argcnt 2
+        ELSE        !  argcnt 2
 
             CALL GETARG( 1, ENVBUF )
             IFILE = ENVBUF( 1:16 )
-            IF ( .NOT. OPEN3( IFILE, FSREAD3, 'M3TPROC' ) ) THEN
+            IF ( .NOT. OPEN3( IFILE, FSREAD3, PNAME ) ) THEN
                 MESG = 'Could not open input file "'
      &                       // TRIM( IFILE ) // '"'
-                CALL M3EXIT( 'M3TPROC', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             CALL GETARG( 2, ENVBUF )
@@ -226,11 +211,11 @@ C   begin body of program  M3TPROC
         IF ( .NOT. DESC3( IFILE ) ) THEN
             MESG = 'Could not get description of input file "' //
      &             TRIM( IFILE ) // '"'
-            CALL M3EXIT( 'M3TPROC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         ELSE IF ( TSTEP3D .EQ. 0 ) THEN
             MESG = 'Input file "' // TRIM( IFILE ) //
      &             '" is only one time step-no output written.'
-            CALL M3EXIT( 'M3TPROC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         IF ( FTYPE3D .EQ. CUSTOM3 ) THEN
@@ -243,7 +228,7 @@ C   begin body of program  M3TPROC
             WRITE( MESG, '( 3A, I5 )' )
      &      'Input file "', TRIM( IFILE ),
      &      '" has unsupported type', FTYPE3D
-            CALL M3EXIT( 'M3TPROC', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         NVSAV  = NVARS3D
@@ -251,21 +236,17 @@ C   begin body of program  M3TPROC
         STIME  = STIME3D
         INSTEP = TSTEP3D
 
-        EDATE = SDATE3D
-        ETIME = STIME3D
-        TSECS = ( MXREC3D - 1 ) * TIME2SEC( TSTEP3D )
-        TSTEP = SEC2TIME( TSECS )
-        CALL NEXTIME( EDATE, ETIME, TSTEP )
+        CALL LASTTIME( SDATE3D,STIME3D,TSTEP3D, MXREC3D, EDATE,ETIME )
 
 C.......   Get max string-lengths for use in variables-listing:
 
-        VMAX = TRIMLEN( VNAME3D( 1 ) )
-        UMAX = TRIMLEN( UNITS3D( 1 ) )
-        DMAX = TRIMLEN( VDESC3D( 1 ) )
+        VMAX = LEN_TRIM( VNAME3D( 1 ) )
+        UMAX = LEN_TRIM( UNITS3D( 1 ) )
+        DMAX = LEN_TRIM( VDESC3D( 1 ) )
         DO  V = 1, NVARS3D
-            VMAX = MAX( VMAX , TRIMLEN( VNAME3D( V ) ) )
-            UMAX = MAX( UMAX , TRIMLEN( UNITS3D( V ) ) )
-            DMAX = MAX( DMAX , TRIMLEN( VDESC3D( V ) ) )
+            VMAX = MAX( VMAX , LEN_TRIM( VNAME3D( V ) ) )
+            UMAX = MAX( UMAX , LEN_TRIM( UNITS3D( V ) ) )
+            DMAX = MAX( DMAX , LEN_TRIM( VDESC3D( V ) ) )
         END DO
 
 
@@ -274,11 +255,22 @@ C.......  Determine if all variables are to be used
         NPFLAG = ENVYN( 'M3TPROC_ALLV',
      &                  'true if no prompting for variables to output',
      &                  .FALSE., IOS )
-
-C.......  If no prompting set to total number of vars, or prompt
+        IF ( IOS .GT. 0 ) THEN
+            EFLAG = .TRUE.
+            CALL M3MESG( 'Bad environment variable "M3TPROC_ALLV"' )
+        END IF
 
         AGGOP( 1 ) = ENVINT( 'M3TPROC_TYPE', 'Type of analysis',
      &                       M3MAX, IOS )
+        IF ( IOS .GT. 0 ) THEN
+            EFLAG = .TRUE.
+            CALL M3MESG( 'Bad environment variable "M3TPROC_TYPE"' )
+        END IF
+        
+        IF ( EFLAG ) THEN
+            CALL M3EXIT( PNAME, 0,0, 'Environment error(s)', 2 )
+        END IF
+
         IF( NPFLAG ) THEN
 
             N = NVARS3D
@@ -336,7 +328,7 @@ C...............   Optional renaming of this variable:
                     CALL M3PROMPT( ALINE, ANAME, IOS )
 
                     IF ( IOS .GT. 0 ) THEN
-                        CALL M3WARN( 'M3TPROC', 0, 0,
+                        CALL M3WARN( PNAME, 0, 0,
      &                  'Error reading output-name; please try again' )
                         GO TO 122
                     END IF
@@ -358,7 +350,7 @@ C...............   Optional renaming of this variable:
         END IF  ! If prompting or not
 
         IF ( N .EQ. 0 ) THEN
-            CALL M3EXIT( 'M3TPROC', 0, 0, 'No variables selected', 2 )
+            CALL M3EXIT( PNAME, 0, 0, 'No variables selected', 2 )
         ELSE
             NVARS   = N
             NVARS3D = NVARS
@@ -435,14 +427,14 @@ C.......   Re-use all but the starting date&time of the input-file description.
 
         IF ( ARGCNT .EQ. 0 ) THEN
             OFILE = PROMPTMFILE( 'Enter logical name for OUTPUT FILE',
-     &                           FSUNKN3, 'OUTFILE', 'M3TPROC' )
-        ELSE	!  argcnt = 2:
-            IF ( .NOT. OPEN3( OFILE, FSUNKN3, 'M3TPROC' ) ) THEN
+     &                           FSUNKN3, 'OUTFILE', PNAME )
+        ELSE    !  argcnt = 2:
+            IF ( .NOT. OPEN3( OFILE, FSUNKN3, PNAME ) ) THEN
                 MESG = 'Could not open output file "' //
      &                 TRIM( OFILE ) // '"'
-                CALL M3EXIT( 'M3TPROC', SDATE, STIME, MESG, 2 )
+                CALL M3EXIT( PNAME, SDATE, STIME, MESG, 2 )
             END IF
-        END IF		!  if argcnt zero, or 2
+        END IF      !  if argcnt zero, or 2
 
 
 C.......   Process this period in the input file:
@@ -477,7 +469,7 @@ C.......   Process this period in the input file:
 322     CONTINUE            !  end loop on analysis periods
 
 
-        CALL M3EXIT( 'M3TPROC', 0, 0,
+        CALL M3EXIT( PNAME, 0, 0,
      &               'Program completed successfully', 0 )
 
 
@@ -486,9 +478,5 @@ C...........   Informational (LOG) message formats... 92xxx
 
 92010   FORMAT ( 1X , I5, ':  ', A )
 
-C...........   Miscellaneous formats................. 95xxx
-
-95000   FORMAT ( /5X , A , $ )          !  generic prompt format.
-
-        END
+        END PROGRAM  M3TPROC
 

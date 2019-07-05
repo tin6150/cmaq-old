@@ -2,14 +2,14 @@
         PROGRAM M3INTERP
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: m3interp.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2002-2005 Baron Advanced Meteorological Systems. LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line  186
+C  program body starts at line  169
 C
 C  DESCRIPTION:
 C       For each time step in the specified time step sequence,
@@ -36,38 +36,21 @@ C       many additional coordinate transformations, direct calls to GCTP
 C       Version   6/2005 by CJC:  improved default for NRECS
 C       Version  11/2005 by CJC:  eliminate unused vbles and functions
 C       Version   6/2008 by CJC:  Albers map-projection support
+C       Version  02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
+C       Version 01/2013 by CJC:  use new LASTTIME() to find EDATE:ETIME
 C***********************************************************************
 
+      USE M3UTILIO
+
       IMPLICIT NONE
-
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'      ! I/O API constants
-      INCLUDE 'FDESC3.EXT'      ! I/O API file description data structure
-      INCLUDE 'IODECL3.EXT'     ! I/O API function declarations
-
-
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        LOGICAL        DSCGRID, GETYN
-        INTEGER        CURREC, GETNUM, SEC2TIME, TIME2SEC
-        CHARACTER*16   PROMPTMFILE
-
-        EXTERNAL   CURREC, DSCGRID, GETNUM, GETYN, PROMPTMFILE,
-     &             SEC2TIME, TIME2SEC
 
 
 C...........   PARAMETERS and their descriptions:
 
-        CHARACTER*72    PROGVER
-        DATA PROGVER /
-     &'$Id:: m3interp.f 250 2008-06-13 19:26:21Z coats@bdsl          $'
-     &  /
-        CHARACTER*70    BAR
-        PARAMETER     ( BAR =
+        CHARACTER*16, PARAMETER :: PNAME = 'M3INTERP'
+        CHARACTER*70, PARAMETER :: BAR =
      &  '-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-'
-     &  )
-
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -78,8 +61,8 @@ C...........   LOCAL VARIABLES and their descriptions:
         CHARACTER*16    CNAME   !  output coordinate system name
         CHARACTER*16    GNAME   !  output grid name
 
-        LOGICAL         IFLAG	!  true iff interp (instead of copy)
-        LOGICAL         SFLAG	!  true iff controlled by synch file
+        LOGICAL         IFLAG   !  true iff interp (instead of copy)
+        LOGICAL         SFLAG   !  true iff controlled by synch file
 
         LOGICAL         EFLAG
         CHARACTER*256   MESG
@@ -234,29 +217,30 @@ C   begin body of program M3INTERP
      & '    resolution than the input grid (else you should use an',
      & '    aggregation program instead of an input program).',
      & '    For copy, file type must be GRIDDED, BOUNDARY, or CUSTOM.',
-     & ' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2008 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
+     &' ',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: m3interp.f 44 2014-09-12 18:03:16Z coats                $',
      &' '
 
         IF ( .NOT. GETYN( 'Continue with program?', .TRUE. ) ) THEN
-            CALL M3EXIT( 'M3INTERP', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Program terminated at user request', 2 )
         END IF
 
@@ -264,7 +248,7 @@ C   begin body of program M3INTERP
 C...............  Open and get description for optional synch file
 
         MESG  = 'Enter name for input synch file, or "NONE"'
-        SNAME = PROMPTMFILE( MESG, FSREAD3, 'NONE', 'M3INTERP' )
+        SNAME = PROMPTMFILE( MESG, FSREAD3, 'NONE', PNAME )
         SFLAG = ( SNAME .NE. 'NONE ' )
 
         IF ( SFLAG ) THEN
@@ -273,7 +257,7 @@ C...............  Open and get description for optional synch file
                 SVBLE  = VNAME3D( 1 )
             ELSE
                 MESG = 'Could not get file description for ' // SNAME
-                CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
         END IF          !  if synch-flag option taken
@@ -282,7 +266,7 @@ C...............  Open and get description for optional synch file
 C...............  Open and get description for input data file
 
         MESG  = 'Enter name for input data file'
-        FNAME = PROMPTMFILE( MESG, FSREAD3, 'INFILE', 'M3INTERP' )
+        FNAME = PROMPTMFILE( MESG, FSREAD3, 'INFILE', PNAME )
 
         IF ( DESC3( FNAME ) ) THEN
             NCOLS1 = NCOLS3D
@@ -301,7 +285,7 @@ C...............  Open and get description for input data file
             NSIZE1 = NCOLS1*NROWS1*NLAYS1
         ELSE
             MESG = 'Could not get file description for ' // FNAME
-            CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
 
@@ -320,16 +304,13 @@ C...............  Get output grid description, time step sequence
         JDATE = GETNUM( SDATE3D, 9999999, SDATE3D,
      &                  'Enter STARTING DATE for time step sequence' )
 
-        JTIME = GETNUM(       0, 9999999, STIME3D,
+        JTIME = GETNUM( 0, 9999999, STIME3D,
      &                  'Enter STARTING TIME for time step sequence' )
 
-        TSTEP = GETNUM(     1, 999999999, TSTEP3D,
+        TSTEP = GETNUM( 1, 999999999, TSTEP3D,
      &                  'Enter   TIME STEP   for time step sequence' )
 
-        EDATE = SDATE3D
-        ETIME = STIME3D
-        TSECS = ( MXREC3D - 1 ) * TIME2SEC( TSTEP3D )
-        CALL NEXTIME( EDATE, ETIME, SEC2TIME( TSECS ) )
+        CALL LASTTIME( SDATE3D,STIME3D,TSTEP3D, MXREC3D, EDATE,ETIME )
         N  =  CURREC( EDATE, ETIME, JDATE, JTIME, TSTEP, C, R )
 
         NRECS = GETNUM( 1, 9999999, N,
@@ -343,41 +324,41 @@ C...............  Get output grid description, time step sequence
 C...............  Setup for mode of operation:  copy or interpolate:
 
         IF ( ( GNAME .EQ. 'SAME' ) .OR.
-     &       ( GNAME .EQ. 'same' ) ) THEN	!  set up for copy
-	
-	    IFLAG = .FALSE.
-	
+     &       ( GNAME .EQ. 'same' ) ) THEN   !  set up for copy
+
+            IFLAG = .FALSE.
+
             IF ( FTYPE3D .EQ. GRDDED3 ) THEN
-        	SIZE = NCOLS3D * NROWS3D * NLAYS3D
+                SIZE = NCOLS3D * NROWS3D * NLAYS3D
             ELSE IF ( FTYPE3D .EQ. BNDARY3 ) THEN
-        	SIZE = NCOLS3D * NROWS3D * NLAYS3D
+                SIZE = NCOLS3D * NROWS3D * NLAYS3D
             ELSE IF ( FTYPE3D .EQ. CUSTOM3 ) THEN
-        	SIZE = NCOLS3D * NROWS3D * NLAYS3D
+                SIZE = NCOLS3D * NROWS3D * NLAYS3D
             ELSE
-        	MESG = 'Cannot copy--' //
+                MESG = 'Cannot copy--' //
      &                 'file type not GRIDDED, BOUNDARY, or CUSTOM'
-        	CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
-        	EFLAG = .TRUE.
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
+                EFLAG = .TRUE.
             END IF
 
             ALLOCATE( COPYBUF( SIZE ), STAT = STATUS )
 
             IF ( STATUS .NE. 0 ) THEN
-        	WRITE( MESG, '( A, I10 )' )
+                WRITE( MESG, '( A, I10 )' )
      &               'Buffer allocation failed:  STAT=', STATUS
-        	CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
         ELSE IF ( FTYPE3D .NE. GRDDED3 ) THEN
 
-        	MESG = 'File type not GRIDDED--cannot interpolate'
-        	CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+            MESG = 'File type not GRIDDED--cannot interpolate'
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
-	ELSE	!  set up for interpolate:
-	
-	    IFLAG = .TRUE.
-	
-	    GDNAM3D = GNAME
+        ELSE    !  set up for interpolate:
+
+            IFLAG = .TRUE.
+
+            GDNAM3D = GNAME
             IF ( DSCGRID( GNAME, CNAME, GDTYP3D,
      &                    P_ALP3D, P_BET3D, P_GAM3D, XCENT3D, YCENT3D,
      &                    XORIG3D, YORIG3D, XCELL3D, YCELL3D,
@@ -450,11 +431,11 @@ C...............  Setup for mode of operation:  copy or interpolate:
                 CALL M3MESG( MESG )
                 CALL M3MESG( BAR )
 
-	    ELSE
+        ELSE
 
-        	MESG   = '"' // TRIM( GNAME ) //
+            MESG   = '"' // TRIM( GNAME ) //
      &                   '" not found in GRIDDESC file'
-        	CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
             END IF
 
@@ -477,9 +458,9 @@ C...............  Allocate buffers; compute re-gridding matrix
      &                STAT = STATUS )
 
             IF ( STATUS .NE. 0 ) THEN
-        	WRITE( MESG, '( A, I10)' )
+                WRITE( MESG, '( A, I10)' )
      &               'Buffer allocation failed:  STAT=', STATUS
-        	CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             AFLAG = DBLERR( P_ALP1, P_ALP3D )
@@ -495,8 +476,8 @@ C...............  Allocate buffers; compute re-gridding matrix
 
                 DO  R = 1, NROWS3D
                 DO  C = 1, NCOLS3D
-        	    XBUF( C,R ) = X0 + DBLE( C ) * XCELL3D
-        	    YBUF( C,R ) = Y0 + DBLE( R ) * YCELL3D
+                    XBUF( C,R ) = X0 + DBLE( C ) * XCELL3D
+                    YBUF( C,R ) = Y0 + DBLE( R ) * YCELL3D
                 END DO
                 END DO
 
@@ -722,7 +703,7 @@ C...............  GCTP Arguments for input-file coordinate system:
                     EFLAG = .TRUE.
                     WRITE( MESG, '( A, I5 )' )
      &                   'Input  coordinate type ', GDTYP1
-        	    CALL M3MSG2( MESG )
+                    CALL M3MSG2( MESG )
                 END IF
 
 
@@ -943,12 +924,12 @@ C...............  GCTP Arguments for output-file coordinate system:
                     EFLAG = .TRUE.
                     WRITE( MESG, '( A, I5 )' )
      &                   'Output  coordinate type ', GDTYP3D
-        	    CALL M3MSG2( MESG )
+                    CALL M3MSG2( MESG )
                 END IF
 
                 IF ( EFLAG ) THEN
                     MESG = 'Unsupported coordinate conversion'
-        	    CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+                    CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                 END IF
 
 
@@ -961,9 +942,9 @@ C...............  Establish "False-Easting/Northing" values:
      &                      CRDIO, IOSYS, IOZONE, TPOUT, IOUNIT,
      &                      LN27, LN83, FN27, FN83, LENGTH, IFLG )
 
-        	IF ( IFLG .EQ. 0 ) THEN
+                IF ( IFLG .EQ. 0 ) THEN
                     TPOUT( 7 ) = CRDIO( 1 )
-        	    TPOUT( 8 ) = CRDIO( 2 )
+                    TPOUT( 8 ) = CRDIO( 2 )
                     IOZONE = IOZONE + 1
                 ELSE
                     IFLG = MAX( MIN( 9, IFLG ), 1 )
@@ -978,9 +959,9 @@ C...............  Establish "False-Easting/Northing" values:
      &                      CRDIO, INSYS, INZONE, TPAIN, INUNIT,
      &                      LN27, LN83, FN27, FN83, LENGTH, IFLG )
 
-        	IF ( IFLG .EQ. 0 ) THEN
+                IF ( IFLG .EQ. 0 ) THEN
                     TPAIN( 7 ) = CRDIO( 1 )
-        	    TPAIN( 8 ) = CRDIO( 2 )
+                    TPAIN( 8 ) = CRDIO( 2 )
                     INZONE = INZONE + 1
                 ELSE
                     IFLG = MAX( MIN( 9, IFLG ), 1 )
@@ -990,7 +971,7 @@ C...............  Establish "False-Easting/Northing" values:
 
                 IF ( EFLAG ) THEN
                     MESG = 'Ccoordinate setup error(s)'
-        	    CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+                    CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                 END IF
 
 
@@ -999,20 +980,20 @@ C...............   Compute output-grid center coords wrt input grid:
                 DO  R = 1, NROWS3D
                 DO  C = 1, NCOLS3D
 
-        	    CRDIN( 1 ) = X0 + DBLE( C ) * XCELL3D
-        	    CRDIN( 2 ) = Y0 + DBLE( R ) * YCELL3D
+                    CRDIN( 1 ) = X0 + DBLE( C ) * XCELL3D
+                    CRDIN( 2 ) = Y0 + DBLE( R ) * YCELL3D
                     CALL GTPZ0( CRDIN, INSYS, INZONE, TPAIN, INUNIT,
      &                          INSPH,IPR, JPR, LEMSG, LPARM,
      &                          CRDIO, IOSYS, IOZONE, TPOUT, IOUNIT,
      &                          LN27, LN83, FN27, FN83, LENGTH, IFLG )
 
-        	    IF ( IFLG .EQ. 0 ) THEN
+                    IF ( IFLG .EQ. 0 ) THEN
                         XBUF( C,R ) = SNGL( CRDIO( 1 ) )
-        	        YBUF( C,R ) = SNGL( CRDIO( 2 ) )
+                        YBUF( C,R ) = SNGL( CRDIO( 2 ) )
                     ELSE
                         IFLG = MAX( MIN( 9, IFLG ), 1 )
                         WRITE( MESG, '( A , I3 )' ) 'GCTP error', IFLG
-                        CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+                        CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                     END IF
 
                 END DO
@@ -1025,9 +1006,9 @@ C...............   Compute output-grid center coords wrt input grid:
                 CONTINUE
             ELSE IF ( ( YCELL1 .LT. YCELL3D ) .OR.
      &                ( XCELL1 .LT. XCELL3D ) ) THEN
-        	MESG = 'Resolution warning -- should ' //
+                MESG = 'Resolution warning -- should ' //
      &                 'use aggregation instead of interpolation'
-        	CALL M3MSG2( MESG )
+                CALL M3MSG2( MESG )
             END IF
 
 
@@ -1037,7 +1018,7 @@ C...............  Compute bilinear re-gridding matrix:
      &                    XCELL1, YCELL1,
      &                    NCOLS2*NROWS2, XBUF, YBUF, IBUF, CBUF )
 
-        END IF	!  if gname = "SAME", or not
+        END IF  !  if gname = "SAME", or not
 
 
 C...............  Open output file
@@ -1045,9 +1026,9 @@ C...............  Open output file
         CALL GETSTR( 'Enter name for output data file',
      &               'OUTFILE', ONAME )
 
-        IF ( .NOT. OPEN3( ONAME, FSUNKN3, 'M3INTERP' ) ) THEN
+        IF ( .NOT. OPEN3( ONAME, FSUNKN3, PNAME ) ) THEN
             MESG = 'Could not open ' // ONAME
-            CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
 
@@ -1060,7 +1041,7 @@ C...............  Process output time step sequence
                     MESG = 'Failure checking variable "' //
      &                     TRIM( SVBLE ) // '" from synch file "' //
      &                     TRIM( SNAME ) // '"'
-                    CALL M3EXIT( 'M3INTERP', JDATE, JTIME, MESG, 2 )
+                    CALL M3EXIT( PNAME, JDATE, JTIME, MESG, 2 )
                 END IF
             END IF
 
@@ -1070,18 +1051,18 @@ C...............  Process output time step sequence
             CALL M3MSG2( ' ' )
             CALL M3MSG2( MESG )
 
-            IF ( IFLAG ) THEN	!  bilin-interpolate vs. copy
+            IF ( IFLAG ) THEN   !  bilin-interpolate vs. copy
 
-		DO  V = 1, NVARS3D
+                DO  V = 1, NVARS3D
 
-                    IF ( .NOT. INTERP3( FNAME, VNAME3D(V), 'M3INTERP',
+                    IF ( .NOT. INTERP3( FNAME, VNAME3D(V), PNAME,
      &                                  JDATE, JTIME, NSIZE1, INBUF
      &                                  ) ) THEN
-                	MESG = 'Failure reading variable "' //
+                        MESG = 'Failure reading variable "' //
      &                         TRIM( VNAME3D( V ) )
      &                         // '" from file "' //
      &                         TRIM( FNAME ) // '"'
-                	CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+                        CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                     END IF
 
                     CALL BILIN( NCOLS1  * NROWS1,
@@ -1090,39 +1071,39 @@ C...............  Process output time step sequence
 
                     IF ( .NOT.WRITE3( ONAME, VNAME3D( V ),
      &                                JDATE, JTIME, OUTBUF ) ) THEN
-                	MESG = 'Failure writing variable "' //
+                        MESG = 'Failure writing variable "' //
      &                         TRIM( VNAME3D( V ) ) // '" to file "' //
      &                         TRIM( ONAME ) // '"'
-                	CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+                        CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                     END IF
 
-        	END DO      !  end loop on variables
+                END DO      !  end loop on variables
 
-	    ELSE	!  else no interpolation:  copy only.
+            ELSE    !  else no interpolation:  copy only.
 
-		DO  V = 1, NVARS3D
+                DO  V = 1, NVARS3D
 
-                    IF ( .NOT. INTERP3( FNAME, VNAME3D(V), 'M3INTERP',
+                    IF ( .NOT. INTERP3( FNAME, VNAME3D(V), PNAME,
      &                                  JDATE, JTIME, NSIZE1, COPYBUF
      &                                  ) ) THEN
-                	MESG = 'Failure reading variable "' //
+                        MESG = 'Failure reading variable "' //
      &                         TRIM( VNAME3D( V ) ) //
      &                         '" from file "' //
      &                         TRIM( FNAME ) // '"'
-                	CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+                        CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                     END IF
 
                     IF ( .NOT.WRITE3( ONAME, VNAME3D( V ),
      &                                JDATE, JTIME, COPYBUF ) ) THEN
-                	MESG = 'Failure writing variable "' //
+                        MESG = 'Failure writing variable "' //
      &                         TRIM( VNAME3D( V ) ) // '" to file "' //
      &                         TRIM( ONAME ) // '"'
-                	CALL M3EXIT( 'M3INTERP', 0, 0, MESG, 2 )
+                        CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                     END IF
 
-        	END DO      !  end loop on variables
+                END DO      !  end loop on variables
 
-	    END IF	!  if iflag, or not
+            END IF      !  if iflag, or not
 
             CALL NEXTIME( JDATE, JTIME, TSTEP )
 
@@ -1131,8 +1112,8 @@ C...............  Process output time step sequence
 
 C...............  Successful completion
 
-        CALL M3EXIT( 'M3INTERP', 0, 0,
+        CALL M3EXIT( PNAME, 0, 0,
      &               'Successful completion of program M3INTERP', 0 )
 
-        END
+        END PROGRAM M3INTERP
 

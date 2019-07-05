@@ -1,17 +1,17 @@
 
-C.........................................................................
-C Version "@(#)$Header$"
+        REAL   FUNCTION GETREAL( LO , HI , DEFAULT , PROMPT )
+
+C********************************************************************
+C Version "$Id: getreal.f 161 2015-02-23 23:31:27Z coats $"
 C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003 Baron Advanced Meteorological Systems
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (c) 2004-2007 Baron Advanced Meteorological Systems,
+C (c) 2007-2013 Carlie J. Coats, Jr., and (C) 2014 UNC Institute
+C for the Environment.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-
-        REAL   FUNCTION GETREAL ( LO , HI , DEFAULT , PROMPT )
-
-C********************************************************************
-C       function body starts at line  90
+C       function body starts at line  83
 C
 C   CALLS:  TRIMLEN  
 C
@@ -34,6 +34,9 @@ C                to ensure flush() of log messages
 C       Revised   6/2003 by CJC:  factor through M3MSG2, M3PROMPT, and
 C                 M3FLUSH to ensure flush() of PROMPT and of log-messages
 C                 for IRIX F90v7.4  
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
+C       Modified 02/2014 by CJC: Fix MH violation of coding-standards:
+C       check status IOS from  ENVYN()!!
 C
 C  ARGUMENT LIST DESCRIPTION:
 C
@@ -54,21 +57,18 @@ C********************************************************************
 
 C.......   ARGUMENTS:
 
-        REAL            LO , HI
-        REAL     	DEFAULT
-        CHARACTER*(*)   PROMPT
+        REAL         , INTENT(IN   ) :: LO, HI, DEFAULT
+        CHARACTER*(*), INTENT(IN   ) :: PROMPT
 
 
 C.......   EXTERNAL FUNCTION:  interpret I/O errors:
 
-        LOGICAL         ENVYN
-        INTEGER         TRIMLEN
-        EXTERNAL        ENVYN, TRIMLEN
+        LOGICAL, EXTERNAL :: ENVYN
 
 
 C.......   LOCAL VARIABLES:
 
-        INTEGER         K , L , M , N, P
+        INTEGER         K , L , M , N
         REAL            LLO , LHI , LDF
         REAL            ANSWER
         INTEGER         ERRCNT
@@ -78,11 +78,10 @@ C.......   LOCAL VARIABLES:
         CHARACTER*16	FMTSTR
         CHARACTER*1	CH
 
-        LOGICAL         PROMPTON
+        LOGICAL, SAVE :: PROMPTON
+        LOGICAL, SAVE :: FIRSTIME = .TRUE.
 
-        LOGICAL         FIRSTIME
-        DATA            FIRSTIME / .TRUE. /
-        SAVE            FIRSTIME, PROMPTON
+        CHARACTER*16, PARAMETER :: PNAME = 'GETREAL'
 
 C*********************************************************************
 C       begin GETREAL
@@ -91,15 +90,16 @@ C       begin GETREAL
 
             PROMPTON = ENVYN( 'PROMPTFLAG', 'Prompt for input flag',
      &                        .TRUE., IOS )
+            IF ( IOS .GT. 0 ) THEN
+                CALL M3EXIT( PNAME,0,0,'Bad env vble "PROMPTFLAG"', 2 )
+            END IF
             FIRSTIME = .FALSE.
  
         END IF
 
-        P  =  TRIMLEN( PROMPT )
-
         IF( .NOT. PROMPTON ) THEN
             GETREAL = DEFAULT
-            WRITE( MESG,94030 ) DEFAULT, PROMPT( 1:P )
+            WRITE( MESG,94030 ) DEFAULT, TRIM( PROMPT )
             CALL M3MSG2( MESG )
             RETURN
         END IF
@@ -114,17 +114,17 @@ C       begin GETREAL
 100     CONTINUE
 
         WRITE( MESG, '( 2A , 1PE12.5, A )' )
-     &        PROMPT( 1:P ), ' [', LDF, '] >> '
+     &        TRIM( PROMPT ), ' [', LDF, '] >> '
         CALL M3PROMPT( MESG, BUFFER, IOS )
 
         IF ( IOS .NE. 0 ) GO TO 900
 
         N = INDEX( BUFFER, '!' )
-        IF ( N .GT. 0 ) BUFFER( N : LEN( BUFFER ) ) = ' '
+        IF ( N .GT. 0 ) BUFFER( N : ) = ' '
 
         IF ( BUFFER ( 1:1 )  .EQ. ' ' )  THEN
             GETREAL =  LDF
-            WRITE( MESG,94020 ) PROMPT( 1:P ), LDF
+            WRITE( MESG,94020 ) TRIM( PROMPT ), LDF
             CALL M3MSG2( MESG )
         ELSE
 
@@ -185,7 +185,7 @@ C...........   upcase and remove excess white space
             END IF
 
             GETREAL =  ANSWER
-            WRITE( MESG,94020 ) PROMPT( 1:P ), ANSWER
+            WRITE( MESG,94020 ) TRIM( PROMPT ), ANSWER
             CALL M3MSG2( MESG )
 
         END IF
@@ -252,7 +252,5 @@ C................   end body of GETREAL  .......................................
 94030	FORMAT ( 'Using default response', 1PE12.5 , 2X, 
      &           'for query "', A, '"' )
 
-        END
-
-C................   end   GETREAL  ....................................
+        END FUNCTION GETREAL
 

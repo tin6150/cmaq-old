@@ -1,27 +1,40 @@
-# @(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/Makeinclude.Linux2_x86,v 1.2 2000/11/28 21:56:44 smith_w Exp $
+# Version "$Id: Makeinclude.Linux2_x86 1 2014-03-14 20:22:54Z coats $"
 #
-#       Linux for x86 using the GNU compiler suite
+#  12/2013 by CJC: Conditional preprocessor-code "-DNEED_ARGS=1"
+#  to implement  IARGC() and GETARG() for compilers
+#  ("gfortran" versions 4.8 and later, to be exact) that insist on
+#  enforcing F2003-only with no backwards nor industry-standards compatibility.
+#  Delete "-DNEED_ARGS=1" from "ARCHFLAGS" for versions 4.7.x or later
 #
+# Use "-march=native -mtune=native" if compile-platform and compute-platform
+# are the same.
+# Use "-Wall -Wsurprising" for full diagnostics.
+
 AR   = ar
 CC   = gcc
-FC   = g77
+FC   = gfortran
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
 
-MFLAGS    =  -m486 -malign-double \
- -ffast-math -funroll-loops -fschedule-insns
+MODI = -J       ## Module-include-directory command
 
-OMPFLAGS  = # -mp
-OMPLIBS   = # -lmp
-COPTFLAGS = -O2 ${MFLAGS}
-FOPTFLAGS = -O2 ${MFLAGS}
-FPPFLAGS  =
+MFLAGS    =  -m486 -malign-double -ffast-math -funroll-loops -fschedule-insns  #  -Wall -Wsurprising -march=native -mtune=native
+
+OMPFLAGS  = -fopenmp
+OMPLIBS   = -fopenmp
+COPTFLAGS = -O3 ${MFLAGS}
+FOPTFLAGS = -O3 ${MFLAGS}
+FPPFLAGS  = -DF90=1
 FSFLAGS   = -fno-automatic
-ARCHFLAGS = -DFLDMN=1 -DAUTO_ARRAYS=1 -DSECOND_UNDERSCORE=1
+ARCHFLAGS = \
+ -DAUTO_ARRAYS=1 \
+ -DF90=1 -DFLDMN=1 \
+ -DFSTR_L=int \
+ -DIOAPI_NO_STDOUT=1 \
+ -DNEED_ARGS=1
 PARFLAGS  =
-ARCHLIB   = -lc
+ARCHLIB   = -dynamic -L/usr/lib64 -lm -lpthread -lc
 
-PVM_ARCH  = LINUXI386
 M4DEFFILE = $(PVM_ROOT)/conf/$(PVM_ARCH).m4
-PVMLIBS   = -L$(PVM_ROOT)/lib/$(PVM_ARCH) -lpvm3
+PVMLIBS   = -lpvm3

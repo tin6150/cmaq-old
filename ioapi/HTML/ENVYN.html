@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/ENVYN.html,v 1.1.1.1 2001/12/05 20:25:27 coats Exp $ -->
+<!-- "$Id: ENVYN.html 83 2014-12-29 14:31:32Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> ENVYN() and envync() </TITLE>
 </HEAD>
@@ -14,20 +14,16 @@
       MARGINWIDTH="15">
 <H1>    ENVYN() and envync() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <BLOCKQUOTE>
         ENVYN() is a Fortran wrapper calling the C envync()
 </BLOCKQUOTE><P> 
 <PRE>
     LOGICAL FUNCTION ENVYN( LNAME, DESCRIP, DEFAULT, STATUS )
-        CHARACTER*(*)   LNAME   ! logical name to evaluate
-        CHARACTER*(*)   DESCRIP ! description of the value
-        LOGICAL         DEFAULT ! default value (if LNAME not set, or empty)
-        INTEGER         STATUS  !  for distinguishing error/default-value cases
+        CHARACTER*(*), INTENT(IN   ) :: LNAME   ! logical name to evaluate
+        CHARACTER*(*), INTENT(IN   ) :: DESCRIP ! description of the value
+        LOGICAL      , INTENT(IN   ) :: DEFAULT ! default value (if LNAME not set, or empty)
+        INTEGER      , INTENT(  OUT) :: STATUS  !  for distinguishing error/default-value cases
 </PRE><P>    
 
 <H2> C version: </H2>
@@ -101,6 +97,7 @@ int envync( const char * lname       ,
 
     
 <H2> Fortran Usage:  </H2>
+
 Get a program-control flag for logical name 'FOOFLAG' which defaults to 
 FALSE, generating appropriate log messages, etc.:
 <PRE>
@@ -111,6 +108,8 @@ setenv FOOFLAG True
 ... 
 </PRE>
 <PRE>
+    ...
+    USE M3UTILIO
     ...
     LOGICAL        ENVYN
     LOGICAL        FOOFLAG

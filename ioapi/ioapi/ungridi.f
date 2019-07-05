@@ -4,10 +4,10 @@
 
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: ungridi.f 45 2014-09-12 20:05:29Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2005 by Baron Advanced Meteorological Systems.
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
@@ -34,20 +34,20 @@ C       none
 C
 C  REVISION  HISTORY:
 C	prototype 10/2005 by CJC
-C
+C       Modified  03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER		NCOLS, NROWS	!  number of grid columns, rows
-        REAL*8		XORIG, YORIG	!  X,Y coords of LL grid corner
-        REAL*8		XCELL, YCELL	!  X,Y direction cell size
-        INTEGER		NPTS	        !  number of (point-source) locations
-        REAL		XLOC( NPTS ) 	!  X point coordinates
-        REAL		YLOC( NPTS ) 	!  Y point coordinates
-        INTEGER		  NX( NPTS )    !  single-indexed subscripts into grid
+        INTEGER, INTENT(IN   ) :: NCOLS, NROWS	!  number of grid columns, rows
+        REAL*8 , INTENT(IN   ) :: XORIG, YORIG	!  X,Y coords of LL grid corner
+        REAL*8 , INTENT(IN   ) :: XCELL, YCELL	!  X,Y direction cell size
+        INTEGER, INTENT(IN   ) :: NPTS	        !  number of (point-source) locations
+        REAL   , INTENT(IN   ) :: XLOC( NPTS ) 	!  X point coordinates
+        REAL   , INTENT(IN   ) :: YLOC( NPTS ) 	!  Y point coordinates
+        INTEGER, INTENT(  OUT) :: NX( NPTS )    !  single-indexed subscripts into grid
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         
@@ -136,5 +136,5 @@ C   begin body of subroutine  UNGRIDB
 11      CONTINUE        !  end matrix computation loop on target locations
 
         RETURN
-        END
+        END SUBROUTINE  UNGRIDI
 

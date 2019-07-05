@@ -2,10 +2,10 @@
         PROGRAM  VERTOT
 
 C***********************************************************************
-C Version "@(#)$Header$ $Id: vertot.f 49 2007-07-06 16:20:50Z coats@borel $"
-C EDSS/Models-3 M3TOOLS. 
+C Version "$Id: vertot.f 44 2014-09-12 18:03:16Z coats $"
+C EDSS/Models-3 M3TOOLS.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr, and
-C (C) 2002-2007 Baron Advanced Meteorological Systems, LLC.
+C (C) 2002-2010 Baron Advanced Meteorological Systems, LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
@@ -35,33 +35,21 @@ C
 C       Modified  9/1999 by CJC for enhanced portability
 C
 C       Version  11/2001 by CJC for I/O API Version 2.1
+C
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C***********************************************************************
 
+      USE M3UTILIO
       IMPLICIT NONE
-
-C...........   INCLUDES:
-
-        INCLUDE 'PARMS3.EXT'  !  I/O parameter definitions
-        INCLUDE 'FDESC3.EXT'  !  file header data structures
-        INCLUDE 'IODECL3.EXT' !  I/O definitions and declarations
-
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        LOGICAL         GETYN
-        INTEGER         GETNUM, IARGC, PROMPTFFILE,
-     &                  SEC2TIME, TIME2SEC, TRIMLEN
-        CHARACTER*16    PROMPTMFILE
-
-        EXTERNAL        GETYN, GETNUM, PROMPTFFILE, PROMPTMFILE,
-     &                  SEC2TIME, TIME2SEC, TRIMLEN
+         INTEGER :: IARGC
 
 C...........   PARAMETERS and their descriptions:
 
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id:: vertot.f 49 2007-07-06 16:20:50Z coats@borel            $'
-     &  /
+        CHARACTER*16, PARAMETER :: PNAME = 'VERTOT'
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -117,51 +105,52 @@ C   begin body of program  VERTOT
      &  ' ',
      &  'USAGE:  vertot [INFILE]',
      &  '(and then answer the prompts).',
-     &  ' ',
+     &' ',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
+     &' ',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
+     &' ',
      &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
-     &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
-     &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    920 Main Campus Drive, Suite 101',
-     &'    Raleigh, NC 27606',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER, 
-     &'Program release tag: $Name$', 
+     &'$Id:: vertot.f 44 2014-09-12 18:03:16Z coats                  $',
      &' '
 
         IF ( ARGCNT .GT. 1 ) THEN
 
-            CALL M3EXIT( 'VERTOT', 0, 0,
-     &                   'usage:  vertot [INFILE]', 2 )
+            CALL M3EXIT( PNAME, 0,0, 'usage:  vertot [INFILE]', 2 )
 
         ELSE IF ( ARGCNT .EQ. 0 ) THEN       !  get names from user
 
             INAME = PROMPTMFILE( 'Enter logical name for  INPUT FILE',
-     &                           FSREAD3, 'INFILE', 'VERTOT' )
+     &                           FSREAD3, 'INFILE', PNAME )
 
         ELSE
 
             CALL GETARG( 1, ENVBUF )
             INAME = ENVBUF( 1:16 )
-            IF ( .NOT. OPEN3( INAME, FSREAD3, 'VERTOT' ) ) THEN
+            IF ( .NOT. OPEN3( INAME, FSREAD3, PNAME ) ) THEN
                 MESG = 'Could not open input file ' // INAME
-                CALL M3EXIT( 'VERTOT', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
         END IF
 
         IF ( .NOT. DESC3( INAME ) ) THEN
             MESG = 'Could not get description of input file ' // INAME
-            CALL M3EXIT( 'VERTOT', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         NCOLS = NCOLS3D
@@ -171,13 +160,13 @@ C   begin body of program  VERTOT
 
 C.......   Get max string-lengths for use in variables-listing:
 
-        VMAX = TRIMLEN( VNAME3D( 1 ) )
-        UMAX = TRIMLEN( UNITS3D( 1 ) )
-        DMAX = TRIMLEN( VDESC3D( 1 ) )
+        VMAX = 0
+        UMAX = 0
+        DMAX = 0
         DO  I = 1, NVARS3D
-            VMAX = MAX( VMAX , TRIMLEN( VNAME3D( I ) ) )
-            UMAX = MAX( UMAX , TRIMLEN( UNITS3D( I ) ) )
-            DMAX = MAX( DMAX , TRIMLEN( VDESC3D( I ) ) )
+            VMAX = MAX( VMAX , LEN_TRIM( VNAME3D( I ) ) )
+            UMAX = MAX( UMAX , LEN_TRIM( UNITS3D( I ) ) )
+            DMAX = MAX( DMAX , LEN_TRIM( VDESC3D( I ) ) )
         END DO
 
         WRITE( *,92000 )
@@ -194,14 +183,13 @@ C.......   Get max string-lengths for use in variables-listing:
             VDESC( NVARS ) = VDESC3D( 1 )
 
             IF ( VTYPE3D( 1 ) .NE. M3REAL ) THEN
-                MESG = 'Variable "' //
-     &                  VNAME3D( 1 )( 1: TRIMLEN( VNAME3D( 1 ) ) )//
+                MESG = 'Variable "' // TRIM( VNAME3D( 1 ) ) //
      &                 '" not of type REAL; ' //
      &                 'VERTOT processes REAL only'
-                CALL M3EXIT( 'VERTOT', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
-        ELSE	!  else nvars3d > 1:
+        ELSE    !  else nvars3d > 1:
 
 
             NVARS  =  0
@@ -227,8 +215,7 @@ C.......   Get max string-lengths for use in variables-listing:
                     PROMPT = 'Enter # for vble (0 to quit)'
                     NVLOW  = 0
                     IF ( VTYPE3D( I ) .NE. M3REAL ) THEN
-                        MESG = 'Variable "' //
-     &                     VNAME3D( I )( 1: TRIMLEN( VNAME3D( I ) ) )//
+                        MESG = 'Variable "' //TRIM( VNAME3D( 1 ) ) //
      &                     '" not of type REAL; please try again'
                         CALL M3MSG2( MESG )
                         GO TO  111
@@ -241,16 +228,15 @@ C.......   Get max string-lengths for use in variables-listing:
                 END IF
 
             IF ( NVARS .EQ. 0 ) THEN
-                CALL M3EXIT( 'VERTOT', 0, 0,
-     &                       'No variables selected', 2 )
+                CALL M3EXIT( PNAME, 0, 0, 'No variables selected', 2 )
                 GO TO  999
             ELSE IF ( EFLAG ) THEN
-                CALL M3EXIT( 'VERTOT', 0, 0,
+                CALL M3EXIT( PNAME, 0, 0,
      &          'File has INTEGER or DOUBLE variables; ' //
      &          'VERTOT processes REAL only', 2 )
-            END IF	!  if nvars=0, or not
+            END IF  !  if nvars=0, or not
 
-        END IF		!  if nvars3d=1, or not
+        END IF      !  if nvars3d=1, or not
 
 
 C.......   Get mode of operation:
@@ -290,22 +276,22 @@ C.......   Get mode of operation:
             END DO
 
             ONAME = PROMPTMFILE( 'Enter logical name for OUTPUT FILE',
-     &                           FSUNKN3, 'OUTFILE', 'VERTOT' )
+     &                           FSUNKN3, 'OUTFILE', PNAME )
 
-        END IF		!  if fileout
+        END IF      !  if fileout
 
         IF( STATOUT ) THEN
 
             PROMPT = 'Enter the REPORT FILE logical name '
      &                // '(or "NONE" for screen output)'
             RUNIT = PROMPTFFILE( PROMPT,
-     &                          .FALSE., .TRUE., 'REPORT', 'VERTOT' )
+     &                          .FALSE., .TRUE., 'REPORT', PNAME )
 
         ELSE
 
             RUNIT = -1
 
-        END IF		!  if statout or not
+        END IF      !  if statout or not
 
 C.......   Process this period in the input file:
 
@@ -324,7 +310,7 @@ C.......   Process this period in the input file:
 
 999     CONTINUE        !  shut down the program:
 
-        CALL M3EXIT( 'VERTOT', 0, 0,
+        CALL M3EXIT( PNAME, 0, 0,
      &               'Program VERTOT completed successfully', 0 )
 
 C******************  FORMAT  STATEMENTS   ******************************
@@ -356,5 +342,5 @@ C...........   Miscellaneous formats................. 95xxx
 95000   FORMAT ( /5X , A , $ )          !  generic prompt format.
 
 
-        END
+        END PROGRAM VERTOT
 

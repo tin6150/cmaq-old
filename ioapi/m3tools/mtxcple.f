@@ -2,14 +2,14 @@
         PROGRAM MTXCPLE
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: mtxcple.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2002-2005 Baron Advanced Meteorological Systems. LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line  118
+C  program body starts at line  100
 C
 C  DESCRIPTION:
 C       Reads sparse (grid-to-grid transform) matrix.
@@ -35,35 +35,17 @@ C       Version 11/2001 by CJC for I/O API Version 2.1
 C       Version  5/2004 by CJC:  additional map projection support, etc.
 C       Version  6/2005 by CJC:  improved default for NRECS
 C       Version 11/2005 by CJC:  eliminate unused vbles
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
+C       Version 01/2013 by CJC:  use new LASTTIME() to find EDATE:ETIME
 C***********************************************************************
 
+      USE M3UTILIO
       IMPLICIT NONE
-
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'      ! I/O API constants
-      INCLUDE 'FDESC3.EXT'      ! I/O API file description data structure
-      INCLUDE 'IODECL3.EXT'     ! I/O API function declarations
-
-
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        INTEGER        CURREC, GETMENU, GETNUM, LBLANK
-        INTEGER        SEC2TIME, TIME2SEC
-        LOGICAL        DSCGRID, GETYN
-        CHARACTER*16   PROMPTMFILE
-
-        EXTERNAL   CURREC,DSCGRID, GETMENU, GETNUM, GETYN, LBLANK,
-     &             PROMPTMFILE, SEC2TIME, TIME2SEC
-
 
 C...........   PARAMETERS and their descriptions:
 
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id:: mtxcple.f 49 2007-07-06 16:20:50Z coats@borel           $'
-     &  /
-
+       CHARACTER*16, PARAMETER :: PNAME = 'MTXCPLE'
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -76,7 +58,7 @@ C...........   LOCAL VARIABLES and their descriptions:
         CHARACTER*16    IGRID   !  output grid name
         CHARACTER*16    OGRID   !  output grid name
 
-        LOGICAL         SFLAG	!  true iff controlled by synch file
+        LOGICAL         SFLAG   !  true iff controlled by synch file
 
         CHARACTER*256   MESG
 
@@ -154,29 +136,30 @@ C   begin body of program MTXCPLE
      & '    resolution than the input grid (else you should use an',
      & '    aggregation program instead of an input program).',
      & '    For copy, file type must be GRIDDED, BOUNDARY, or CUSTOM.',
+     &' ',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
      & ' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
-     &' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER, 
-     &'Program release tag: $Name$', 
+     &'$Id:: mtxcple.f 44 2014-09-12 18:03:16Z coats                 $',
      &' '
 
         IF ( .NOT. GETYN( 'Continue with program?', .TRUE. ) ) THEN
-            CALL M3EXIT( 'MTXCPLE', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Program terminated at user request', 2 )
         END IF
 
@@ -185,7 +168,7 @@ C...............  Open and get description for optional synch file
 
         MESG = 'Enter name for input synch file, or "NONE"'
         SNAME = PROMPTMFILE( MESG, FSREAD3,
-     &                       'SYNCH_FILE', 'MTXCPLE' )
+     &                       'SYNCH_FILE', PNAME )
 
         CALL UPCASE( SNAME )
         SFLAG = ( SNAME .NE. 'NONE ' )
@@ -194,7 +177,7 @@ C...............  Open and get description for optional synch file
 
             IF ( .NOT. DESC3( SNAME ) ) THEN
                 MESG = 'Could not get file description for ' // SNAME
-                CALL M3EXIT( 'MTXCPLE', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             NCOLS2 = NCOLS3D
@@ -208,11 +191,11 @@ C...............  Open and get description for input matrix transform file
 
         MESG  = 'Enter name for input matrix transform file'
         MNAME = PROMPTMFILE( MESG, FSREAD3,
-     &                       'MATRIX_FILE', 'MTXCPLE' )
+     &                       'MATRIX_FILE', PNAME )
 
         IF ( .NOT. DESC3( MNAME ) ) THEN
             MESG = 'Could not get file description for ' // MNAME
-            CALL M3EXIT( 'MTXCPLE', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         NCOLSM = NCOLS3D
@@ -235,11 +218,11 @@ C...............  Open and get description for input data file
 
         MESG  = 'Enter name for input data file'
         FNAME = PROMPTMFILE( MESG, FSREAD3,
-     &                       'IN_DATA', 'MTXCPLE' )
+     &                       'IN_DATA', PNAME )
 
         IF ( .NOT. DESC3( FNAME ) ) THEN
             MESG = 'Could not get file description for ' // FNAME
-            CALL M3EXIT( 'MTXCPLE', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         NCOLS1 = NCOLS3D
@@ -277,12 +260,8 @@ C...............  Get output grid description, time step sequence
         TSTEP = GETNUM( TSTEP3D, 9999999, TSTEP3D,
      &                  'Enter   TIME STEP   for time step sequence' )
 
-        EDATE = SDATE3D
-        ETIME = STIME3D
-        TSECS = ( MXREC3D - 1 ) * TIME2SEC( TSTEP3D )
-        CALL NEXTIME( EDATE, ETIME, SEC2TIME( TSECS ) )
+        CALL LASTTIME( SDATE3D,STIME3D,TSTEP3D, MXREC3D, EDATE,ETIME )
         N  =  CURREC( EDATE, ETIME, JDATE, JTIME, TSTEP, C, R )
-        
         NRECS = GETNUM( 1, 9999999, N,
      &                  'Enter     NRECS     for time step sequence' )
 
@@ -298,14 +277,14 @@ C...............  Create output file, borrowing most of file
 C...............  description from FNAME, grid-description part
 C...............  from GRIDDESC file:
 
-	IF ( .NOT. DSCGRID( OGRID, CNAME, GDTYP3D,
+        IF ( .NOT. DSCGRID( OGRID, CNAME, GDTYP3D,
      &              P_ALP3D, P_BET3D,P_GAM3D, XCENT3D, YCENT3D,
      &              XORIG3D, YORIG3D, XCELL3D, YCELL3D,
      &              NCOLS3D, NROWS3D, NTHIK3D ) ) THEN
 
             MESG   = '"' // TRIM( OGRID ) //
      &               '" not found in GRIDDESC file'
-            CALL M3EXIT( 'UTMMERGE', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
         END IF
 
@@ -315,7 +294,7 @@ C...............  from GRIDDESC file:
                 MESG = 'Matrix NROWS does not match output NROWS*NCOLS'
                 CALL M3MSG2( MESG )
                 MESG = 'Inconsistent dimensions for sparse matrix'
-                CALL M3EXIT( 'MTXCPLE', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
         ELSE IF ( FTYPE2 .EQ. BNDARY3 ) THEN
             NSIZE2 = 2*ABS( NTHIK3D )*( NCOLS3D + NROWS3D + 2*NTHIK3D )
@@ -323,7 +302,7 @@ C...............  from GRIDDESC file:
                 MESG = 'Matrix NROWS does not match output PERIMETER'
                 CALL M3MSG2( MESG )
                 MESG = 'Inconsistent dimensions for sparse matrix'
-                CALL M3EXIT( 'MTXCPLE', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
         ELSE IF ( FTYPE2 .EQ. CUSTOM3 ) THEN
             NSIZE2 = NCOLS3D
@@ -331,7 +310,7 @@ C...............  from GRIDDESC file:
                 MESG = 'Matrix NROWS does not match output NCOLS'
                 CALL M3MSG2( MESG )
                 MESG = 'Inconsistent dimensions for sparse matrix'
-                CALL M3EXIT( 'MTXCPLE', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
         END IF
 
@@ -362,21 +341,21 @@ C...............  Allocate buffers; compute re-gridding matrix
         IF ( STATUS .NE. 0 ) THEN
             WRITE( MESG, '( A, I10 )' )
      &               'Buffer allocation failed:  STAT=', STATUS
-            CALL M3EXIT( 'MTXCPLE', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
 
 C...............  Open output file
 
         MESG  = 'Enter name for output data file'
-        ONAME = PROMPTMFILE( MESG, FSUNKN3, 'OUT_DATA', 'MTXCPLE' )
+        ONAME = PROMPTMFILE( MESG, FSUNKN3, 'OUT_DATA', PNAME )
 
 
 C...............  Read the transform matrix:
 
         IF ( .NOT.READ3( MNAME, 'ALL', 1, 0, 0, CBUF ) ) THEN
             MESG = 'Could not read transfomr matrix from ' // MNAME
-            CALL M3EXIT( 'MTXCPLE', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
 C...............  Process output time step sequence
@@ -388,7 +367,7 @@ C...............  Process output time step sequence
                     MESG = 'Failure checking variable "' //
      &                     TRIM( SVBLE ) // '" from synch file "' //
      &                     TRIM( SNAME ) // '"'
-                    CALL M3EXIT( 'MTXCPLE', 0, 0, MESG, 2 )
+                    CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                 END IF
             END IF
 
@@ -398,7 +377,7 @@ C...............  Process output time step sequence
             CALL M3MSG2( ' ' )
             CALL M3MSG2( MESG )
 
-	    DO  V = 1, NVARS3D  !  loop on variables
+            DO  V = 1, NVARS3D  !  loop on variables
 
                 IF ( .NOT. READ3( FNAME, VNAME3D( V ), ALLAYS3,
      &                            JDATE, JTIME, INBUF ) ) THEN
@@ -406,7 +385,7 @@ C...............  Process output time step sequence
      &                     TRIM( VNAME3D( V ) )
      &                     // '" from file "' //
      &                     TRIM( FNAME ) // '"'
-                    CALL M3EXIT( 'MTXCPLE', 0, 0, MESG, 2 )
+                    CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                 END IF
 
                 CALL MATVEC( NSIZE1, NSIZE2, NLAYS3D,
@@ -419,7 +398,7 @@ C...............  Process output time step sequence
                     MESG = 'Failure writing variable "' //
      &                     TRIM( VNAME3D( V ) ) // '" to file "' //
      &                     TRIM( ONAME ) // '"'
-                    CALL M3EXIT( 'MTXCPLE', 0, 0, MESG, 2 )
+                    CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                 END IF
 
             END DO      !  end loop on variables
@@ -432,10 +411,11 @@ C...............  Process output time step sequence
 
 C...............  Successful completion
 
-        CALL M3EXIT( 'MTXCPLE', 0, 0,
+        CALL M3EXIT( PNAME, 0, 0,
      &               'Successful completion of program MTXCPLE', 0 )
 
-        END
+        END  PROGRAM MTXCPLE
+
 
 C=======================================================================
 
@@ -502,5 +482,5 @@ C   begin body of subroutine  MATVEC
 
         RETURN
 
-        END
+        END SUBROUTINE MATVEC
 

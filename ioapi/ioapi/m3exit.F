@@ -1,15 +1,15 @@
 
-C.........................................................................
-C Version "@(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/m3exit.F,v 1.3 2000/11/28 21:13:41 smith_w Exp $"
-C EDSS/Models-3 I/O API.  Copyright (C) 1992-1999 MCNC
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
         SUBROUTINE M3EXIT( CALLER, JDATE, JTIME, MSGTXT, EXITSTAT )
 
 C***********************************************************************
-C  subroutine body starts at line  70
+C Version "$Id: m3exit.F 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
+C  subroutine body starts at line  76
 C
 C  FUNCTION:  Generate simple error messages for Models-3 core;
 C             terminate program execution via CALL EXIT( EXITSTAT )
@@ -30,6 +30,7 @@ C       multiple threads simultaneously
 C       Modified  5/1999 by ALT for coupling-mode operation
 C       Modified  4/2004 by CJC:  factor through M3PARAG() -- fixes
 C       multi-thread sequencing problem.
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
 #ifdef   _AIX
@@ -45,16 +46,15 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)   CALLER          !  name of the caller
-        INTEGER         JDATE, JTIME    !  model date&time for the error
-        CHARACTER*(*)   MSGTXT          !  error message
-        INTEGER         EXITSTAT        !  exit status for program
+        CHARACTER*(*), INTENT(IN   ) :: CALLER          !  name of the caller
+        INTEGER      , INTENT(IN   ) :: JDATE, JTIME    !  model date&time for the error
+        CHARACTER*(*), INTENT(IN   ) :: MSGTXT          !  error message
+        INTEGER      , INTENT(IN   ) :: EXITSTAT        !  exit status for program
 
                  
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        CHARACTER*24    DT2STR
-        EXTERNAL        DT2STR
+        CHARACTER*24, EXTERNAL :: DT2STR
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -118,5 +118,5 @@ C   begin body of subroutine  M3EXIT
 
         CALL EXIT( EXITSTAT )
 
-        END
+        END SUBROUTINE M3EXIT
 

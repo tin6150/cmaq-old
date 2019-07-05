@@ -3,7 +3,7 @@
      &                     NEPS, EPS, LABEL, LOGDEV )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: statg.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
 C (C) 2002-2007 Baron Advanced Meteorological Systems. LLC.
@@ -23,26 +23,26 @@ C
 C  REVISION  HISTORY:
 C       Prototype 5/95 by CJC adapted from "stats.f"
 C       Version 3/2007 by CJC: REAL*8 accumulators
+C       Version  12/2013 by CJC: INTENT for arguments
 C***********************************************************************
 
       IMPLICIT NONE
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         NCOLS   !  grid dimensions, from INNAME header
-        INTEGER         NROWS   !  grid dimensions, from INNAME header
-        INTEGER         NLAYS   !  grid dimensions, from INNAME header
-        REAL		GRID( NCOLS, NROWS, NLAYS )	!  the grid.
-        INTEGER         LOGDEV  !  unit number for stats report
-        INTEGER		NEPS	!  number of thresholds
-        REAL		EPS( * )!  thresholds for threshold-fraction reports
-        CHARACTER*(*)   LABEL   !  legend text
+        INTEGER, INTENT(IN) :: NCOLS    !  grid dimensions, from INNAME header
+        INTEGER, INTENT(IN) :: NROWS    !  grid dimensions, from INNAME header
+        INTEGER, INTENT(IN) :: NLAYS    !  grid dimensions, from INNAME header
+        REAL   , INTENT(IN) :: GRID( NCOLS, NROWS, NLAYS )  !  the grid.
+        INTEGER, INTENT(IN) :: LOGDEV   !  unit number for stats report
+        INTEGER, INTENT(IN) :: NEPS     !  number of thresholds
+        REAL   , INTENT(IN) :: EPS(*)   !  thresholds for threshold-fraction reports
+        CHARACTER*(*), INTENT(IN) :: LABEL   !  legend text
 
 
 C...........   EXTERNAL FUNCTION:  number of leading blanks
 
-        INTEGER         LEN2
-        EXTERNAL        LEN2
+        INTEGER, EXTERNAL :: LEN2
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -56,7 +56,7 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         REAL*8          ASUM, BSUM, CSUM
         REAL*8          ASSQ, BSSQ, CSSQ
         REAL*8          DNOM
-        INTEGER		ECNT
+        INTEGER         ECNT
 
         CHARACTER*20    MCBUF
         CHARACTER*20    MRBUF
@@ -134,13 +134,13 @@ C...........   mean, and sigma
 
         WRITE( LOGDEV,92010 )
      &      LABEL, ' 3-D grid statistics' ,
-     &      'Max   ', AMAX, ' @(c,r,l)=(', 
-     &          MCBUF( LEN2( 1,20,MCBUF )+1 : 20 ), 
-     &          MRBUF( LEN2( 1,20,MRBUF )+1 : 20 ), 
+     &      'Max   ', AMAX, ' @(c,r,l)=(',
+     &          MCBUF( LEN2( 1,20,MCBUF )+1 : 20 ),
+     &          MRBUF( LEN2( 1,20,MRBUF )+1 : 20 ),
      &          MLBUF( LEN2( 1,20,MLBUF )+1 : 20 ), ')',
-     &      'Min   ', AMIN, ' @(c,r,l)=(', 
-     &          NCBUF( LEN2( 1,20,NCBUF )+1 : 20 ), 
-     &          NRBUF( LEN2( 1,20,NRBUF )+1 : 20 ), 
+     &      'Min   ', AMIN, ' @(c,r,l)=(',
+     &          NCBUF( LEN2( 1,20,NCBUF )+1 : 20 ),
+     &          NRBUF( LEN2( 1,20,NRBUF )+1 : 20 ),
      &          NLBUF( LEN2( 1,20,NLBUF )+1 : 20 ), ')',
      &      'Mean  ', ASUM,
      &      'Sigma ', ASSQ
@@ -149,18 +149,18 @@ C...........   mean, and sigma
 C...........   For each threshold level, count the number of times the
 C...........   grid value exceeds the threshold, and report it:
 
-        DO  199  V = 1, NEPS	!  count threshold excesses:
+        DO   V = 1, NEPS    !  count threshold excesses:
             ECNT = 0
             T    = EPS( V )
-            DO  188  L = 1, NLAYS
-            DO  177  R = 1, NROWS
-            DO  166  C = 1, NCOLS
+            DO   L = 1, NLAYS
+            DO   R = 1, NROWS
+            DO   C = 1, NCOLS
                 IF ( GRID( C,R,L ) .GE. T )  ECNT = ECNT + 1
-166         CONTINUE
-177         CONTINUE
-188         CONTINUE
+            END DO
+            END DO
+            END DO
             WRITE( LOGDEV,92020 ) T, ECNT, DNOM * DBLE( ECNT )
-199     CONTINUE
+        END DO          !  end loop on V
 
         RETURN
 
@@ -168,7 +168,7 @@ C******************  FORMAT  STATEMENTS   ******************************
 
 C...........   Informational (LOG) message formats... 92xxx
 
-92010   FORMAT ( /5X , 'Variable:  ', A, 
+92010   FORMAT ( /5X , 'Variable:  ', A,
      &           /9X, A,
      &           2( /9X, A, 1PE12.5, A, A, ',', A, ',', A, A ),
      &           2( /9X, A, 1PE12.5 ) )
@@ -182,5 +182,5 @@ C...........   Internal buffering formats............ 94xxx
 
 94010   FORMAT( I20 )
 
-        END
+        END SUBROUTINE  STATG
 

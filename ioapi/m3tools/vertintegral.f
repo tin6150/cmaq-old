@@ -2,7 +2,7 @@
         PROGRAM  VERTINTEGRAL
 
 C***********************************************************************
-C Version "$Id: vertintegral.f 63 2014-11-26 20:35:44Z coats $"
+C Version "$Id: vertintegral.f 215 2015-08-05 21:58:29Z coats $"
 C EDSS/Models-3 M3TOOLS.
 C Copyright (C) 2009 UNC Institute for the Environment and
 C Baron Advanced Meteorological Systems, LLC,
@@ -180,7 +180,7 @@ C   begin body of program  VERTINTEGRAL
      &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &'$Id:: vertintegral.f 63 2014-11-26 20:35:44Z coats            $',
+     &'$Id:: vertintegral.f 215 2015-08-05 21:58:29Z coats           $',
      &' '
 
         WRITE ( LUNIT,'( 5X , A )' )
@@ -315,10 +315,17 @@ C...............   Get METCRO3D input meteorology file
             EFLAG = .TRUE.
             MESG = 'Inconsistent coord/grid  for ' // METFILE
             CALL M3MESG( MESG )
-        ELSE IF( .NOT. CHECK3( METFILE, 'ZF', JDATE, JTIME ) ) THEN
-            EFLAG = .TRUE.
-            MESG = ' no match for full height in met file  '// METFILE
-            CALL M3MESG( MESG )
+        ELSE
+            IF( 0 .LE. INDEX1( 'ZF', NVARS3D, VNAME3D ) ) THEN
+                EFLAG = .TRUE.
+                MESG = ' Variable ZF not found in met file  '// METFILE
+                CALL M3MESG( MESG )
+            END IF
+            IF( 0 .LE. INDEX1( 'DENS', NVARS3D, VNAME3D ) ) THEN
+                EFLAG = .TRUE.
+                MESG = 'Variable DENS not found in met file  '//METFILE
+                CALL M3MESG( MESG )
+            END IF
         END IF
 
         IF( EFLAG ) THEN

@@ -1,4 +1,7 @@
-# @(#)$Header$
+# VERSION "$Id: Makeinclude.Linux2_x86g95dbg 1 2014-03-14 20:22:54Z coats $"
+#
+#  Flags for "g95 / gcc'
+
 AR   = ar
 CC   = gcc
 FC   = g95
@@ -6,6 +9,8 @@ FC   = g95
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
+       ## Module-include-directory command
+MODI = -I
 
 MFLAGS    = -march=opteron
 

@@ -2,13 +2,13 @@
         MODULE MATXATTS
 
         !!-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-        !! Version "%W% %P% %G% %U% $Id$"
-        !! Copyright (c) 2005 Baron Advanced Meteorological Systems.
+        !! Version "$Id: matxatts.f 1 2014-03-14 20:22:54Z coats $"
+        !! Copyright (c) 2005-2013 Baron Advanced Meteorological Systems.
         !! Distributed under the GNU GENERAL PUBLIC LICENSE version 2
         !! See file "LGPL.txt" for conditions of use.
         !!...................................................................
         !!  DESCRIPTION:
-        !!      Use the M3IO "extra-attributes" interface to
+        !!      Use the M3IO "extra-attributes" interface to matrix files.
         !!
         !!      GETMTXATT:  get input and output grid description
         !!      attributes for matrix-files and return as arguments
@@ -29,6 +29,8 @@
         !!
         !!  REVISION  HISTORY:
         !!      Prototype 12/2004 by Carlie J. Coats, Jr., BAMS
+        !!      Version   04/2011 by CJC:  FORTRAN-90'isms for I/O API v3.1
+        !!      Version   10/2013 by CJC:  bug-fixes for "rdatt3c" calls
         !!-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
             USE M3UTILIO
@@ -99,6 +101,7 @@
 
             !!........  Local Variables:
 
+            INTEGER             N
             LOGICAL             EFLAG
             CHARACTER*16        ANAME, GNAME
             CHARACTER*256       MESG
@@ -127,7 +130,7 @@
 
             ANAME = GDTYPSTR // MODENAME( IMODE )
             IF ( .NOT.RDATT3( FNAME, ALLVAR3, ANAME, M3INT, 1,
-     &                        1, GDTYP ) ) THEN
+     &                        N, GDTYP ) ) THEN
                 EFLAG = .TRUE.
                 MESG  = 'Could not read attribute "' //TRIM( ANAME )//
      &                  '" from ' // FNAME 
@@ -136,7 +139,7 @@
 
             ANAME = P_ALPSTR // MODENAME( IMODE )
             IF ( .NOT.RDATT3( FNAME, ALLVAR3, ANAME, M3DBLE, 1,
-     &                        1, P_ALP ) ) THEN
+     &                        N, P_ALP ) ) THEN
                 EFLAG = .TRUE.
                 MESG  = 'Could not read attribute "' //TRIM( ANAME )//
      &                  '" from ' // FNAME 
@@ -145,7 +148,7 @@
 
             ANAME = P_BETSTR // MODENAME( IMODE )
             IF ( .NOT.RDATT3( FNAME, ALLVAR3, ANAME, M3DBLE, 1,
-     &                        1, P_BET ) ) THEN
+     &                        N, P_BET ) ) THEN
                 EFLAG = .TRUE.
                 MESG  = 'Could not read attribute "' //TRIM( ANAME )//
      &                  '" from ' // FNAME 
@@ -154,7 +157,7 @@
 
             ANAME = P_GAMSTR // MODENAME( IMODE )
             IF ( .NOT.RDATT3( FNAME, ALLVAR3, ANAME, M3DBLE, 1,
-     &                        1, P_GAM ) ) THEN
+     &                        N, P_GAM ) ) THEN
                 EFLAG = .TRUE.
                 MESG  = 'Could not read attribute "' //TRIM( ANAME )//
      &                  '" from ' // FNAME 
@@ -163,7 +166,7 @@
 
             ANAME = XCENTSTR // MODENAME( IMODE )
             IF ( .NOT.RDATT3( FNAME, ALLVAR3, ANAME, M3DBLE, 1,
-     &                        1, XCENT ) ) THEN
+     &                        N, XCENT ) ) THEN
                 EFLAG = .TRUE.
                 MESG  = 'Could not read attribute "' //TRIM( ANAME )//
      &                  '" from ' // FNAME 
@@ -172,7 +175,7 @@
 
             ANAME = YCENTSTR // MODENAME( IMODE )
             IF ( .NOT.RDATT3( FNAME, ALLVAR3, ANAME, M3DBLE, 1,
-     &                        1, YCENT ) ) THEN
+     &                        N, YCENT ) ) THEN
                 EFLAG = .TRUE.
                 MESG  = 'Could not read attribute "' //TRIM( ANAME )//
      &                  '" from ' // FNAME 
@@ -181,7 +184,7 @@
 
             ANAME = XORIGSTR // MODENAME( IMODE )
             IF ( .NOT.RDATT3( FNAME, ALLVAR3, ANAME, M3DBLE, 1,
-     &                        1, XORIG ) ) THEN
+     &                        N, XORIG ) ) THEN
                 EFLAG = .TRUE.
                 MESG  = 'Could not read attribute "' //TRIM( ANAME )//
      &                  '" from ' // FNAME 
@@ -190,7 +193,7 @@
 
             ANAME = YORIGSTR // MODENAME( IMODE )
             IF ( .NOT.RDATT3( FNAME, ALLVAR3, ANAME, M3DBLE, 1,
-     &                        1, YORIG ) ) THEN
+     &                        N, YORIG ) ) THEN
                 EFLAG = .TRUE.
                 MESG  = 'Could not read attribute "' //TRIM( ANAME )//
      &                  '" from ' // FNAME 
@@ -199,7 +202,7 @@
 
             ANAME = XCELLSTR // MODENAME( IMODE )
             IF ( .NOT.RDATT3( FNAME, ALLVAR3, ANAME, M3DBLE, 1,
-     &                        1, XCELL ) ) THEN
+     &                        N, XCELL ) ) THEN
                 EFLAG = .TRUE.
                 MESG  = 'Could not read attribute "' //TRIM( ANAME )//
      &                  '" from ' // FNAME 
@@ -208,7 +211,7 @@
 
             ANAME = YCELLSTR // MODENAME( IMODE )
             IF ( .NOT.RDATT3( FNAME, ALLVAR3, ANAME, M3DBLE, 1,
-     &                        1, YCELL ) ) THEN
+     &                        N, YCELL ) ) THEN
                 EFLAG = .TRUE.
                 MESG  = 'Could not read attribute "' //TRIM( ANAME )//
      &                  '" from ' // FNAME 
@@ -217,7 +220,7 @@
 
             ANAME = NCOLSSTR // MODENAME( IMODE )
             IF ( .NOT.RDATT3( FNAME, ALLVAR3, ANAME, M3INT, 1,
-     &                        1, NCOLS ) ) THEN
+     &                        N, NCOLS ) ) THEN
                 EFLAG = .TRUE.
                 MESG  = 'Could not read attribute "' //TRIM( ANAME )//
      &                  '" from ' // FNAME 
@@ -226,7 +229,7 @@
 
             ANAME = NROWSSTR // MODENAME( IMODE )
             IF ( .NOT.RDATT3( FNAME, ALLVAR3, ANAME, M3INT, 1,
-     &                        1, NROWS ) ) THEN
+     &                        N, NROWS ) ) THEN
                 EFLAG = .TRUE.
                 MESG  = 'Could not read attribute "' //TRIM( ANAME )//
      &                  '" from ' // FNAME 

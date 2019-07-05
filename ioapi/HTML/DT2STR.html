@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/DT2STR.html,v 1.1.1.1 2001/12/05 20:25:26 coats Exp $ -->
+<!-- "$Id: DT2STR.html 1 2014-03-14 20:22:54Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> DT2STR()  and  dt2strc() </TITLE>
 </HEAD>
@@ -14,15 +14,11 @@
       MARGINWIDTH="15">
 <H1> DT2STR()     and  dt2strc() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
     CHARACTER*24  DT2STR( JDATE, JTIME )
-        INTEGER JDATE   ! date, YYYDDD = 1000*year  + day(1...365,6)
-        INTEGER JTIME   ! time, HHMMSS = 10000*hour + 100*min + sec
+        INTEGER, INTENT(IN   ) :: JDATE   ! date, YYYDDD = 1000*year  + day(1...365,6)
+        INTEGER, INTENT(IN   ) :: JTIME   ! time, HHMMSS = 10000*hour + 100*min + sec
 </PRE><P> 
 
 <H2> C version: </H2>

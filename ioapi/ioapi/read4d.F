@@ -1,18 +1,16 @@
 
-C.........................................................................
-C Version "@(#)$Header$"
-C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2005 Baron Advanced Meteorological Systems
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
       LOGICAL FUNCTION READ4D( FNAME, VNAME, LAYER,
      &                         SDATE, STIME, TSTEP, NRECS, BUFFER )
 
 C***********************************************************************
-C  function body starts at line  142
+C Version "$Id: read4d.F 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
+C  function body starts at line  136
 C
 C  FUNCTION:
 C       reads all the data for the specified LAYER and the timestep
@@ -51,6 +49,8 @@ C       Modified 11/2004 by CJC:  new "verbose-flag" argument to RDTFLAG
 C
 C       Bug-fix 2/2005 by Alex Zubrow (U. Chicago):  need to return
 C       READ4D = .TRUE. for success.
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
@@ -67,27 +67,24 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)   FNAME           !  logical file name
-        CHARACTER*(*)   VNAME           !  variable name, or 'ALL'
-        INTEGER         LAYER           !  layer number, or 0
-        INTEGER         SDATE           !  starting date, formatted YYYYDDD
-        INTEGER         STIME           !  starting time, formatted HHMMSS
-        INTEGER         TSTEP           !  time step,     formatted HHMMSS
-        INTEGER         NRECS           !  number of time steps
-        REAL            BUFFER(*)       !  input buffer array
+        CHARACTER*(*), INTENT(IN   ) :: FNAME           !  logical file name
+        CHARACTER*(*), INTENT(IN   ) :: VNAME           !  variable name, or 'ALL'
+        INTEGER      , INTENT(IN   ) :: LAYER           !  layer number, or 0
+        INTEGER      , INTENT(IN   ) :: SDATE           !  starting date, formatted YYYYDDD
+        INTEGER      , INTENT(IN   ) :: STIME           !  starting time, formatted HHMMSS
+        INTEGER      , INTENT(IN   ) :: TSTEP           !  time step,     formatted HHMMSS
+        INTEGER      , INTENT(IN   ) :: NRECS           !  number of time steps
+        REAL         , INTENT(  OUT) :: BUFFER(*)       !  input buffer array
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER         INIT3      !  initialize I/O API
-        INTEGER         INDEX1     !  look up names in name tables
-        INTEGER         NAME2FID   !  fname~~> fid lookup
-        LOGICAL         RDTFLAG    !  compute time step availability
-        LOGICAL         RDVARS     !  read time step records
-        INTEGER         TRIMLEN    !  trimmed string length
-
-        EXTERNAL        INIT3, INDEX1, RDTFLAG, RDVARS, TRIMLEN
-        EXTERNAL        INITBLK3   !  block data: initialize I/O state
+        INTEGER, EXTERNAL :: INIT3      !  initialize I/O API
+        INTEGER, EXTERNAL :: INDEX1     !  look up names in name tables
+        INTEGER, EXTERNAL :: NAME2FID   !  fname~~> fid lookup
+        LOGICAL, EXTERNAL :: RDTFLAG    !  compute time step availability
+        LOGICAL, EXTERNAL :: RDVARS     !  read time step records
+        EXTERNAL          :: INITBLK3        !!  BLOCK DATA to initialize STATE3 commons
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -110,11 +107,10 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         CHARACTER*256   MESG
         LOGICAL         EFLAG
 
-C...........   STATIC Variables:
+C...........   PARAMETERs:
 
-        CHARACTER*7   TYPNAMES( -3 : 7 )
-        DATA          TYPNAMES
-     &      / 'UNKNOWN',        !  -3:  file type error
+        CHARACTER*7, PARAMETER :: TYPNAMES( -3 : 7 ) =
+     &     (/ 'UNKNOWN',        !  -3:  file type error
      &        'DGRAPH3',        !  -2:  known file types
      &        'CUSTOM3',        !  -1:    "
      &        'DCTNRY3',        !   0:    "
@@ -124,23 +120,21 @@ C...........   STATIC Variables:
      &        'PROFIL3',        !   4:    "
      &        'GRNEST3',        !   5:    "
      &        'SMATRX3',        !   6:    "
-     &        'UNKNOWN' /       !   7:    "
-
-        INTEGER       TYPSIZE( 6 )
+     &        'UNKNOWN' /)      !   7:    "
 
 #if _CRAY || REAL8
-        DATA            TYPSIZE / 1, 1, 1, 1, 1, 1 /
+        INTEGER, PARAMETER :: TYPSIZE( 6 ) = (/ 1, 1, 1, 1, 1, 1 /)
 #endif
 #if ! ( _CRAY || REAL8 )
-        DATA            TYPSIZE / 1, 1, 1, 1, 1, 2 /
+        INTEGER, PARAMETER :: TYPSIZE( 6 ) = (/ 1, 1, 1, 1, 1, 2 /)
 #endif
 
 C***********************************************************************
 C   begin body of function  READ4D
 C.......   Check that Models-3 I/O has been initialized:
 
-        FLEN  = TRIMLEN( FNAME )
-        VLEN  = TRIMLEN( VNAME )
+        FLEN  = LEN_TRIM( FNAME )
+        VLEN  = LEN_TRIM( VNAME )
         FID   = NAME2FID( FNAME )
 
         EFLAG = ( FID .LE. 0 )
@@ -379,5 +373,5 @@ C...........   Error and warning message formats..... 91xxx
 
 91040   FORMAT ( 3 ( '"', A16, '"', :, 4X ) )
 
-        END
+        END FUNCTION READ4D
 

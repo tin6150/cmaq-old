@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/M3EXIT.html,v 1.1.1.1 2001/12/05 20:25:34 coats Exp $ -->
+<!-- "$Id: M3EXIT.html 131 2015-01-26 14:03:44Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> M3EXIT() and m3exitc </TITLE>
 </HEAD>
@@ -15,18 +15,14 @@
 
 <H1>    M3EXIT() and m3exitc </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
     SUBROUTINE M3EXIT( CALLER, JDATE, JTIME, EXITTXT, EXITSTAT )
-        CHARACTER*(*)   CALLER  !  name of caller
-        INTEGER         JDATE   !  date YYYYDDD associated with error
-        INTEGER         JTIME   !  time HHMMSS  associated with error
-        CHARACTER*(*)   EXITTXT !  caller-supplied error message
-        INTEGER         EXITSTAT!  termination status
+        CHARACTER*(*), INTENT(IN   ) :: CALLER  !  name of caller
+        INTEGER      , INTENT(IN   ) :: JDATE   !  date YYYYDDD associated with error
+        INTEGER      , INTENT(IN   ) :: JTIME   !  time HHMMSS  associated with error
+        CHARACTER*(*), INTENT(IN   ) :: EXITTXT !  caller-supplied error message
+        INTEGER      , INTENT(IN   ) :: EXITSTAT!  termination status
 </PRE><P> 
 
 <H2> C version:   </H2>
@@ -53,8 +49,9 @@ by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
     etc. and kills the program by a CALL EXIT( ERRSTAT )
     <P> 
 
-    Use EXITSTAT=0 to indicate normal successful completion;
-    nonzero to indicate program failure.  
+    Use <CODE>EXITSTAT=0</CODE> to indicate normal successful completion;
+    nonzero to indicate program failure, in accord with normal
+    UNIX conventions: see  <VAR>/usr/include/stdlib.h</VAR>
     By convention, 
     <UL>
         <LI>  0  means normal successful completion;
@@ -99,8 +96,10 @@ by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 
 <PRE>    
     ...
+    USE M3UTILIO
+    ...
     CALL M3EXIT( 'myprog:mysub', JDATE, JTIME, 
- &amp;               'Corrupted vble BAR', 2 )
+ &amp;               'Corrupted variable BAR', 2 )
 C              generates error message with JDATE:JTIME to log,
 C              calls SHUT3() and terminates program via EXIT( 2 )        
         ...

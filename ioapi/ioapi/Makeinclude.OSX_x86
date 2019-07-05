@@ -1,4 +1,5 @@
-# @(#)$Header: ???$
+# VERSION "$Id: Makeinclude.OSX_x86 1 2014-03-14 20:22:54Z coats $"
+#
 # Created 1/2008 by Debra Baker.
 # This file has been tested on a Mac with Darwin Kernel Version
 # 9.1.0, Intel processors, and OSX 10.5 (Leopard) compiled with
@@ -16,6 +17,8 @@ FC   = gfortran
 M4   = m4
 CPP  = cpp
 LINK = gcc
+
+MODI = -I       ## Module-include-directory command
 
 MFLAGS    = -march=i386
 

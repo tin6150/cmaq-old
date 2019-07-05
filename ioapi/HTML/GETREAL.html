@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/GETREAL.html,v 1.1.1.1 2001/12/05 20:25:29 coats Exp $ -->
+<!-- "$Id: GETREAL.html 83 2014-12-29 14:31:32Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> GETREAL() </TITLE>
 </HEAD>
@@ -14,17 +14,13 @@
       MARGINWIDTH="15">
 <H1>    GETREAL() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
     REAL FUNCTION GETREAL( LO , HI , DEFAULT , PROMPT )
-        REAL            LO      ! Minimum allowed return value
-        REAL            HI      ! Maximum allowed return value
-        REAL            DEFAULT ! Default return value
-        CHARACTER*(*)   PROMPT  ! Prompt for user
+        REAL         , INTENT(IN   ) :: LO      ! Minimum allowed return value
+        REAL         , INTENT(IN   ) :: HI      ! Maximum allowed return value
+        REAL         , INTENT(IN   ) :: DEFAULT ! Default return value
+        CHARACTER*(*), INTENT(IN   ) :: PROMPT  ! Prompt for user
 </PRE><P>    
 
 <H2> NO C version: </H2>

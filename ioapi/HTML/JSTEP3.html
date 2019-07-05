@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/JSTEP3.html,v 1.1.1.1 2001/12/05 20:25:31 coats Exp $ -->
+<!-- "$Id: JSTEP3.html 131 2015-01-26 14:03:44Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> JULIAN() </TITLE>
 </HEAD>
@@ -14,18 +14,14 @@
       MARGINWIDTH="15">
 <H1>    JSTEP3()</H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran  version: </H2>
 <PRE>
     INTEGER FUNCTION  JSTEP3( JDATE, JTIME, SDATE, STIME, TSTEP )
-        INTEGER         JDATE   !  requested date YYYYDDD
-        INTEGER         JTIME   !  requested time HHMMSS
-        INTEGER         SDATE   !  starting date  YYYYDDD
-        INTEGER         STIME   !  starting time  HHMMSS
-        INTEGER         TSTEP   !  time step      H*MMSS
+        INTEGER, INTENT(IN   ) :: JDATE   !  requested date YYYYDDD
+        INTEGER, INTENT(IN   ) :: JTIME   !  requested time HHMMSS
+        INTEGER, INTENT(IN   ) :: SDATE   !  starting date  YYYYDDD
+        INTEGER, INTENT(IN   ) :: STIME   !  starting time  HHMMSS
+        INTEGER, INTENT(IN   ) :: TSTEP   !  time step      H*MMSS
 </PRE><P> 
 
 <H2> C version: </H2>  
@@ -66,9 +62,11 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
     <A HREF = "M3UTILIO.html">USE M3UTILIO</A>
     </PRE><P>
 
+Code example:
 <PRE>
     ...
-    INTEGER   JSTEP3
+    USE M3UTILIO    ! or: INTEGER, EXTERNAL :: JSTEP3
+    ...
     INTEGER   JDATE, JTIME, SDATE, STIME, TSTEP
     ...
     !!  set SDATE:STIME:OUTSTEP for output-file timestep sequence
@@ -94,7 +92,7 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
     int      irec ;
     &lt;type&gt;   foo[ MAXRECS ] ;
     ... 
-    irec = JSTEP3( &jdate, &jtime, &sdate, &stime, &tstep ) ;
+    irec = JSTEP3( &amp;jdate, &amp;jtime, &amp;sdate, &amp;stime, &amp;tstep ) ;
     if ( irec &gt; 0 )
         {   /*  jdate:jtime IS a valid element of the sequence  */
         foo[ irec-1 ] = ...

@@ -2,63 +2,54 @@
         PROGRAM  M3EDHDR
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: m3edhdr.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats Jr., and 
-C (C) 2002-2005 Baron Advanced Meteorological Systems, LLC
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line  123
+C  program body starts at line  110
 C
 C  FUNCTION:
 C       Edit file header attributes.
 C
 C  PRECONDITIONS REQUIRED:
-C	Models-3 I/O API input file.
+C       Models-3 I/O API input file.
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
-C       GETEFILE, GETNUM, GETREAL, GETDBLE,GETYN, NEXTIME, 
+C       GETEFILE, GETNUM, GETREAL, GETDBLE,GETYN, NEXTIME,
 C       Models-3 I/O.
 C
 C  REVISION  HISTORY:
 C       Prototype 5/1996 by CJC
 C       Modified  9/1999 by CJC for enhanced portability
-C	Modified  7/2001 by CJC to support new file type KFFILE3
+C       Modified  7/2001 by CJC to support new file type KFFILE3
 C       Version  11/2001 by CJC for I/O API Version 2.1
 C       Version   2/2005 by CJC: add option for editing file description
 C       Version   6/2005 by CJC:  use3 M3PROMPT() for file description
 C       to get around AIX FLUSH() problem
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C***********************************************************************
 
+      USE M3UTILIO
+
       IMPLICIT NONE
+
+C...........   EXTERNAL FUNCTIONS and their descriptions:
+
+         INTEGER :: IARGC
 
 C...........   INCLUDES:
 
         INCLUDE 'NETCDF.EXT'  !  netCDF parameter definitions
-        INCLUDE 'PARMS3.EXT'  !  I/O parameter definitions
-        INCLUDE 'FDESC3.EXT'  !  file header data structures
         INCLUDE 'STATE3.EXT'  !  I/O API internal data structures
-        INCLUDE 'IODECL3.EXT' !  I/O definitions and declarations
-
-
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        LOGICAL         GETYN
-        CHARACTER*16    PROMPTMFILE
-        INTEGER         GETMENU, GETNUM, INDEX1, IARGC, TRIMLEN
-        REAL            GETREAL
-        REAL*8          GETDBLE
-
-        EXTERNAL  GETMENU, GETNUM, GETYN, GETREAL, GETDBLE, INDEX1,
-     &            PROMPTMFILE, TRIMLEN
-
 
 C...........   PARAMETERS and their descriptions:
 
-        CHARACTER*80    BLANK
-        PARAMETER     ( BLANK = ' ' )
-
+        CHARACTER*80, PARAMETER :: BLANK = ' '
+        CHARACTER*16, PARAMETER :: PNAME = 'M3EDHDR'
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -131,52 +122,52 @@ C   begin body of program  M3EDHDR
      &  ' ',
      &  'You need to have assigned a logical name to the physical ',
      &  'file name of the input file, according to Models-3',
-     &  'conventions, using the operation "setenv <lname> <pname>".', 
+     &  'conventions, using the operation "setenv <lname> <pname>".',
      &  ' ',
      &  'USAGE:  m3edhdr [INFILE]',
      &  '(and then answer the prompts).',
-     &  ' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
      &' ',
-     &'Program copyright (C) 1996-2002 MCNC and Carlie J. Coats, Jr.,',
-     &'and (C) 2002-2005 Baron Advanced Meteorological Systems, LLC.',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See URL http://www.gnu.org/copyleft/gpl.html or enclosed ',
-     &'GPL.txt.',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
+     &' ',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
+     &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
-     &' ',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &'$Id:: m3edhdr.f 336 2008-09-25 20:26:52Z coats@bdsl           $',
-     &' ',
-     &'Program release tag: $Name$',
+     &'$Id:: m3edhdr.f 44 2014-09-12 18:03:16Z coats                 $',
      &' '
 
         ARGCNT = IARGC()
 
         IF ( ARGCNT .GT. 1 ) THEN
-            CALL M3EXIT( 'M3EDHDR', 0, 0, 
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'USAGE:  m3edhdr [INFILE]', 2 )
         END IF
 
         IF ( ARGCNT .EQ. 0 ) THEN       !  get names from user
 
             INAME = PROMPTMFILE( 'Enter logical name for INPUT FILE',
-     &                           FSRDWR3, 'INFILE', 'M3EDHDR' )
+     &                           FSRDWR3, 'INFILE', PNAME )
 
         ELSE                    !  else argcnt = 1
 
             CALL GETARG( 1, ENVBUF )
             INAME = ENVBUF( 1:16 )
-            IF ( .NOT. OPEN3( INAME, FSRDWR3, 'M3EDHDR' ) ) THEN
-                MESG = 'Could not open input file "' 
-     &                  // INAME( 1:TRIMLEN( INAME ) ) // '"'
-                CALL M3EXIT( 'M3EDHDR', 0, 0, MESG, 3 )
+            IF ( .NOT. OPEN3( INAME, FSRDWR3, PNAME ) ) THEN
+                MESG = 'Could not open input file "'
+     &                  // TRIM( INAME ) // '"'
+                CALL M3EXIT( PNAME, 0, 0, MESG, 3 )
             END IF
 
         END IF          !  if argcnt > 2, =0, or not
@@ -187,23 +178,23 @@ C...........   Get and save input file description:
         FNUM = INDEX1( INAME, COUNT3, FLIST3 )
         FID  = CDFID3( FNUM )
         IF ( FID .LT. 0 ) THEN
-            MESG = 'Input file "' // INAME( 1:TRIMLEN( INAME ) ) // 
+            MESG = 'Input file "' // TRIM( INAME ) //
      &             '" not a physical netCDF file'
-            CALL M3EXIT( 'M3EDHDR', 0, 0, MESG, 3 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 3 )
         ELSE IF ( FTYPE3( FNUM ) .LT. KFEVNT3 ) THEN
-            MESG = 'Input file "' // INAME( 1:TRIMLEN( INAME ) ) // 
+            MESG = 'Input file "' // TRIM( INAME ) //
      &             '" not a _data_ file'
-            CALL M3EXIT( 'M3EDHDR', 0, 0, MESG, 3 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 3 )
         ELSE IF ( FTYPE3( FNUM ) .EQ.DGRAPH3  ) THEN
-            MESG = 'Input file "' // INAME( 1:TRIMLEN( INAME ) ) // 
+            MESG = 'Input file "' // TRIM( INAME )//
      &             '" of type DIRECTED GRAPH; not a _data_ file'
-            CALL M3EXIT( 'M3EDHDR', 0, 0, MESG, 3 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 3 )
         END IF
 
         IF ( .NOT. DESC3( INAME ) ) THEN
             MESG = 'Could not get description of input file "'
-     &             // INAME( 1:TRIMLEN( INAME ) ) // '"'
-            CALL M3EXIT( 'M3EDHDR', 0, 0, MESG, 3 )
+     &             // TRIM( INAME ) // '"'
+            CALL M3EXIT( PNAME, 0, 0, MESG, 3 )
         END IF
 
 
@@ -224,13 +215,13 @@ C.......   Head of loop:  choose next edit operation.
                     CALL NCENDF( FID, RCODE )
                     IF ( RCODE .NE. 0 ) THEN
                          WRITE( MESG, 94000 )
-     &                      'Error', RCODE, 
+     &                      'Error', RCODE,
      &                      'leaving DEFINE mode for "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
                     END IF      !  if ncapt() failed
                 END IF
-                CALL M3EXIT( 'M3EDHDR', 0, 0,
+                CALL M3EXIT( PNAME, 0, 0,
      &               'Program  M3EDHDR  completed successfully', 0 )
 
             ELSE IF ( .NOT. DFLAG ) THEN
@@ -239,8 +230,8 @@ C.......   Head of loop:  choose next edit operation.
                 IF ( RCODE .NE. 0 ) THEN
                      WRITE( MESG, 94000 )
      &                 'Error', RCODE, 'starting DEFINE mode for "' //
-     &                 INAME( 1:TRIMLEN( INAME ) ) // '"'
-                    CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                 TRIM( INAME ) // '"'
+                    CALL M3WARN( PNAME, 0, 0, MESG )
                 END IF      !  if ncapt() failed
                 DFLAG = .TRUE.
 
@@ -251,13 +242,13 @@ C.......   Head of loop:  choose next edit operation.
 
                 IF ( GDTYP3D .EQ. LATGRD3 ) THEN
 
-                    CALL M3MESG( 
+                    CALL M3MESG(
      &              'File has a Lat-Lon grid; no parameters to edit' )
 
                 ELSE    !  else not a lat-lon grid
 
                     P_ALP = GETDBLE( DBLE( BADVAL3 ), -DBLE( BADVAL3 ),
-     &                               P_ALP3D, 
+     &                               P_ALP3D,
      &                      'Enter first  coordinate parameter P_ALP' )
 
                     IF ( P_ALP .NE. P_ALP3D ) THEN
@@ -268,8 +259,8 @@ C.......   Head of loop:  choose next edit operation.
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
      &                      'Error', RCODE, 'redefining P_ALP in "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         ELSE
                             P_ALP3D = P_ALP
                         END IF      !  if ncapt() failed
@@ -278,42 +269,42 @@ C.......   Head of loop:  choose next edit operation.
 
                     IF ( FTYPE3D .NE. UTMGRD3 ) THEN
 
-                        P_BET = GETDBLE( DBLE( BADVAL3 ), 
+                        P_BET = GETDBLE( DBLE( BADVAL3 ),
      &                                   -DBLE( BADVAL3 ),
-     &                                   P_BET3D, 
+     &                                   P_BET3D,
      &                  'Enter second coordinate parameter P_BET' )
 
                         IF ( P_BET .NE. P_BET3D ) THEN
 
-                            CALL NCAPT( FID, NCGLOBAL, 'P_BET', 
+                            CALL NCAPT( FID, NCGLOBAL, 'P_BET',
      &                                  NCDOUBLE, 1, P_BET, RCODE )
 
                             IF ( RCODE .NE. 0 ) THEN
                                 WRITE( MESG, 94000 )
      &                          'Error', RCODE, 'redefining P_BET in "'
-     &                          // INAME( 1:TRIMLEN( INAME ) ) // '"'
-                                CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                          // TRIM( INAME ) // '"'
+                                CALL M3WARN( PNAME, 0, 0, MESG )
                             ELSE
                                 P_BET3D = P_BET
                             END IF      !  if ncapt() failed
 
                         END IF  !  if p_BET changed
 
-                        P_GAM = GETDBLE( DBLE( BADVAL3 ), 
+                        P_GAM = GETDBLE( DBLE( BADVAL3 ),
      &                                  -DBLE( BADVAL3 ),
-     &                                   P_GAM3D, 
+     &                                   P_GAM3D,
      &                  'Enter third  coordinate parameter P_GAM' )
 
                         IF ( P_GAM .NE. P_GAM3D ) THEN
 
-                            CALL NCAPT( FID, NCGLOBAL, 'P_GAM', 
+                            CALL NCAPT( FID, NCGLOBAL, 'P_GAM',
      &                                  NCDOUBLE, 1, P_GAM, RCODE )
 
                             IF ( RCODE .NE. 0 ) THEN
                                 WRITE( MESG, 94000 )
      &                          'Error', RCODE, 'redefining P_GAM in "'
-     &                          // INAME( 1:TRIMLEN( INAME ) ) // '"'
-                                CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                          // TRIM( INAME ) // '"'
+                                CALL M3WARN( PNAME, 0, 0, MESG )
                             ELSE
                                 P_GAM3D = P_GAM
                             END IF      !  if ncapt() failed
@@ -323,7 +314,7 @@ C.......   Head of loop:  choose next edit operation.
                     END IF      !  if not UTM.
 
                     XCENT = GETDBLE( DBLE( BADVAL3 ), -DBLE( BADVAL3 ),
-     &                               XCENT3D, 
+     &                               XCENT3D,
      &                      'Enter X-center parameter XCENT' )
 
                     IF ( XCENT .NE. XCENT3D ) THEN
@@ -334,8 +325,8 @@ C.......   Head of loop:  choose next edit operation.
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
      &                      'Error', RCODE, 'redefining XCENT in "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         ELSE
                             XCENT3D = XCENT
                         END IF      !  if ncapt() failed
@@ -343,7 +334,7 @@ C.......   Head of loop:  choose next edit operation.
                     END IF      !  if xcent changed
 
                     YCENT = GETDBLE( DBLE( BADVAL3 ), -DBLE( BADVAL3 ),
-     &                               YCENT3D, 
+     &                               YCENT3D,
      &                      'Enter Y-center parameter YCENT' )
 
                     IF ( YCENT .NE. YCENT3D ) THEN
@@ -354,8 +345,8 @@ C.......   Head of loop:  choose next edit operation.
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
      &                      'Error', RCODE, 'redefining YCENT in "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         ELSE
                             YCENT3D = YCENT
                         END IF      !  if ncapt() failed
@@ -367,7 +358,7 @@ C.......   Head of loop:  choose next edit operation.
             ELSE IF ( CHOICE .EQ. 2 ) THEN      !  horizontal grid structure
 
                 XORIG = GETDBLE( DBLE( BADVAL3 ), -DBLE( BADVAL3 ),
-     &                           XORIG3D, 
+     &                           XORIG3D,
      &                  'Enter grid X-origin XORIG' )
 
                 IF ( XORIG .NE. XORIG3D ) THEN
@@ -378,8 +369,8 @@ C.......   Head of loop:  choose next edit operation.
                     IF ( RCODE .NE. 0 ) THEN
                         WRITE( MESG, 94000 )
      &                  'Error', RCODE, 'redefining XORIG in "' //
-     &                  INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                  TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
                     ELSE
                         XORIG3D = XORIG
                     END IF      !  if ncapt() failed
@@ -387,7 +378,7 @@ C.......   Head of loop:  choose next edit operation.
                 END IF  !  if xorig changed
 
                 YORIG = GETDBLE( DBLE( BADVAL3 ), -DBLE( BADVAL3 ),
-     &                           YORIG3D, 
+     &                           YORIG3D,
      &                  'Enter grid Y-origin  YORIG' )
 
                 IF ( YORIG .NE. YORIG3D ) THEN
@@ -398,8 +389,8 @@ C.......   Head of loop:  choose next edit operation.
                     IF ( RCODE .NE. 0 ) THEN
                         WRITE( MESG, 94000 )
      &                  'Error', RCODE, 'redefining YORIG in "' //
-     &                  INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                  TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
                     ELSE
                         YORIG3D = YORIG
                     END IF      !  if ncapt() failed
@@ -407,7 +398,7 @@ C.......   Head of loop:  choose next edit operation.
                 END IF  !  if yorig changed
 
                 XCELL = GETDBLE( DBLE( BADVAL3 ), -DBLE( BADVAL3 ),
-     &                           XCELL3D, 
+     &                           XCELL3D,
      &                  'Enter grid X-cell size XCELL' )
 
                 IF ( XCELL .NE. XCELL3D ) THEN
@@ -418,8 +409,8 @@ C.......   Head of loop:  choose next edit operation.
                     IF ( RCODE .NE. 0 ) THEN
                         WRITE( MESG, 94000 )
      &                  'Error', RCODE, 'redefining XCELL in "' //
-     &                  INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                  TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
                     ELSE
                         XCELL3D = XCELL
                     END IF      !  if ncapt() failed
@@ -427,7 +418,7 @@ C.......   Head of loop:  choose next edit operation.
                 END IF  !  if xcell changed
 
                 YCELL = GETDBLE( DBLE( BADVAL3 ), -DBLE( BADVAL3 ),
-     &                           YCELL3D, 
+     &                           YCELL3D,
      &                  'Enter grid Y-cell size YCELL' )
 
                 IF ( YCELL .NE. YCELL3D ) THEN
@@ -438,8 +429,8 @@ C.......   Head of loop:  choose next edit operation.
                     IF ( RCODE .NE. 0 ) THEN
                         WRITE( MESG, 94000 )
      &                  'Error', RCODE, 'redefining YCELL in "' //
-     &                  INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                  TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
                     ELSE
                         YCELL3D = YCELL
                     END IF      !  if ncapt() failed
@@ -457,7 +448,7 @@ C.......   Head of loop:  choose next edit operation.
                 CALL M3MESG( '6:   VGHVAL3 -- H (m above sea level)' )
                 CALL M3MESG( '-9999:   "missing" or "not applicable"' )
 
-                VGTYP = GETNUM( -999999999, 999999999, VGTYP3D, 
+                VGTYP = GETNUM( -999999999, 999999999, VGTYP3D,
      &                  'Enter vertical coordinate type VGTYP' )
 
                 IF ( VGTYP .NE. VGTYP3D ) THEN
@@ -468,8 +459,8 @@ C.......   Head of loop:  choose next edit operation.
                     IF ( RCODE .NE. 0 ) THEN
                         WRITE( MESG, 94000 )
      &                  'Error', RCODE, 'redefining VGTYP in "' //
-     &                  INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                  TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
                     ELSE
                         VGTYP3D = VGTYP
                     END IF      !  if ncapt() failed
@@ -480,19 +471,19 @@ C.......   Head of loop:  choose next edit operation.
      &               VGTYP .EQ. VGSGPN3  .OR.
      &               VGTYP .EQ. VGSIGZ3 ) THEN
 
-                    VGTOP = GETREAL( BADVAL3,  -BADVAL3, VGTOP3D, 
+                    VGTOP = GETREAL( BADVAL3,  -BADVAL3, VGTOP3D,
      &              'Enter vertical grid sigma-top VGTOP' )
 
                     IF ( VGTOP .NE. VGTOP3D ) THEN
 
-                        CALL NCAPT( FID, NCGLOBAL, 'VGTOP', 
+                        CALL NCAPT( FID, NCGLOBAL, 'VGTOP',
      &                              NCFLOAT, 1, VGTOP, RCODE )
 
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
      &                      'Error', RCODE, 'redefining VGTOP in "'
-     &                      // INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      // TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         ELSE
                             VGTOP3D = VGTOP
                         END IF      !  if ncapt() failed
@@ -506,7 +497,7 @@ C.......   Head of loop:  choose next edit operation.
                 DO  22  L = 1, NLAYS3D + 1
 
                     WRITE( MESG,94000 ) 'Enter full-level', L-1
-                    VGLVS( L ) = GETREAL( BADVAL3,  -BADVAL3, 
+                    VGLVS( L ) = GETREAL( BADVAL3,  -BADVAL3,
      &                                    VGLVS3D( L ), MESG )
 
                     IF ( VGLVS( L ) .NE. VGLVS3D( L ) ) CFLAG = .TRUE.
@@ -515,14 +506,14 @@ C.......   Head of loop:  choose next edit operation.
 
                 IF ( CFLAG ) THEN
 
-                    CALL NCAPT( FID, NCGLOBAL, 'VGLVLS', 
+                    CALL NCAPT( FID, NCGLOBAL, 'VGLVLS',
      &                          NCFLOAT, NLAYS3D+1, VGLVS, RCODE )
 
                     IF ( RCODE .NE. 0 ) THEN
                         WRITE( MESG, 94000 )
      &                  'Error', RCODE, 'redefining VGLVS in "'
-     &                  // INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                  // TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
                     ELSE
                         DO  23  L = 1, NLAYS3D + 1
                             VGLVS3D( L ) = VGLVS( L )
@@ -535,14 +526,14 @@ C.......   Head of loop:  choose next edit operation.
 
                 IF ( TSTEP3D .EQ. 0 ) THEN      !  time independent
 
-                    CALL M3MESG( 
+                    CALL M3MESG(
      &              'File is time-independent; no parameters to edit' )
 
                 ELSE IF ( TSTEP3D .GT. 0 ) THEN !  "normal" timestepped
 
                     CALL M3MESG( '"normal" file:  TSTEP > 0' )
 
-                    SDATE = GETNUM( 0, 9999999, SDATE3D, 
+                    SDATE = GETNUM( 0, 9999999, SDATE3D,
      &                      'Enter starting date SDATE (yyyyddd)' )
 
                     IF ( SDATE .NE. SDATE3D ) THEN
@@ -553,15 +544,15 @@ C.......   Head of loop:  choose next edit operation.
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
      &                      'Error', RCODE, 'redefining SDATE in "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         ELSE
                             SDATE3D = SDATE
                         END IF  !  if ncapt() failed
 
                     END IF      !  if sdate changed
 
-                    STIME = GETNUM( 0, 999999999, STIME3D, 
+                    STIME = GETNUM( 0, 999999999, STIME3D,
      &                      'Enter starting time STIME (hhmmss)' )
 
                     IF ( STIME .NE. STIME3D ) THEN
@@ -572,15 +563,15 @@ C.......   Head of loop:  choose next edit operation.
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
      &                      'Error', RCODE, 'redefining STIME in "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         ELSE
                             STIME3D = STIME
                         END IF  !  if ncapt() failed
 
                     END IF      !  if stime changed
 
-                    TSTEP = GETNUM( 0, 99999999, TSTEP3D, 
+                    TSTEP = GETNUM( 0, 99999999, TSTEP3D,
      &                      'Enter time step TSTEP (hhmmss)' )
 
                     IF ( TSTEP .NE. TSTEP3D ) THEN
@@ -591,8 +582,8 @@ C.......   Head of loop:  choose next edit operation.
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
      &                      'Error', RCODE, 'redefining TSTEP in "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         ELSE
                             TSTEP3D = TSTEP
                         END IF  !  if ncapt() failed
@@ -603,7 +594,7 @@ C.......   Head of loop:  choose next edit operation.
 
                     CALL M3MESG( '"restart" file:  TSTEP < 0' )
 
-                    SDATE = GETNUM( 0, 9999999, SDATE3D, 
+                    SDATE = GETNUM( 0, 9999999, SDATE3D,
      &                      'Enter starting date SDATE (yyyyddd)' )
 
                     IF ( SDATE .NE. SDATE3D ) THEN
@@ -614,15 +605,15 @@ C.......   Head of loop:  choose next edit operation.
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
      &                      'Error', RCODE, 'redefining SDATE in "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         ELSE
                             SDATE3D = SDATE
                         END IF  !  if ncapt() failed
 
                     END IF      !  if sdate changed
 
-                    STIME = GETNUM( 0, 999999999, STIME3D, 
+                    STIME = GETNUM( 0, 999999999, STIME3D,
      &                      'Enter starting time STIME (hhmmss)' )
 
                     IF ( STIME .NE. STIME3D ) THEN
@@ -633,15 +624,15 @@ C.......   Head of loop:  choose next edit operation.
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
      &                      'Error', RCODE, 'redefining STIME in "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         ELSE
                             STIME3D = STIME
                         END IF  !  if ncapt() failed
 
                     END IF      !  if stime changed
 
-                    TSTEP = GETNUM( -9999999, -1, TSTEP3D, 
+                    TSTEP = GETNUM( -9999999, -1, TSTEP3D,
      &                      'Enter time step TSTEP (-hhmmss)' )
 
                     IF ( TSTEP .NE. TSTEP3D ) THEN
@@ -652,8 +643,8 @@ C.......   Head of loop:  choose next edit operation.
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
      &                      'Error', RCODE, 'redefining TSTEP in "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         END IF  !  if ncapt() failed
 
                     END IF      !  if tstep changed
@@ -664,9 +655,9 @@ C.......   Head of loop:  choose next edit operation.
 
                 DO  33  V = 1, NVARS3D
 
-                    WRITE( MESG,94000 ) 
-     &                      'Variable', V, 
-     &                      ':  "' // 
+                    WRITE( MESG,94000 )
+     &                      'Variable', V,
+     &                      ':  "' //
      &                      VNAME3D( V ) // '" (' //
      &                      UNITS3D( V ) // ') has description:'
                     CALL M3MESG( MESG )
@@ -677,29 +668,27 @@ C.......   Head of loop:  choose next edit operation.
 
                     IF ( NAMBUF .NE. VNAME3D( V ) ) THEN
 
-                        CALL NCVREN( FID, VINDX3( V,FNUM ), 
+                        CALL NCVREN( FID, VINDX3( V,FNUM ),
      &                               NAMBUF, RCODE )
 
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
-     &                      'Error', RCODE, 
-     &                      'renaming variable in "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
-                        ELSE 
+     &                      'Error', RCODE, 'renaming variable in "' //
+     &                      TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
+                        ELSE
                             VNAME3D( V ) = NAMBUF
                         END IF  !  if ncapt() failed
 
                         CALL NCAPTC( FID, VINDX3( V,FNUM ),
-     &                               'long_name', NCCHAR, 
+     &                               'long_name', NCCHAR,
      &                               NAMLEN3, VNAME3D( V ), RCODE )
                         IF ( RCODE .NE. 0 ) THEN
                             SCRBUF = 'setting "long-name" to "' //
-     &                               NAMBUF( 1: TRIMLEN( NAMBUF ) ) //
-     &                               '" in "' //
-     &                               INAME( 1:TRIMLEN( INAME ) ) // '"'
+     &                               TRIM( NAMBUF ) // '" in "' //
+     &                               TRIM( INAME ) // '"'
                             WRITE( MESG, 94000 ) 'Error', RCODE, SCRBUF
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         END IF              !  ierr nonzero:  NCAPTC() failed
                     END IF      !  if vname(v) changed
 
@@ -708,39 +697,37 @@ C.......   Head of loop:  choose next edit operation.
 
                     IF ( NAMBUF .NE. UNITS3D( V ) ) THEN
 
-                        CALL NCAPTC( FID, VINDX3( V,FNUM ), 'units', 
+                        CALL NCAPTC( FID, VINDX3( V,FNUM ), 'units',
      &                               NCCHAR, NAMLEN3, NAMBUF, RCODE )
 
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
      &                      'Error', RCODE, 'redefining UNITS for "' //
-     &                      VNAME3D( V )( 1: TRIMLEN( VNAME3D( V ) ) )
-     &                      // '" in "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      TRIM( VNAME3D( V ) ) // '" in "' //
+     &                      TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         ELSE
                             UNITS3D( V ) = NAMBUF
                         END IF  !  if ncapt() failed
 
                     END IF      !  if units(v) changed
 
-                    CALL GETSTR( 
+                    CALL GETSTR(
      &              'Enter new description for this variable',
      &                           VDESC3D( V ), SCRBUF )
 
                     IF ( SCRBUF .NE. VDESC3D( V ) ) THEN
 
-                        CALL NCAPTC( FID, VINDX3( V,FNUM ), 'var_desc', 
+                        CALL NCAPTC( FID, VINDX3( V,FNUM ), 'var_desc',
      &                               NCCHAR, MXDLEN3, SCRBUF, RCODE )
 
                         IF ( RCODE .NE. 0 ) THEN
                             WRITE( MESG, 94000 )
-     &                      'Error', RCODE, 
+     &                      'Error', RCODE,
      &                      'redefining DESCRIPTION for "' //
-     &                      VNAME3D( V )( 1: TRIMLEN( VNAME3D( V ) ) )
-     &                      // '" in "' //
-     &                      INAME( 1:TRIMLEN( INAME ) ) // '"'
-                            CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                      TRIM( VNAME3D( V ) ) // '" in "' //
+     &                      TRIM( INAME ) // '"'
+                            CALL M3WARN( PNAME, 0, 0, MESG )
                         ELSE
                             VDESC3D( V ) = SCRBUF
                         END IF  !  if ncapt() failed
@@ -749,15 +736,15 @@ C.......   Head of loop:  choose next edit operation.
 
 33              CONTINUE        !  end loop revising variables
 
-                CALL NCAPTC( FID, NCGLOBAL, 'VAR-LIST', 
-     &                       NCCHAR, NAMLEN3 * NVARS3D, 
+                CALL NCAPTC( FID, NCGLOBAL, 'VAR-LIST',
+     &                       NCCHAR, NAMLEN3 * NVARS3D,
      &                       VNAME3D, RCODE )
                 IF ( RCODE .NE. 0 ) THEN
 
                     WRITE( MESG,94000 )
      &              'Error', RCODE, 'updating variable-names in "' //
-     &              INAME( 1:TRIMLEN( INAME ) ) // '"'
-                    CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &              TRIM( INAME ) // '"'
+                    CALL M3WARN( PNAME, 0, 0, MESG )
 
                 END IF              !  ierr nonzero:  NCAPTC() failed
 
@@ -765,7 +752,7 @@ C.......   Head of loop:  choose next edit operation.
 
                 IF ( GDTYP3D .EQ. LATGRD3 ) THEN
 
-                    CALL M3MESG( 
+                    CALL M3MESG(
      &              'File has a Lat-Lon grid; no parameters to edit' )
 
                 ELSE    !  else not a lat-lon grid
@@ -776,8 +763,8 @@ C.......   Head of loop:  choose next edit operation.
                     IF ( RCODE .NE. 0 ) THEN
                         WRITE( MESG, 94000 )
      &                  'Error', RCODE, 'redefining XORIG in "' //
-     &                  INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                  TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
                     ELSE
                         XORIG3D = 1.0D3 * XORIG3D
                     END IF      !  if ncapt() failed
@@ -788,8 +775,8 @@ C.......   Head of loop:  choose next edit operation.
                     IF ( RCODE .NE. 0 ) THEN
                         WRITE( MESG, 94000 )
      &                  'Error', RCODE, 'redefining YORIG in "' //
-     &                  INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                  TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
                     ELSE
                         YORIG3D = 1.0D3 * YORIG3D
                     END IF      !  if ncapt() failed
@@ -800,8 +787,8 @@ C.......   Head of loop:  choose next edit operation.
                     IF ( RCODE .NE. 0 ) THEN
                         WRITE( MESG, 94000 )
      &                  'Error', RCODE, 'redefining XCELL in "' //
-     &                  INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                  TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
                     ELSE
                         XCELL3D = 1.0D3 * XCELL3D
                     END IF      !  if ncapt() failed
@@ -812,8 +799,8 @@ C.......   Head of loop:  choose next edit operation.
                     IF ( RCODE .NE. 0 ) THEN
                         WRITE( MESG, 94000 )
      &                  'Error', RCODE, 'redefining YCELL in "' //
-     &                  INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                  TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
                     ELSE
                         YCELL3D = 1.0D3 * YCELL3D
                     END IF      !  if ncapt() failed
@@ -829,8 +816,8 @@ C.......   Head of loop:  choose next edit operation.
                 IF ( RCODE .NE. 0 ) THEN
                     WRITE( MESG, 94000 )
      &              'Error', RCODE, 'redefining XORIG in "' //
-     &              INAME( 1:TRIMLEN( INAME ) ) // '"'
-                    CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &              TRIM( INAME ) // '"'
+                    CALL M3WARN( PNAME, 0, 0, MESG )
                 ELSE
                     XORIG3D = XORIG
                 END IF      !  if ncapt() failed
@@ -842,8 +829,8 @@ C.......   Head of loop:  choose next edit operation.
                 IF ( RCODE .NE. 0 ) THEN
                     WRITE( MESG, 94000 )
      &              'Error', RCODE, 'redefining YORIG in "' //
-     &              INAME( 1:TRIMLEN( INAME ) ) // '"'
-                    CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &              TRIM( INAME ) // '"'
+                    CALL M3WARN( PNAME, 0, 0, MESG )
                 ELSE
                     YORIG3D = YORIG
                 END IF      !  if ncapt() failed
@@ -855,20 +842,20 @@ C.......   Head of loop:  choose next edit operation.
 
                 IF ( NAMBUF .NE. GDNAM3D ) THEN
 
-                    CALL NCAPTC( FID, NCGLOBAL, 'GDNAM', 
+                    CALL NCAPTC( FID, NCGLOBAL, 'GDNAM',
      &                           NCCHAR, NAMLEN3, NAMBUF, RCODE )
 
                     IF ( RCODE .NE. 0 ) THEN
                         WRITE( MESG, 94000 )
      &                  'Error', RCODE, 'renaming grid in "' //
-     &                  INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
-                    ELSE 
+     &                  TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
+                    ELSE
                         GDNAM3D = NAMBUF
                     END IF  !  if ncapt() failed
 
 
-                END IF	!  if nambuf != gdnam3d
+                END IF  !  if nambuf != gdnam3d
 
             ELSE IF ( CHOICE .EQ. 9 ) THEN      !  get new file description
 
@@ -880,14 +867,14 @@ C.......   Head of loop:  choose next edit operation.
 
                 DO L = 1, MXDESC3
 
-                    K = MAX( 1, TRIMLEN( FDESC3D( L ) ) )
+                    K = MAX( 1, LEN_TRIM( FDESC3D( L ) ) )
                     WRITE( MESG,'( A, I3, 2X, 4 A )' )
      &                'Enter description line', L,
      &                '["', FDESC3D( L )( 1:K ), '"]', '>> '
                     CALL M3PROMPT( MESG, SCRBUF, RCODE )
 
                     IF ( STATUS .GT. 0 ) THEN
-                        WRITE( MESG, '( A, I10, 2X, A )' ) 
+                        WRITE( MESG, '( A, I10, 2X, A )' )
      &                    'Error', STATUS, 'reading response'
                         CALL M3MESG( MESG )
                     ELSE IF ( SCRBUF .NE. BLANK ) THEN
@@ -910,11 +897,11 @@ C.......   Head of loop:  choose next edit operation.
                     IF ( RCODE .NE. 0 ) THEN
                         WRITE( MESG, 94000 )
      &                  'Error', RCODE, 'changing FDESC3D in "' //
-     &                  INAME( 1:TRIMLEN( INAME ) ) // '"'
-                        CALL M3WARN( 'M3EDHDR', 0, 0, MESG ) 
+     &                  TRIM( INAME ) // '"'
+                        CALL M3WARN( PNAME, 0, 0, MESG )
                     END IF  !  if ncapt() failed
 
-            END IF	!  end of choices to be processed
+            END IF  !  end of choices to be processed
 
             GO TO  11   !  to head of edit-choices loop
 
@@ -927,5 +914,5 @@ C...........   Internal buffering formats............ 94xxx
 94000   FORMAT ( 100 ( A, :, I7, :, 2X ) )
 
 
-        END
+        END  PROGRAM  M3EDHDR
 

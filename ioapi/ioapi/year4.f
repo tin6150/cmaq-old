@@ -1,15 +1,17 @@
 
-C.........................................................................
-C Version "@(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/year4.f,v 1.2 2000/11/28 21:23:11 smith_w Exp $"
-C EDSS/Models-3 I/O API.  Copyright (C) 1992-1999 MCNC
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
         INTEGER FUNCTION YEAR4 ( YY )
 
 C********************************************************************
-C       function body starts at line  86
+C Version "$Id: year4.f 161 2015-02-23 23:31:27Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (c) 2004-2007 Baron Advanced Meteorological Systems,
+C (c) 2007-2013 Carlie J. Coats, Jr., and (C) 2014 UNC Institute
+C for the Environment.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
+C       function body starts at line  59
 C
 C  FUNCTION:
 C
@@ -20,37 +22,10 @@ C  REVISION HISTORY:
 C
 C       Create by M Houyoux: 5/97
 C
-C  ARGUMENT LIST DESCRIPTION:
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C
-C    Input arguments:
-C
-C        YEAR   - 2 digit year
-C
-C    Output arguments:  none
-C
-C  RETURNS   user response after checking its range; or default.
-C
-C********************************************************************
-C
-C Project Title: Sparse Matrix Operator Kernel Emissions (SMOKE) Modeling
-C                System
-C File: @(#)$Id: year4.f,v 1.2 2000/11/28 21:23:11 smith_w Exp $
-C
-C COPYRIGHT (C) 1996, MCNC--North Carolina Supercomputing Center
-C All Rights Reserved
-C
-C See file COPYRIGHT for conditions of use.
-C
-C Environmental Programs Group
-C MCNC--North Carolina Supercomputing Center
-C P.O. Box 12889
-C Research Triangle Park, NC  27709-2889
-C
-C env_progs@mcnc.org
-C
-C Pathname: /env/proj/ioapi/SCCS/s.year4.f
-C Last updated: 11/26/97 13:04:23
-C
+C       Modified 02/2014 by CJC: Fix MH violation of coding-standards:
+C       check status IOS from  ENVINT()!!
 C****************************************************************************
 
         IMPLICIT NONE
@@ -62,23 +37,21 @@ C.......   INCLUDES:
 
 C.......   ARGUMENTS:
 
-        INTEGER         YY    ! 2 digit year
+        INTEGER, INTENT(IN   ) :: YY    ! 2 digit year
 
 C.......   EXTERNAL FUNCTIONS
 
-        INTEGER		ENVINT
-        EXTERNAL 	ENVINT
+        INTEGER, EXTERNAL :: ENVINT
 
 C.......   LOCAL VARIABLES:
 
         CHARACTER*256   MESG
         INTEGER         ISTAT
 
-        INTEGER         BASEYR, PIVOTYR
-        LOGICAL         FIRSTIME
-	DATA		FIRSTIME / .TRUE. /
-        
-        SAVE		BASEYR, PIVOTYR, FIRSTIME
+        INTEGER, SAVE :: BASEYR, PIVOTYR
+        LOGICAL, SAVE :: FIRSTIME = .TRUE.
+
+        CHARACTER*16, PARAMETER :: PNAME = 'YEAR4'
 
 C......................................................................
 C       begin YEAR4
@@ -88,6 +61,9 @@ C       begin YEAR4
             BASEYR = ENVINT( 'YEAR4_BASE',
      &                        'Base century year for YEAR4 algorithm',
      &                        1900, ISTAT )
+            IF ( ISTAT .GT. 0 ) THEN
+                CALL M3EXIT( PNAME,0,0,'Bad env vble "YEAR4_BASE"', 2)
+            END IF
             IF ( BASEYR .GT. 100 ) THEN
                 BASEYR = BASEYR / 100
             END IF
@@ -95,6 +71,9 @@ C       begin YEAR4
             PIVOTYR = ENVINT( 'YEAR4_PIVOT',
      &                        'Pivot year for YEAR4 algorithm',
      &                        BASEYR + 70, ISTAT )
+            IF ( ISTAT .GT. 0 ) THEN
+                CALL M3EXIT( PNAME,0,0,'Bad env vble "YEAR4_PIVOT"', 2)
+            END IF
             PIVOTYR = MOD( PIVOTYR , 100 )
         END IF
         
@@ -117,5 +96,5 @@ C...........   Internal buffering formats............ 94xxx
  
 94010   FORMAT( 10( A, :, I7, :, 1X ) )
 
-        END
+        END FUNCTION YEAR4
 

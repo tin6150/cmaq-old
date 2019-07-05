@@ -1,9 +1,11 @@
 #
 #.........................................................................
-# Version "@(#)$Header$"
+# Version "$Id: Makefile 65 2014-12-01 22:40:23Z coats $"
 # EDSS/Models-3 M3TOOLS
-# Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-# (C) 2003-2009 Baron Advanced Meteorological Systems, LLC.
+#    (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+#    (C) 2003-2004 by Baron Advanced Meteorological Systems,
+#    (C) 2005-2014 Carlie J. Coats, Jr., and
+#    (C) 2014-     UNC Institute for the Environment
 # Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 # See file "GPL.txt" for conditions of use.
 #.........................................................................
@@ -15,6 +17,11 @@
 #       INSTALL installation-directory root, used for "make install":
 #               "libioapi.a" and the tool executables will be installed
 #               in $(INSTALL)/${BIN}
+#
+# FOR A ROOT INSTALL (from user "coats" to directory "/opt/bin"):
+#
+#           make HOME=/home/coats BIN=Linux2_x86_64ifort INSTDIR=/opt/bin install
+#            
 #.........................................................................
 #  Directories:
 #       ${BASEDIR}  is the root directory for the I/O API library source,
@@ -31,71 +38,74 @@
 #
 #       ---------------     Definitions:   -------------------------
 
-.SUFFIXES: .m4 .c .F .f
+.SUFFIXES: .m4 .c .F .f .f90 .F90
 
-# BASEDIR = ${HOME}/apps
-BASEDIR = ${HOME}/web30
+BASEDIR = ${HOME}/web31
 SRCDIR  = ${BASEDIR}/m3tools
 IODIR   = ${BASEDIR}/ioapi
 OBJDIR  = ${BASEDIR}/${BIN}
-F90DIR  = ${BASEDIR}/${BIN}f90
 
 # Architecture dependent stuff
-# Assumes FC is an f90 (otherwise, "make f77").
+# Assumes FC is an f90
 
 include $(IODIR)/Makeinclude.${BIN}
 
-FFLAGS =  -I$(IODIR) $(DEFINEFLAGS) $(FOPTFLAGS) $(ARCHFLAGS)
+FFLAGS =  -I$(IODIR) -DIOAPICPL $(DEFINEFLAGS) $(FOPTFLAGS) $(ARCHFLAGS)
 
-LDFLAGS = -I$(IODIR) $(DEFINEFLAGS) $(ARCHFLAGS)
+LDFLAGS = -I$(IODIR) -DIOAPICPL $(DEFINEFLAGS) $(ARCHFLAGS)
 
-LIBS = -L$(OBJDIR) -lioapi -lnetcdf $(OMPLIBS) \
-$(ARCHLIB) $(ARCHLIBS)
+#  Incompatibility between netCDF versions before / after v4.1.1:
+#  For netCDF v4 and later, you may also need the extra libraries
+#  given by netCDF commands
+#
+#          nc-config --libs
+#          nf-config --libs
+#
+#LIBS = -L${OBJDIR} -lioapi -lnetcdf -lnetcdff $(PVMLIBS) $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
+
+LIBS = -L${OBJDIR} -lioapi -lnetcdf $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
 
 VPATH = ${OBJDIR}
 
 
+
 fSRC = \
-m3agmask.f m3agmax.f m3combo.f  m3cple.f   m3diff.f   m3edhdr.f  \
-m3fake.f   m3interp.f m3pair.f  m3stat.f   m3tproc.f  m3tshift.f \
-m3wndw.f   m3xtract.f m3merge.f mtxblend.f mtxbuild.f mtxcple.f  \
-airs2m3.f  aggvars.f  agmask.f  agmax.f    bcwndw.f   mtxcalc.f  \
-datshift.f factor.f   fills.f   gregdate.f juldate.f  kfxtract.f \
-presterp.f projtool   sfcmet.f  selmrg2d.f statb.f    statc.f    \
-statg.f    stati.f    statm.f   stats.f    utmtool.f  vertot.f   \
-m3hdr.f    vertintegral.f
+aggvars.f       agmask.f        agmax.f         airnow2m3.f     airs2m3.f       \
+bcwndw.f        camxtom3.f      cdiffstep.f     datshift.f      dayagg.f        \
+diffstep.f      factor.f        fakestep.f      fills.f         greg2jul.f      \
+gregdate.f      jul2greg.f      juldate.f       juldiff.f       julshift.f      \
+kfxtract.f      m3agmask.f      m3agmax.f       m3combo.f       m3cple.f        \
+m3diff.f        m3edhdr.f       m3fake.f        m3hdr.f         m3interp.f      \
+m3merge.f       m3pair.f        m3stat.f        m3tproc.f       m3tshift.f      \
+m3wndw.f        m3xtract.f      mtxblend.f      mtxbuild.f      mtxcalc.f       \
+mtxcple.f       pairstep.f      presterp.f      projtool.f      selmrg2d.f      \
+statb.f         statbdry.f      statc.f         statcust.f      statg.f         \
+statgrid.f      stati.f         statiddat.f     statm.f         stats.f         \
+statspars.f     statstep.f      taggreg.f       timeshift.f     tshift.f        \
+utmtool.f       verstep.f       vertintegral.f  vertot.f        wndwstep.f
 
-FSRC= \
-bcstep.F   cdiffstep.F diffstep.F fakestep.F latlon.F    pairstep.F  \
-presz.F    statbdry.F  statcust.F statgrid.F statiddat.F statspars.F \
-statstep.F tshift.F    verstep.F  wndwstep.F xtstep.F
+FSRC= bcstep.F   latlon.F   presz.F
 
-ESRC= $(IODIR)/CONST3.EXT  $(IODIR)/FDESC3.EXT  \
-      $(IODIR)/IODECL3.EXT $(IODIR)/NETCDF.EXT  \
-      $(IODIR)/PARMS3.EXT
+f90SRC = vertimeproc.f90
 
-OBJ = $(fSRC:.f=.o) $(FSRC:.F=.o)
+OBJ = $(fSRC:.f=.o) $(FSRC:.F=.o) $(f90SRC:.f=.o)
 
-F77EXE = \
-bcwndw   datshift factor   gregdate juldate  kfxtract  \
-latlon   m3diff   m3edhdr  m3fake   m3pair   m3stat    \
-m3tshift m3wndw   m3xtract presz    utmtool  vertot
+EXE = \
+airs2m3   bcwndw    datshift  dayagg    factor    \
+greg2jul  gregdate  jul2greg  juldate   juldiff   \
+julshift  kfxtract  latlon    m3agmax   m3agmask  \
+m3cple    m3combo   m3diff    m3edhdr   m3fake    \
+m3hdr     m3interp  m3merge   m3pair    m3stat    \
+m3tproc   m3tshift  m3wndw    m3xtract  mtxblend  \
+mtxbuild  mtxcalc   mtxcple   presterp  presz     \
+projtool  selmrg2d  timeshift utmtool   vertot    \
+vertimeproc         vertintegral
 
-F90EXE = airs2m3  dayagg   m3agmax  m3agmask m3cple    \
-m3combo  m3interp m3merge  m3tproc  mtxblend mtxbuild  \
-mtxcalc  mtxcple  presterp projtool selmrg2d m3hdr     \
-vertintegral
-
-EXE = $(F77EXE)  $(F90EXE)
 
 
 #      ----------------------   TOP-LEVEL TARGETS:   ------------------
 
 all: $(EXE)
-
-f77: $(F77EXE)
-
-f90: $(F90EXE)
 
 clean:
 	cd ${OBJDIR}; rm $(EXE) $(OBJ)
@@ -108,14 +118,33 @@ rmexe:
 	cd ${OBJDIR}; rm $(EXE)
 
 relink:
-	make -i rmexe ; make all
+	make BIN=${BIN} -i rmexe ; make all
 
-links:
-	ln -s      $(F90DIR)/dayagg   $(F90DIR)/m3agmax  \
-$(F90DIR)/m3agmask $(F90DIR)/m3cple   $(F90DIR)/m3combo  \
-$(F90DIR)/m3merge  $(F90DIR)/m3tproc  $(F90DIR)/mtxblend \
-$(F90DIR)/mtxbuild $(F90DIR)/mtxcalc  $(F90DIR)/mtxcple  \
-$(F90DIR)/presterp $(F90DIR)/selmrg2d                       ${OBJDIR}
+bins:
+	make BIN=Linux2_x86_64sun
+	make BIN=Linux2_x86_64g95
+	make BIN=Linux2_x86_64gfort
+	make BIN=Linux2_x86_64ifort
+	make BIN=Linux2_x86_64sundbg
+	make BIN=Linux2_x86_64ifortdbg
+
+binclean:
+	make -i BIN=Linux2_x86_64sun     clean
+	make -i BIN=Linux2_x86_64g95     clean
+	make -i BIN=Linux2_x86_64gfort   clean
+	make -i BIN=Linux2_x86_64ifort   clean
+	make -i BIN=Linux2_x86_64sundbg  clean
+	make -i BIN=Linux2_x86_64ifortdbg  clean
+
+
+binrelink:
+	make BIN=Linux2_x86_64sun      relink
+	make BIN=Linux2_x86_64g95      relink
+	make BIN=Linux2_x86_64gfort    relink
+	make BIN=Linux2_x86_64ifort    relink
+	make BIN=Linux2_x86_64sundbg   relink
+	make BIN=Linux2_x86_64ifortdbg relink
+
 
 gzip:
 	cd ${OBJDIR}/..; gtar cvfzh  ${BIN}.tar.gz     \
@@ -146,7 +175,6 @@ flags:
 	echo "PVMLIBS=$(PVMLIBS)"
 
 
-
 #      -----------------------   RULES:   -------------------------
 
 %.o : %.mod        #  Disable "gmake"s obnoxious implicit Modula-2 rule !!
@@ -154,8 +182,10 @@ flags:
 .F.o:
 	cd ${OBJDIR}; $(FC) $(FPPFLAGS) $(FFLAGS) -c $(SRCDIR)/$<
 
-
 .f.o:
+	cd ${OBJDIR}; $(FC) $(FFLAGS) -c $(SRCDIR)/$<
+
+.f90.o:
 	cd ${OBJDIR}; $(FC) $(FFLAGS) -c $(SRCDIR)/$<
 
 
@@ -177,10 +207,22 @@ dayagg: dayagg.o
 factor:  factor.o
 	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
 
+greg2jul: greg2jul.o
+	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
+
 gregdate: gregdate.o
 	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
 
+jul2greg:  jul2greg.o
+	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
+
 juldate:  juldate.o
+	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
+
+juldiff:  juldiff.o
+	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
+
+julshift:  julshift.o
 	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
 
 kfxtract: kfxtract.o
@@ -232,10 +274,10 @@ m3tproc:  m3tproc.o aggvars.o
 m3tshift:  m3tshift.o  tshift.o
 	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
 
-m3wndw: m3wndw.o  wndwstep.o
+m3wndw: m3wndw.o
 	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
 
-m3xtract:  m3xtract.o  xtstep.o
+m3xtract:  m3xtract.o
 	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
 
 m4cple: m4cple.o
@@ -268,7 +310,13 @@ selmrg2d:  selmrg2d.o
 sfcmet:  sfcmet.o
 	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
 
+timeshift: timeshift.o
+	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
+
 utmtool: utmtool.o
+	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
+
+vertimeproc:  vertimeproc.o
 	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
 
 vertintegral:  vertintegral.o
@@ -276,5 +324,4 @@ vertintegral:  vertintegral.o
 
 vertot:  vertot.o  verstep.o
 	cd ${OBJDIR}; $(FC) ${LFLAGS} $^ ${LIBS} -o $@
-
 

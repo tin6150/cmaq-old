@@ -1,9 +1,11 @@
 
 !.........................................................................
-! Version "@(#)$Header$"
+! Version "$Id: FDESC3.EXT 77 2014-12-11 19:36:50Z coats $"
 !    EDSS/Models-3 I/O API.
-!    Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-!    2003-2008 by Baron Advanced Meteorological Systems.
+!   Copyright (C) 1992-2002 MCNC,
+!   (C) 1992-2002,2005-2013 Carlie J. Coats, Jr., and
+!   (C) 2003-2011 Baron Advanced Meteorological Systems, LLC.
+!
 !    Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 !    See file "LGPL.txt" for conditions of use.
 !....................................................................
@@ -19,7 +21,7 @@
 !       resulting modified INCLUDE-file.
 !
 !       By making any changes to this INCLUDE file, the user
-!       explicitly agrees that in the case any assistance is 
+!       explicitly agrees that in the case any assistance is
 !       required of MCNC or of the I/O API author, Carlie J. Coats, Jr.
 !       as a result of such changes, THE USER AND/OR HIS PROJECT OR
 !       CONTRACT AGREES TO REIMBURSE MCNC AND/OR THE I/O API AUTHOR,
@@ -56,9 +58,6 @@
 !       Modified  8/2008 by CJC:  comments for defining parameters
 !       for new map projections ALBGRD3, LEQGRD3
 !
-!       Modified 07/2015 by CJC:  SINUGRD3 map projection for MIMS
-!       Spatial Allocator
-!
 !  SET BY:
 !          DESC3:    Everything in FDESC3.EXT
 !
@@ -77,7 +76,7 @@
 !
 !          WRDICT3:  FTYPE3D, TSTEP3D, NCOLS3D, NROWS3D, NLAYS3D, NVARS3D,
 !                    NTHIK3D, GDTYP3D, P_ALP3D, P_BET3D, P_GAM3D, XORIG3D,
-!                    YORIG3D, XCELL3D, YCELL3D, XCELL3D, YCELL3D, GDNAM3D, 
+!                    YORIG3D, XCELL3D, YCELL3D, XCELL3D, YCELL3D, GDNAM3D,
 !                    VGTYP3D, VGTOP3D, VGLVS3D, VNAME3D, UNITS3D, VDESC3D
 !
 !....................................................................
@@ -99,18 +98,18 @@
                                   ! SPARSE MATRIX:  number of matrix-cols
         INTEGER      GDTYP3D      ! grid type:  1=LAT-LON, 2=Lambert, ...
 
-!.......   Note that horizontal grid definition information is REAL*8 in order 
+!.......   Note that horizontal grid definition information is REAL*8 in order
 !.......   to achieve the required precision in geographic-to/from-grid
 !.......   coordinate conversions.  Meanings of the map projection
 !.......   specification parameters P_ALP3D, P_BET3D, P_GAM3D depend
 !.......   upon the projection type, as follows:
-!.......   
+!.......
 !.......   If P_ALP3D < AMISS3 (=-9E36, from PARMS3.EXT), then
 !.......   the grid description is missing or invalid.
 !.......
 !.......   lat-lon:   unused.  Coordinate units are degrees, with
-!.......              -180.0 < X <= 180.0,  -90.0 <= Y <= 90.0   
-!.......              Note that Western hemisphere longitudes are taken 
+!.......              -180.0 < X <= 180.0,  -90.0 <= Y <= 90.0
+!.......              Note that Western hemisphere longitudes are taken
 !.......              to be negative.
 !.......
 !.......   Lambert Conformal Conic:  PROJ_ALPHA <= PROJ_BETA are the two
@@ -128,13 +127,13 @@
 !.......              the latitude and longitude of the point of tangency;
 !.......              PROJ_GAMMA is the angle from true North to the Y-axis.
 !.......              Coordinate units are meters.
-!.......   
+!.......
 !.......   UTM:  PROJ_ALPHA is the UTM zone, as a double.
 !.......              PROJ_BETA and PROJ_GAMMA are unused.
 !.......              Note that for safety, PROJ_ALPHA should be
 !.......              *>rounded<* to integer.
 !.......              Coordinate units are meters.
-!.......   
+!.......
 !.......   (Secant) Polar Stereographic:  PROJ_ALPHA is 1 for North Polar
 !.......              -1 for South Polar, as a double.
 !.......              PROJ_BETA is the secant latitude (latitude of
@@ -164,10 +163,6 @@
 !.......              PROJ_BETA is unused; PROJ_GAMMA is the central meridian.
 !.......              Coordinate units are meters.
 !.......
-!.......   Sinusoidal Equal-Area:  PROJ_ALPHA and PROJ_BETA are unused;
-!.......              PROJ_GAMMA is the central meridian.
-!.......              Coordinate units are meters. (GCTP projection 16)
-!.......   
 !.......   (XCENT3D,YCENT3D):
 !.......   For Lat-Lon:  unused.
 !.......   For UTM:  these are the UTM offsets in meters (UTM coords for
@@ -177,28 +172,28 @@
 !.......   these are the longitude, -180 < X <= 180, and the
 !.......   latitude, -90 <= Y <= 90, for the center (0,0) of the
 !.......   respective Cartesian coordinate system.
-!.......   
+!.......
 !.......   (XORIG3D,YORIG3D) are the location in map units (deg. for lat-lon,
-!.......   meters otherwise) of the  lower-right corner of the origin (1,1) 
+!.......   meters otherwise) of the  lower-right corner of the origin (1,1)
 !.......   cell of the horizontal grid.
-!.......   
+!.......
 !.......   (XCELL3D,YCELL3D) are the X-direction and Y-direction lengths
-!.......   ((deg. for lat-lon, meters otherwise) of side for cells in a 
+!.......   ((deg. for lat-lon, meters otherwise) of side for cells in a
 !.......   regular grid.  If zero, the grid is taken to be an irregular
 !.......   grid described by other means (e.g. a grid-geometry file).
-!.......   
+!.......
 !.......   VGTYP3D is the vertical grid type token, VGSIGP3 for sigma-P
 !.......   coordinates, VGSIGZ3 for sigma-Z, etc., or IMISS3 for vertical
 !.......   coordinates not stored in VGLVS3D (e.g., temporally or spatially
 !.......   changing vertical coordinates.
-!.......   
+!.......
 !.......   VGTOP3D is the model-top used in the definition of the sigma
-!.......   coordinate systems (e.g., for hydrostatic sigma-P, the 
+!.......   coordinate systems (e.g., for hydrostatic sigma-P, the
 !.......   relationship between P and sigma is given by the following:
 !.......   S = ( P - VGTOP3D ) / (P_ref - VGTOP3D )
-!.......   
-!.......   VGLVS3D( 1, ..., NLAYS3D+1 ) is the list of vertical coordinate 
-!.......   values which specify the layers of the file.  In principle, 
+!.......
+!.......   VGLVS3D( 1, ..., NLAYS3D+1 ) is the list of vertical coordinate
+!.......   values which specify the layers of the file.  In principle,
 !.......   layer K goes from VGLVS3D( K ) to VGLVS3D( K+1 ).
 
         REAL*8       P_ALP3D      ! first, second, third map

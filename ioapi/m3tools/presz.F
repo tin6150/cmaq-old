@@ -2,23 +2,23 @@
         PROGRAM PRESZ
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id:: presz.F 1703 2013-11-15 21:39:36Z coats@bdsl$"
 C EDSS/Models-3 M3TOOLS.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
 C (C) 2002-2005 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body      starts at line  100
-C  subroutine MAKEPZ starts at line  372
+C  program body      starts at line   67
+C  subroutine MAKEPZ starts at line  331
 C
 C  DESCRIPTION:
-C       Builds multi-layer time-independent gridded file with 
+C       Builds multi-layer time-independent gridded file with
 C       reference PRES and Z values.
 C
 C  PRECONDITIONS REQUIRED:
 C       "setenv"s for output file, GRIDDESC file
-C       "f77 presz.F -o presz -L/home/xcc/SunOS5 -lemstuff -lm3io -lnetcdf"
+C       "f90 presz.F -o presz -L/home/xcc/SunOS5 -lemstuff -lm3io -lnetcdf"
 C       from a directory containing PARMS3.EXT, FDESC3.EXT, IODECL3.EXT
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
@@ -30,51 +30,27 @@ C       prototype 7/1996 by CJC
 C       Modified  9/1999 by CJC for enhanced portability
 C       Version  11/2001 by CJC for I/O API Version 2.1
 C       Version  11/2007 by CJC flash-screen/contact-info update
+C       Version  02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
+C       Version  12/2013 by CJC:  PARAMETER CMENU(:)
 C***********************************************************************
 
-#ifndef AUTO_ARRAYS
-#if __sgi  || __sun || __osf__ || __mips__
-#define AUTO_ARRAYS 0
-#endif
-#if _CRAY || _AIX
-#define AUTO_ARRAYS 1
-#endif
-#endif
-
-#ifndef AUTO_ARRAYS
-#include   "---Error compiling:  unsupported architecture---"
-#endif
+      USE M3UTILIO
 
       IMPLICIT NONE
 
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'      ! I/O API constants
-      INCLUDE 'FDESC3.EXT'      ! I/O API file description data structure
-      INCLUDE 'IODECL3.EXT'     ! I/O API function declarations
-
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        LOGICAL         DSCGRID
-        REAL*8          GETDBLE
-        INTEGER         GETMENU
-        INTEGER         GETNUM
-        REAL            GETREAL
-        LOGICAL         GETYN
-        INTEGER         TRIMLEN
-
-        EXTERNAL  DSCGRID, GETDBLE, GETMENU, GETNUM, GETREAL, GETYN, 
-     &            TRIMLEN
-
 C.......   Parameter
 
-        CHARACTER*16    NONE
-        PARAMETER     ( NONE = 'NONE' )
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &  '$Id: presz.F 126 2007-11-28 22:35:13Z coats@borel $'
-     &  /
-
+        CHARACTER*16, PARAMETER :: NONE  = 'NONE'
+        CHARACTER*16, PARAMETER :: PNAME = 'PRESZ'
+        CHARACTER*16, PARAMETER :: CMENU( 5 ) =
+     &          (/
+     &          'Lat-Lon        ',      !  coordinate types menu item 1
+     &          'Lambert        ',      !  coordinate types menu item 2
+     &          'Mercator       ',      !  coordinate types menu item 3
+     &          'Stereographic  ',      !  coordinate types menu item 4
+     &          'UTM            '       !  coordinate types menu item 5
+     &          /)
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -84,15 +60,6 @@ C...........   LOCAL VARIABLES and their descriptions:
         CHARACTER*16    ANAME
         CHARACTER*16    FNAME, TNAME
         CHARACTER*160   MESG
-        CHARACTER*60    CMENU( 5 )
-        DATA            CMENU
-     &          /
-     &          'lat-lon',              !  coordinate types menu item 1
-     &          'Lambert',              !  coordinate types menu item 2
-     &          'Mercator',             !  coordinate types menu item 3
-     &          'Stereographic',        !  coordinate types menu item 4
-     &          'UTM'                   !  coordinate types menu item 5
-     &          /
 
 C***********************************************************************
 C.......   First:  Initialize the I/O API:
@@ -120,27 +87,27 @@ C.......   First:  Initialize the I/O API:
      &' ',
      &'for the input and output files.',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    920 Main Campus Drive, Suite 101',
-     &'    Raleigh, NC 27606',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$$Id:: presz.F 42 2014-09-10 20:10:50Z coats                  $',
      &' '
 
-        IF ( .NOT. GETYN( 'Continue with program?', 
+        IF ( .NOT. GETYN( 'Continue with program?',
      &                    .TRUE. ) ) THEN
-            CALL M3EXIT( 'PRESZ', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Program ended at user request', 0 )
         END IF
 
@@ -156,14 +123,14 @@ C.......   the horizontal-grid part of its description:
 
         IF ( TNAME .NE. NONE ) THEN
 
-            IF ( .NOT. OPEN3( TNAME, FSREAD3, 'PRESZ' ) ) THEN
+            IF ( .NOT. OPEN3( TNAME, FSREAD3, PNAME ) ) THEN
                 MESG = 'Could not open file "' //
-     &                 TNAME( 1: TRIMLEN( TNAME ) ) // '" for input'
-                CALL M3EXIT( 'PRESZ', 0, 0, MESG, 2 )
+     &                 TRIM( TNAME ) // '" for input'
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             IF ( .NOT. DESC3( TNAME ) ) THEN
-                CALL M3EXIT( 'PRESZ', 0, 0,
+                CALL M3EXIT( PNAME, 0, 0,
      &                       'Could not get terrain file description',
      &                       2 )
             END IF
@@ -176,24 +143,23 @@ C.......   the horizontal-grid part of its description:
             IF ( GETYN( 'Specify grid by name from GRIDDESC file?',
      &                  .TRUE. ) ) THEN
 
-                CALL GETSTR( 'Enter grid name', 
-     &                       'SMRAQ54_50X48', 
+                CALL GETSTR( 'Enter grid name',
+     &                       'SMRAQ54_50X48',
      &                       GDNAM3D )
-                IF ( .NOT. DSCGRID( GDNAM3D, ANAME  , GDTYP3D, 
-     &                              P_ALP3D, P_BET3D, P_GAM3D, 
+                IF ( .NOT. DSCGRID( GDNAM3D, ANAME  , GDTYP3D,
+     &                              P_ALP3D, P_BET3D, P_GAM3D,
      &                              XCENT3D, YCENT3D,
-     &                              XORIG3D, YORIG3D, XCELL3D, YCELL3D, 
+     &                              XORIG3D, YORIG3D, XCELL3D, YCELL3D,
      &                              NCOLS3D, NROWS3D, NTHIK3D ) ) THEN
 
-                    MESG = 'Grid "' // 
-     &                     GDNAM3D( 1:TRIMLEN( GDNAM3D ) ) //
+                    MESG = 'Grid "' // TRIM( GDNAM3D ) //
      &                     '" not found in GRIDDESC file'
-                    CALL M3WARN( 'PRESZ', 0, 0, MESG )
+                    CALL M3WARN( PNAME, 0, 0, MESG )
                     IF ( GETYN( 'Try again?', .TRUE. ) ) THEN
                         GO TO  11
                     ELSE
-                        CALL M3EXIT( 'PRESZ', 0, 0,
-     &                               'Program ended at user request', 
+                        CALL M3EXIT( PNAME, 0, 0,
+     &                               'Program ended at user request',
      &                               2 )
                     END IF
 
@@ -201,11 +167,11 @@ C.......   the horizontal-grid part of its description:
 
             ELSE        !  enter grid specs interactively
 
-                CALL GETSTR( 'Enter grid name', 
-     &                       'SMRAQ54_48X50', 
+                CALL GETSTR( 'Enter grid name',
+     &                       'SMRAQ54_48X50',
      &                       GDNAM3D )
-                GDTYP3D = GETMENU( 5, 2, 
-     &              'Enter number for horiz coordinate system type', 
+                GDTYP3D = GETMENU( 5, 2,
+     &              'Enter number for horiz coordinate system type',
      &              CMENU )
 
                 IF ( GDTYP3D .EQ. LATGRD3 ) THEN !  lat-lon:  no P_ALP, ...
@@ -218,10 +184,10 @@ C.......   the horizontal-grid part of its description:
 
                 ELSE IF ( GDTYP3D .EQ. LAMGRD3 ) THEN !  Lambert projection
 
-                    P_ALP3D = GETDBLE( -90.0D0, 90.0D0, 30.0D0, 
+                    P_ALP3D = GETDBLE( -90.0D0, 90.0D0, 30.0D0,
      &                                 'Enter secant angle     P_ALP' )
                     P_BET3D = GETDBLE( P_ALP3D, 90.0D0, 60.0D0,
-     &                                 'Enter secant angle     P_BET' ) 
+     &                                 'Enter secant angle     P_BET' )
                     P_GAM3D = GETDBLE( -180.0D0, 180.0D0, -90.0D0,
      &                                 'Enter central meridian P_GAM' )
                     XCENT3D = GETDBLE( -180.0D0, 180.0D0, P_GAM3D,
@@ -235,7 +201,7 @@ C.......   the horizontal-grid part of its description:
      &                                      'Enter UTM zone' ) )
                     P_BET3D = 0.0D0
                     P_GAM3D = 0.0D0
-                    XCENT3D = GETDBLE( -999999999.0D0, 999999999.0D0, 
+                    XCENT3D = GETDBLE( -999999999.0D0, 999999999.0D0,
      &                                 0.0D0,
      &                                 'Enter UTM offset XCENT' )
                     YCENT3D = GETDBLE( -999999999.0D0, 999999999.0D0,
@@ -244,13 +210,13 @@ C.......   the horizontal-grid part of its description:
 
                 ELSE
 
-                    CALL M3WARN( 'PRESZ', 0, 0, 
+                    CALL M3WARN( PNAME, 0, 0,
      &                  'Only Lat-Lon and Lambert currently supported' )
                     IF ( GETYN( 'Try again?', .TRUE. ) ) THEN
                         GO TO  11
                     ELSE
-                        CALL M3EXIT( 'PRESZ', 0, 0,
-     &                               'Program ended at user request', 
+                        CALL M3EXIT( PNAME, 0, 0,
+     &                               'Program ended at user request',
      &                               2 )
                     END IF
 
@@ -265,12 +231,12 @@ C.......   the horizontal-grid part of its description:
 
                 XCELL3D = GETDBLE( -9.0D36, 9.0D36, 54000.0D0,
      &                             'Enter X cell size XCELL (meters)' )
-                YCELL3D = GETDBLE( -9.0D36, 9.0D36, XCELL3D, 
+                YCELL3D = GETDBLE( -9.0D36, 9.0D36, XCELL3D,
      &                             'Enter Y cell size YCELL (meters)' )
                 XORIG3D = GETDBLE( -9.0D36, 9.0D36,
      &                       XCELL3D*( DBLE( NCOLS3D ) - 0.5D0 ),
      &                       'Enter SW corner X coord for (1,1)-cell' )
-                YORIG3D = GETDBLE( -9.0D36, 9.0D36, 
+                YORIG3D = GETDBLE( -9.0D36, 9.0D36,
      &                       YCELL3D*( DBLE( NROWS3D ) - 0.5D0 ),
      &                       'Enter SW corner Y coord for (1,1)-cell' )
 
@@ -285,11 +251,11 @@ C.......   Now enter vertical coordinate structure:
         VGTYP3D = VGSGPH3       ! hydrostatic sigma-P from PARMS3.EXT
         VGTOP3D = 100.0         ! model top (mb)
 
-        VGLVS3D( 1 ) = GETREAL( 0.0, 1.0, 1.0, 
+        VGLVS3D( 1 ) = GETREAL( 0.0, 1.0, 1.0,
      &                          'Enter sigma value for bottom of model')
 
         DO  111  L = 1, NLAYS3D
-            WRITE( MESG, '( A, I3 )' ) 
+            WRITE( MESG, '( A, I3 )' )
      &              'Enter sigma value for top of layer', L
             V = 1.0 - ( FLOAT( L ) / FLOAT( NLAYS3D ) )**2
             VGLVS3D( L ) = GETREAL( 0.0, 1.0, V, MESG )
@@ -326,7 +292,7 @@ C.......   Variables and their descriptions; file description
         VTYPE3D( 4 ) = M3REAL
 
         FTYPE3D      = GRDDED3
-        FDESC3D( 1 ) = 
+        FDESC3D( 1 ) =
      &  'Sample layered gridded file:  pressures and altitudes'
         FDESC3D( 2 ) = 'Generated by sample program PRESZ'
         DO  22  L = 3, MXDESC3          ! mxdesc3 = 60, from PARMS3.EXT
@@ -340,10 +306,10 @@ C.......   open for output in any case.
 C.......   Use subroutine MAKEPZ to allocate arrays for variables
 C.......   PRES and Z, compute them, and write them to file FNAME.
 
-        IF ( .NOT. OPEN3( FNAME, FSUNKN3, 'PRESZ' ) ) THEN
+        IF ( .NOT. OPEN3( FNAME, FSUNKN3, PNAME ) ) THEN
             MESG = 'Could not open file "' //
-     &             FNAME( 1: TRIMLEN( FNAME ) ) // '" for output'
-            CALL M3EXIT( 'PRESZ', 0, 0, MESG, 2 )
+     &             TRIM( FNAME ) // '" for output'
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         CALL MAKEPZ( FNAME , TNAME )    !  see below, in this file.
@@ -351,33 +317,20 @@ C.......   PRES and Z, compute them, and write them to file FNAME.
 
 C.......   Clean up and exit (M3EXIT calls SHUT3() automatically)
 
-        CALL M3EXIT( 'PRESZ', 0, 0, 
+        CALL M3EXIT( PNAME, 0, 0,
      &               'Successful completion of program PRESZ', 0 )
 
 C...........   Informational (LOG) message formats... 92xxx
 
 92000   FORMAT ( 5X, A )
 
-        END
+
+      CONTAINS        !!-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 
-C*************  subroutine MAKEPZ starts here  ***********************
-C
-C       This also serves as an example to show how to do
-C       dynamic memory allocation from within Fortran on
-C       both Crays and workstations
-C
-C***********************************************************************
+        SUBROUTINE  MAKEPZ( FNAME , TNAME )
 
-      SUBROUTINE  MAKEPZ( FNAME , TNAME )
-
-      IMPLICIT NONE
-
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'      ! I/O API constants
-      INCLUDE 'FDESC3.EXT'      ! I/O API file description data structure
-      INCLUDE 'IODECL3.EXT'     ! I/O API function declarations
+        IMPLICIT NONE
 
 
 C...........   ARGUMENTS and their descriptions:
@@ -386,26 +339,13 @@ C...........   ARGUMENTS and their descriptions:
         CHARACTER*16    TNAME   !  name of input terrain file, or "NONE"
 
 
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        INTEGER         TRIMLEN
-        EXTERNAL        TRIMLEN
-
-#if ! AUTO_ARRAYS
-        INTEGER         MALLOC
-#endif    /* ! AUTO_ARRAYS */
- 
 C...........   PARAMETERS
 
-        REAL		P0
-        REAL    	ZFAC
-        REAL    	PFAC
-        CHARACTER*16    NONE
+        REAL, PARAMETER :: P0   = 1012.5
+        REAL, PARAMETER :: ZFAC =   -7.2E3
+        REAL, PARAMETER :: PFAC = 1.0 / ZFAC
 
-        PARAMETER     ( P0   = 1012.5 ,
-     &                  ZFAC =   -7.2E3 ,
-     &                  PFAC = 1.0 / ZFAC ,
-     &                  NONE = 'NONE' )
+        CHARACTER*16, PARAMETER :: NONE = 'NONE'
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 
@@ -416,16 +356,6 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         REAL    ZH   ( NCOLS3D, NROWS3D, NLAYS3D )
         REAL    ZF   ( NCOLS3D, NROWS3D, NLAYS3D )
 
-#if ! AUTO_ARRAYS
-        POINTER       ( P1, HT )
-        POINTER       ( P2, PSFC )
-        POINTER       ( P3, PRESH )
-        POINTER       ( P4, PRESF )
-        POINTER       ( P5, ZH )
-        POINTER       ( P6, ZF )
-        INTEGER         SIZE            !  array size (bytes)
-#endif    /* ! AUTO_ARRAYS */
-
         INTEGER         R, C, L         !  row, column, layer counters
         REAL            SH, SF, P       !  scratch variables
         CHARACTER*80    MESG
@@ -434,46 +364,10 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 C***********************************************************************
 C   begin body of subroutine  MAKEPZ
 
-#if ! AUTO_ARRAYS
-        SIZE = 4 * NCOLS3D * NROWS3D
-        P1   = MALLOC( SIZE )
-        IF( P1 .EQ. 0 ) 
-     &          CALL M3EXIT( 'PRESZ/MAKEPZ', 0, 0, 
-     &                       'Memory allocation error for HT', 2 )
-
-        P2   = MALLOC( SIZE )
-        IF( P2 .EQ. 0 ) 
-     &          CALL M3EXIT( 'PRESZ/MAKEPZ', 0, 0, 
-     &                       'Memory allocation error for PSFC.', 2 )
-
-        SIZE = SIZE * NLAYS3D
-        P3   = MALLOC( SIZE )
-        IF( P3 .EQ. 0 ) 
-     &          CALL M3EXIT( 'PRESZ/MAKEPZ', 0, 0, 
-     &                       'Memory allocation error for PRESH', 2 )
-
-        P4   = MALLOC( SIZE )
-        IF( P4 .EQ. 0 ) 
-     &          CALL M3EXIT( 'PRESZ/MAKEPZ', 0, 0, 
-     &                       'Memory allocation error for PRESF', 2 )
-
-        P5   = MALLOC( SIZE )
-        IF( P5 .EQ. 0 ) 
-     &          CALL M3EXIT( 'PRESZ/MAKEPZ', 0, 0, 
-     &                       'Memory allocation error for ZH', 2 )
-
-        P6   = MALLOC( SIZE )
-        IF( P6 .EQ. 0 ) 
-     &          CALL M3EXIT( 'PRESZ/MAKEPZ', 0, 0, 
-     &                       'Memory allocation error for ZF', 2 )
-#endif    /* AUTO_ARRAYS */
-
-
         IF ( TNAME .NE. NONE ) THEN      !  read HT; compute PSFC from HT
 
             IF ( .NOT. READ3( TNAME, 'HT', 1, 0, 0, HT ) ) THEN
-                MESG = 'Could not read "HT" from "' //
-     &                 TNAME( 1:TRIMLEN( TNAME ) ) // '"'
+                MESG = 'Could not read "HT" from "' // TNAME
                 CALL M3EXIT( 'PRESZ/MAKEPZ', 0, 0, MESG, 2 )
             END IF
 
@@ -507,9 +401,9 @@ C   begin body of subroutine  MAKEPZ
                 PRESF( C, R, L ) = VGTOP3D + SF * ( P - VGTOP3D )
 
                 P = 1.0 / P
-                ZH   ( C, R, L ) = HT( C, R ) + 
+                ZH   ( C, R, L ) = HT( C, R ) +
      &                             ZFAC * LOG( PRESH( C, R, L ) * P )
-                ZF   ( C, R, L ) = HT( C, R ) + 
+                ZF   ( C, R, L ) = HT( C, R ) +
      &                             ZFAC * LOG( PRESF( C, R, L ) * P )
 
 55          CONTINUE		!  end loop on cols C
@@ -521,30 +415,29 @@ C   begin body of subroutine  MAKEPZ
 C.......   Write out results to file FNAME, then return:
 
         IF ( .NOT. WRITE3( FNAME, 'PRESH', 0, 0, PRESH ) ) THEN
-            MESG = 'Error writing "PRESH" to file "' //
-     &             FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+            MESG = 'Error writing "PRESH" to file "' //FNAME
             CALL M3EXIT( 'PRESZ/MAKEPZ', 0, 0, MESG, 2 )
         END IF
 
         IF ( .NOT. WRITE3( FNAME, 'PRESF', 0, 0, PRESF ) ) THEN
-            MESG = 'Error writing "PRESF" to file "' //
-     &             FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+            MESG = 'Error writing "PRESF" to file "' //FNAME
             CALL M3EXIT( 'PRESZ/MAKEPZ', 0, 0, MESG, 2 )
         END IF
 
         IF ( .NOT. WRITE3( FNAME, 'ZH', 0, 0, ZH ) ) THEN
-            MESG = 'Error writing "ZH" to file "' //
-     &             FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+            MESG = 'Error writing "ZH" to file "' //FNAME
             CALL M3EXIT( 'PRESZ/MAKEPZ', 0, 0, MESG, 2 )
         END IF
 
         IF ( .NOT. WRITE3( FNAME, 'ZF', 0, 0, ZF ) ) THEN
-            MESG = 'Error writing "ZF" to file "' //
-     &             FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+            MESG = 'Error writing "ZF" to file "' //FNAME
             CALL M3EXIT( 'PRESZ/MAKEPZ', 0, 0, MESG, 2 )
         END IF
 
         RETURN
 
-        END
+        END SUBROUTINE  MAKEPZ
+
+
+      END PROGRAM PRESZ
 

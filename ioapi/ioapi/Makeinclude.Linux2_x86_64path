@@ -1,4 +1,4 @@
-# @(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/Makeinclude.IRIX64f90,v 1.2 2000/11/28 21:56:42 smith_w Exp $
+# VERSION "$Id: Makeinclude.Linux2_x86_64path 1 2014-03-14 20:22:54Z coats $"
 #
 #       Linux for X86_64 using the PathScale EKO compiler suite
 #       Flags set up compatibility with "gcc/g77" built packages and
@@ -11,7 +11,9 @@ M4   = m4
 CPP  = cpp
 LINK = $(CC)
 
-MFLAGS    = -march=opteron -mcpu=opteron -OPT:Olimit=0
+MODI = -I       ## Module-include-directory command
+
+MFLAGS    = -march=auto -mcpu=auto -OPT:Olimit=0
 
 OMPFLAGS  = -mp -openmp
 OMPLIBS   = -lopenmp -lpthread

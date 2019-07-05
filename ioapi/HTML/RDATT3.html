@@ -1,7 +1,8 @@
+
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/DESC3.html,v 1.1.1.1 2001/12/05 20:25:25 coats Exp $ -->
+<!-- "$Id: RDATT3.html 162 2015-02-23 23:32:40Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> RDATT3() and RDATTC() </TITLE>
 </HEAD>
@@ -13,24 +14,20 @@
       MARGINWIDTH="15">
 <H1>    RDATT3() and RDATTC() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
     LOGICAL FUNCTION   RDATT3( FNAME, VNAME, ANAME, ATYPE, AMAX,
- &                             ASIZE, AVAL )
+ &amp;                             ASIZE, AVAL )
     LOGICAL ENTRY      RDATTC( FNAME, VNAME, ANAME, CVAL )
     
-        CHARACTER*(*)   FNAME         !  logical file name
-        CHARACTER*(*)   VNAME         !  variable name, or ALLVARS3
-        CHARACTER*(*)   ANAME         !  attribute name
-        INTEGER         ATYPE         !  attribute type (M3REAL, M3INT, M3DBLE)
-        INTEGER         AMAX          !  attribute dimensionality
-        INTEGER         ASIZE         !  attribute actual size
-        REAL            AVAL( AMAX )  !  attribute value (numeric)
-        CHARACTER*(*)   CVAL          !  attribute value (character-string)
+        CHARACTER*(*), INTENT(IN   ) :: FNAME         !  logical file name
+        CHARACTER*(*), INTENT(IN   ) :: VNAME         !  variable name, or ALLVARS3
+        CHARACTER*(*), INTENT(IN   ) :: ANAME         !  attribute name
+        INTEGER      , INTENT(IN   ) :: ATYPE         !  attribute type (M3REAL, M3INT, M3DBLE)
+        INTEGER      , INTENT(IN   ) :: AMAX          !  attribute dimensionality
+        INTEGER      , INTENT(  OUT) :: ASIZE         !  attribute actual size
+        REAL         , INTENT(  OUT) :: AVAL( AMAX )  !  attribute value (numeric)
+        CHARACTER*(*), INTENT(  OUT) :: CVAL          !  attribute value (character-string)
 </PRE><P> 
 
 <H2> C version: </H2>
@@ -71,7 +68,8 @@ by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 
 <H2> Preconditions: </H2>
 
-    <A HREF = "INCLUDE.html#iodecl"> 
+    <A HREF = "M3UTIOLIO.html"> <CODE>USE&nbsp;M3UTILIO</CODE></A>
+    or <A HREF = "INCLUDE.html#iodecl"> 
     <CODE>INCLUDE&nbsp;'IODECL3.EXT'</CODE> </A> for Fortran, or 
     <CODE>#include&nbsp;&quot;iodecl3.h&quot;</CODE> and 
     <CODE>#include&nbsp;&quot;fdesc3.h&quot;</CODE> for C.
@@ -112,8 +110,7 @@ by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 
 <PRE>
     ...
-    INCLUDE 'IODECL3.EXT'
-    INCLUDE 'PARMS3.EXT'
+    USE M3UTILIO
     ...
     &lt;under construction&gt;
     ...

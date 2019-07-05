@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- "$Id: INCLUDE.html 94 2015-01-16 15:02:01Z coats $" -->
+<!-- "$Id: INCLUDE.html 179 2015-03-02 17:01:44Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> MODULES AND PUBLIC INCLUDE FILES </TITLE>
 </HEAD>
@@ -21,10 +21,11 @@ include files in the I/O&nbsp;API, with  the following sorts of content:
 <UL> 
     <LI> <A HREF = "M3UTILIO.html"><VAR>MODULE M3UTILIO</VAR></A>:
                               dimensions, constants, declarations,
-                              interface blocks.  Includes all the
-                              public include-files, and <STRONG>is the
-                              preferred way of accessing them
-                              from program code.</STRONG>
+                              interface blocks.<BR>
+                              Includes all the public include-files
+                              (below), and <STRONG>is the preferred way
+                              of accessing them from Fortran program
+                              code.</STRONG>
     <LI> <A HREF = "MATXATTS.html"><VAR>MODULE MATXATTS</VAR></A>:
                               parameters and routines for saving
                               metadata for geospatial transforms.
@@ -34,49 +35,63 @@ include files in the I/O&nbsp;API, with  the following sorts of content:
                               file descriptions
     <LI> <A HREF = "#iodecl"> IODECL3.EXT and iodecl3.h: </A> 
                               function declarations
-    <LI> <A HREF = "#atdsc "> ATDSC3.EXT and atdsc3.h: </A> 
+    <LI> <A HREF = "#atdsc "> ATDSC3.EXT and attdsc3.h: </A> 
                               Extra attributes for TSERIES3 files
 </UL>
 <P>
 
-Each of the include files has extensive in-line documentation as to 
-the meaning of the structures it defines.
-<P>
+    Each of the include files has extensive in-line documentation as to 
+    the meaning of the structures it defines.
+    <P>
 
-As of Novenber,&nbsp;2004, new <A HREF = "M3UTILIO.html"> Fortran-9x
-<CODE>MODULE M3UTILIO</CODE></A> is the recommended way to provide an
-(alternate) interface to these <CODE>INCLUDE</CODE> files, as well as
-explicit interfaces to a large number of additional I/O&nbsp;API public
-routines, in a way that gets around difficulties caused by the
-interaction of Fortran-9x <CODE>USE&nbsp;&lt;module&gt;</CODE> and
-possibly multiple levels of Fortran (77/90/95) <CODE>INCLUDE</CODE>
-statements.  It also provides a way of ensuring the consistency of user
-compiled code with library compiled code for &quot;exotic&quot;
-I/O&nbsp;API versions with modified data-structure-dimensioning
-parameters.
-<P>
-Direct use of  <CODE>PARMS3.EXT</CODE>, <CODE>FDESC3.EXT</CODE>, and
-<CODE>IODECXL3.EXT</CODE> is deprecated.
-<P>
-        
-<HR> <!----------------------------------------------------------------->
+    Each of the Fortran include files is structured so that it conforms
+    both to the &quot;fixed&quot; and &quot;free&quot;  Fortran source
+    formats, using the method recommended by the ISO Fortran-Standards
+    committee.  Note, however, that <VAR>CMAQ</VAR> and  <VAR>SMOKE</VAR>
+    use a non-Standard &quot;fixed-132&quot; source format that is not
+    compatible with either of these Standard formats; for this reason,
+    there is a script, <VAR>ioapi/fix_src.csh</VAR> that can convert
+    these INCLUDE files into the format required of  <VAR>CMAQ</VAR> and 
+    <VAR>SMOKE</VAR>.  The <VAR>make fixed_src</VAR> command creates
+    a directory <VAR>ioapi/fixed_src/</VAR> and puts the converted
+    INCLUDE-files into it.
+    <P>
 
-<STRONG><EM>NOTICE: </EM> The EDSS/Models-3 I/O&nbsp;API depends in an
-essential manner upon the I/O&nbsp;API source code.  ANY CHANGES to 
-<CODE>INCLUDE</CODE> files are likely to result in very obscure,
-difficult-to-diagnose bugs caused by an inconsistency between standard 
-<VAR>libioapi.a</VAR> object-libraries and whatever code is compiled
-with the resulting modified <CODE>INCLUDE</CODE>-file(s).
-<P>
+    As of Novenber,&nbsp;2004, new <A HREF = "M3UTILIO.html"> Fortran-9x
+    <CODE>MODULE M3UTILIO</CODE></A> is the recommended way to provide an
+    (alternate) interface to these <CODE>INCLUDE</CODE> files, as well as
+    explicit interfaces to a large number of additional I/O&nbsp;API public
+    routines, in a way that gets around difficulties caused by the
+    interaction of Fortran-9x <CODE>USE&nbsp;&lt;module&gt;</CODE> and
+    possibly multiple levels of Fortran (77/90/95) <CODE>INCLUDE</CODE>
+    statements.  It also provides a way of ensuring the consistency of user
+    compiled code with library compiled code for &quot;exotic&quot;
+    I/O&nbsp;API versions with modified data-structure-dimensioning
+    parameters.
+    <P>
+    Direct use of  <CODE>PARMS3.EXT</CODE>, <CODE>FDESC3.EXT</CODE>, and
+    <CODE>IODECXL3.EXT</CODE> is deprecated.
+    <P>
 
-By making any changes to any of these <CODE>INCLUDE</CODE> files, the
-user explicitly agrees that in the case any assistance is required of
-MCNC, BAMS, or of the I/O&nbsp;API author, Carlie J. Coats, Jr., as a result
-of such changes, <EM>The user and/or his project or contract agrees to
-reimburse MCNC and/or BAMS and/or the I/O&nbsp;API author, Carlie J.
-Coats,&nbsp;Jr., at a rate triple the normal contract rate for the
-services required.</EM>
-</STRONG>
+    <HR> <!----------------------------------------------------------------->
+
+    <STRONG><EM>NOTICE: </EM> The EDSS/Models-3 I/O&nbsp;API depends in an
+    essential manner upon the I/O&nbsp;API source code.  ANY CHANGES to 
+    <CODE>INCLUDE</CODE> files are likely to result in very obscure,
+    difficult-to-diagnose bugs caused by an inconsistency between standard 
+    <VAR>libioapi.a</VAR> object-libraries and whatever code is compiled
+    with the resulting modified <CODE>INCLUDE</CODE>-file(s).
+    <P>
+
+    By making any changes to any of these <CODE>INCLUDE</CODE> files, the
+    user explicitly agrees that in the case any assistance is required of
+    MCNC, BAMS, or of the I/O&nbsp;API author, Carlie J. Coats, Jr., as a result
+    of such changes, <EM>The user and/or his project or contract agrees to
+    reimburse MCNC and/or BAMS and/or the I/O&nbsp;API author, Carlie J.
+    Coats,&nbsp;Jr., at a rate triple the normal contract rate for the
+    services required.</EM>
+    </STRONG>
+    <P>
 
     Back to <STRONG><EM><A HREF = "#contents">Contents</A></EM></STRONG>
     <P>
@@ -168,7 +183,7 @@ services required.</EM>
         <DT> <STRONG>LATGRD3</STRONG>  <A HREF = "GRIDS.html#horiz">
                                        horizontal</A> coordinate system 
                                        type:  lat-lon coordinates
-        <DT> <STRONG>LAMGRD3</STRONG>  ...Lambert coordinates
+        <DT> <STRONG>LAMGRD3</STRONG>  ...Lambert Conformal Conic coordinates
         <DT> <STRONG>MERGRD3</STRONG>  ...Mercator coordinates
         <DT> <STRONG>STEGRD3</STRONG>  ...(general tangent) Stereographic coordinates
         <DT> <STRONG>UTMGRD3</STRONG>  ...UTM (Universal Transverse Mercator)
@@ -179,6 +194,8 @@ services required.</EM>
                                        coordinates
         <DT> <STRONG>EQMGRD3</STRONG>  ...general Equatorial Mercator
                                        coordinates
+        <DT> <STRONG>ALBGRD3</STRONG>  ...Albers Equal-Area Conic coordinates
+        <DT> <STRONG>LEQGRD3</STRONG>  ...Lambert Azimuthal Equal-Area coordinates
         <DT> <STRONG>VGSGPH3</STRONG>  <A HREF = "GRIDS.html#vert">
                                        Vertical</A> coordinate type:  
                                        hydrostatic sigma-P
@@ -337,7 +354,7 @@ services required.</EM>
 
 <HR> <!----------------------------------------------------------------->
 
-<H3>  <A NAME = "atdsc"> ATDSC3.EXT and atdsc3.h</A> </H3>
+<H3>  <A NAME = "atdsc"> ATDSC3.EXT and attdsc3.h</A> </H3>
 
     contains Fortran data structures and C typedefs for augmented file 
     descriptions used by  I/O&nbsp;API file type 

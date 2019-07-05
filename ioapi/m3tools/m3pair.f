@@ -2,14 +2,14 @@
         PROGRAM  M3PAIR
 
 C***********************************************************************
-C Version "@(#)$Header$ $Id: m3pair.f 49 2007-07-06 16:20:50Z coats@borel $"
+C Version "$Id: m3pair.f 43 2014-09-12 14:06:19Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr, and
-C (C) 2002-2007 Baron Advanced Meteorological Systems, LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line  117
+C  program body starts at line  102
 C
 C  FUNCTION:
 C       For a user-specified pair of GRIDDED Models-3 files and
@@ -25,35 +25,20 @@ C
 C  REVISION  HISTORY:
 C      Prototype 4/1998 by CJC
 C       Version 11/2001 by CJC for I/O API Version 2.1
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C***********************************************************************
 
+      USE M3UTILIO
       IMPLICIT NONE
-
-C...........   INCLUDES:
-
-        INCLUDE 'PARMS3.EXT'  !  I/O parameter definitions
-        INCLUDE 'FDESC3.EXT'  !  file header data structures
-        INCLUDE 'IODECL3.EXT' !  I/O definitions and declarations
-
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        LOGICAL         GETYN
-        CHARACTER*16    PROMPTMFILE
-        INTEGER         GCD, GETEFILE, GETNUM, IARGC, INDEX1,
-     &                  PROMPTFFILE,   SECSDIFF, SEC2TIME, TIME2SEC,
-     &                  TRIMLEN
-
-        EXTERNAL        GCD, GETEFILE, GETNUM, GETYN, INDEX1,
-     &                  PROMPTFFILE, PROMPTMFILE,
-     &                  SECSDIFF, SEC2TIME, TIME2SEC, TRIMLEN
+         INTEGER :: IARGC
 
 C...........   PARAMETERS and their descriptions:
 
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id:: m3pair.f 49 2007-07-06 16:20:50Z coats@borel            $'
-     &  /
+        CHARACTER*16, PARAMETER :: PNAME = 'M3PAIR'
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -69,6 +54,7 @@ C...........   LOCAL VARIABLES and their descriptions:
         INTEGER         NCOLS   !  grid dimensions, from file headers
         INTEGER         NROWS   !  grid dimensions, from file headers
         INTEGER         NLAYS   !  grid dimensions, from file headers
+        INTEGER         NTHIK   !  grid dimensions, from file headers
         INTEGER         CLO     !  column range limit
         INTEGER         CHI     !  column range limit
         INTEGER         RLO     !  row    range limit
@@ -124,25 +110,26 @@ C   begin body of program  M3PAIR
      &  ' ',
      &  'USAGE:  m3pair [INFILEA INFILEB OUTFILE]',
      &  '(and then answer the prompts).',
+     &' ',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
      &  ' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
-     &' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: m3pair.f 43 2014-09-12 14:06:19Z coats                  $',
      &' '
 
         ARGCNT = IARGC()
@@ -150,66 +137,64 @@ C   begin body of program  M3PAIR
         IF ( ARGCNT .EQ. 0 ) THEN       !  get names from user
 
             NAMEA = PROMPTMFILE( 'Enter logical name for INPUT FILE A',
-     &                           FSREAD3, 'INFILEA', 'M3PAIR' )
+     &                           FSREAD3, 'INFILEA', PNAME )
 
             NAMEB = PROMPTMFILE( 'Enter logical name for INPUT FILE B',
-     &                           FSREAD3, 'INFILEB', 'M3PAIR' )
+     &                           FSREAD3, 'INFILEB', PNAME )
 
             RDEV = PROMPTFFILE(
      &          'Enter logical name for  OUTPUT FILE',
-     &                          .FALSE., .TRUE., 'OUTFILE', 'M3STAT' )
+     &                          .FALSE., .TRUE., 'OUTFILE', PNAME )
             IF ( RDEV .LE. 0 ) RDEV = LOGDEV
 
         ELSE IF ( ARGCNT .EQ. 3 ) THEN
 
             CALL GETARG( 1, ENVBUF )
             NAMEA = ENVBUF( 1:16 )
-            IF ( .NOT. OPEN3( NAMEA, FSREAD3, 'M3STAT' ) ) THEN
-                CALL M3EXIT( 'M3STAT', 0, 0,
+            IF ( .NOT. OPEN3( NAMEA, FSREAD3, PNAME ) ) THEN
+                CALL M3EXIT( PNAME, 0, 0,
      &                       'Could not open input file "'
-     &                       // NAMEA( 1:TRIMLEN( NAMEA ) ) // '"',
-     &                       3 )
+     &                       // TRIM( NAMEA ) // '"', 3 )
             END IF
 
             CALL GETARG( 2, ENVBUF )
             NAMEB = ENVBUF( 1:16 )
-            IF ( .NOT. OPEN3( NAMEB, FSREAD3, 'M3STAT' ) ) THEN
-                CALL M3EXIT( 'M3STAT', 0, 0,
+            IF ( .NOT. OPEN3( NAMEB, FSREAD3, PNAME ) ) THEN
+                CALL M3EXIT( PNAME, 0, 0,
      &                       'Could not open input file "'
-     &                       // NAMEB( 1:TRIMLEN( NAMEB ) ) // '"',
-     &                       3 )
+     &                       // TRIM( NAMEB ) // '"', 3 )
             END IF
 
             CALL GETARG( 3, ENVBUF )
             RNAME = ENVBUF( 1:16 )
-            RDEV  = GETEFILE( RNAME, .FALSE., .TRUE., 'M3STAT' )
+            RDEV  = GETEFILE( RNAME, .FALSE., .TRUE., PNAME )
             IF ( RDEV .LT. 0 ) THEN
-                CALL M3EXIT( 'M3STAT', 0, 0,
+                CALL M3EXIT( PNAME, 0, 0,
      &                        'Could not open output file "'
-     &                        // RNAME( 1:TRIMLEN( RNAME ) ) // '"',
-     &                        3 )
+     &                        // TRIM( RNAME ) // '"', 3 )
             END IF          !  if rdev < 0 (getefile() failed)
 
         ELSE
 
             MESG = 'usage:  m3pair [INFILEA INFILEB OUTFILE]'
-            CALL M3EXIT( 'M3PAIR', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
         END IF      !  if argcnt=0, or else 3, or not
 
         IF ( .NOT. DESC3( NAMEA ) ) THEN
-            CALL M3EXIT( 'M3PAIR', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &      'Could not get description of input file ' // NAMEA, 2 )
         END IF
 
         IF ( FTYPE3D .NE. GRDDED3 ) THEN
-            CALL M3EXIT( 'M3PAIR', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &      'Input file '// NAMEA //'not a GRIDDED file', 2 )
         END IF
 
         NCOLS  = NCOLS3D
         NROWS  = NROWS3D
         NLAYS  = NLAYS3D
+        NTHIK  = NTHIK3D
         TSTEPA = TIME2SEC( TSTEP3D )
         NVARS1 = NVARS3D
         SDATE  = SDATE3D
@@ -222,45 +207,27 @@ C   begin body of program  M3PAIR
 C.......   Copy variable-names.  Get max string-lengths for use in
 C.......   variables-listing:
 
-        VMAX = TRIMLEN( VNAME3D( 1 ) )
-        UMAX = TRIMLEN( UNITS3D( 1 ) )
-        DMAX = TRIMLEN( VDESC3D( 1 ) )
+        VMAX = LEN_TRIM( VNAME3D( 1 ) )
+        UMAX = LEN_TRIM( UNITS3D( 1 ) )
+        DMAX = LEN_TRIM( VDESC3D( 1 ) )
         DO  11  I = 1, NVARS3D
             VNAME1( I ) = VNAME3D( I )
             UNITS1( I ) = UNITS3D( I )
             VDESC1( I ) = VDESC3D( I )
-            VMAX = MAX( VMAX , TRIMLEN( VNAME3D( I ) ) )
-            UMAX = MAX( UMAX , TRIMLEN( UNITS3D( I ) ) )
-            DMAX = MAX( DMAX , TRIMLEN( VDESC3D( I ) ) )
+            VMAX = MAX( VMAX , LEN_TRIM( VNAME3D( I ) ) )
+            UMAX = MAX( UMAX , LEN_TRIM( UNITS3D( I ) ) )
+            DMAX = MAX( DMAX , LEN_TRIM( VDESC3D( I ) ) )
             VTYPE1( I ) = VTYPE3D( I )
 11      CONTINUE
 
 
         IF ( .NOT. DESC3( NAMEB ) ) THEN
             MESG = 'Could not get description of input file ' // NAMEB
-            CALL M3EXIT( 'M3PAIR', 0, 0, MESG, 2 )
-        END IF
-        IF ( FTYPE3D .NE. GRDDED3 ) THEN
-            MESG = 'Input file '// NAMEB //'not a GRIDDED file'
-            CALL M3EXIT( 'M3PAIR', 0, 0, MESG, 2 )
-        ELSE IF ( NCOLS .NE. NCOLS3D ) THEN
-            WRITE( MESG,94010 )
-     &              'Incompatible column dimensions:',
-     &              NCOLS, ' in ' // NAMEA,
-     &              NCOLS3D, ' in ' // NAMEB
-            CALL M3EXIT( 'M3PAIR', 0, 0, MESG, 2 )
-        ELSE IF ( NROWS .NE. NROWS3D ) THEN
-            WRITE( MESG,94010 )
-     &              'Incompatible row dimensions:',
-     &              NROWS, ' in ' // NAMEA,
-     &              NROWS3D, ' in ' // NAMEB
-            CALL M3EXIT( 'M3PAIR', 0, 0, MESG, 2 )
-        ELSE IF ( NLAYS .NE. NLAYS3D ) THEN
-            WRITE( MESG,94010 )
-     &              'Incompatible layer dimensions:',
-     &              NLAYS, ' in ' // NAMEA,
-     &              NLAYS3D, ' in ' // NAMEB
-            CALL M3EXIT( 'M3PAIR', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
+        ELSE IF ( .NOT.FILCHK3( NAMEB,  GRDDED3,
+     &                          NCOLS, NROWS, NLAYS, NTHIK ) ) THEN
+            MESG = 'Inconsistent dimensions  for ' // NAMEB
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
 C.......   Copy variable-names.  Get max string-lengths for use in
@@ -294,36 +261,32 @@ C.......   variables-listing:
             VNAME2( I ) = VNAME3D( I )
             UNITS2( I ) = UNITS3D( I )
             VDESC2( I ) = VDESC3D( I )
-            VMAX = MAX( VMAX , TRIMLEN( VNAME3D( I ) ) )
-            UMAX = MAX( UMAX , TRIMLEN( UNITS3D( I ) ) )
-            DMAX = MAX( DMAX , TRIMLEN( VDESC3D( I ) ) )
+            VMAX = MAX( VMAX , LEN_TRIM( VNAME3D( I ) ) )
+            UMAX = MAX( UMAX , LEN_TRIM( UNITS3D( I ) ) )
+            DMAX = MAX( DMAX , LEN_TRIM( VDESC3D( I ) ) )
             VTYPE2( I ) = VTYPE3D( I )
 22      CONTINUE
 
 
         WRITE( *,92020 )
-     &          'The list of variables in file "' ,
-     &          NAMEA( 1:TRIMLEN( NAMEA ) ), '" is:',
-     &          ( L,
-     &            VNAME1( L )( 1:VMAX ) , ' (' ,
-     &            UNITS1( L )( 1:UMAX ) , '):  ' ,
-     &            VDESC1( L )( 1:DMAX ), L = 1, NVARS1 )
-        I = GETNUM( 1, NVARS1, 1,
-     &              'Enter number for first variable' )
+     &         'The list of variables in file "', TRIM(NAMEA), '" is:',
+     &         ( L,
+     &           VNAME1( L )( 1:VMAX ) , ' (' ,
+     &           UNITS1( L )( 1:UMAX ) , '):  ' ,
+     &           VDESC1( L )( 1:DMAX ), L = 1, NVARS1 )
+        I = GETNUM( 1, NVARS1, 1, 'Enter number for first variable' )
         WNAMES( 1 ) = VNAME1( I )
         WTYPES( 1 ) = VTYPE1( I )
 
         IF ( NAMEB .NE. NAMEA ) THEN
             WRITE( *,92020 )
-     &          'The list of variables in file "' ,
-     &          NAMEB( 1:TRIMLEN( NAMEB ) ), '" is:',
+     &         'The list of variables in file "', TRIM(NAMEB), '" is:',
      &          ( L,
      &            VNAME2( L )( 1:VMAX ) , ' (' ,
      &            UNITS2( L )( 1:UMAX ) , '):  ' ,
      &            VDESC2( L )( 1:DMAX ), L = 1, NVARS2 )
         END IF
-        J = GETNUM( 1, NVARS1, 1,
-     &              'Enter number for second variable' )
+        J = GETNUM( 1, NVARS1, 1, 'Enter number for second variable' )
 
         WNAMES( 2 ) = VNAME2( J )
         WTYPES( 2 ) = VTYPE2( J )
@@ -408,7 +371,7 @@ C.......   Process this period in the input file:
 
 233         CONTINUE        !  end loop on time steps
 
-        CALL M3EXIT( 'M3PAIR', 0, 0,
+        CALL M3EXIT( PNAME, 0, 0,
      &               'M3PAIR  completed successfully', 0 )
 
 C******************  FORMAT  STATEMENTS   ******************************
@@ -424,19 +387,9 @@ C...........   Informational (LOG) message formats... 92xxx
 92020   FORMAT ( 5X , 3A, /, 100( 1X, I3, 2X, 5A, /  ) )
 
 C...........   Formatted file I/O formats............ 93xxx
-
-93000   FORMAT ( A )
-
-
 C...........   Internal buffering formats............ 94xxx
-
-94010   FORMAT ( A, 2( I4, A ) )
-
-
 C...........   Miscellaneous formats................. 95xxx
 
-95000   FORMAT ( /5X , A , $ )          !  generic prompt format.
 
-
-        END
+      END PROGRAM  M3PAIR
 

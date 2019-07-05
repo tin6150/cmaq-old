@@ -1,18 +1,17 @@
 
-C.........................................................................
-C Version "@(#)$Header$"
-C EDSS/Models-3 I/O API.
-C Copyright (C) 2003 Baron Advanced Meteorological Systems
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
         REAL*8 FUNCTION GETDBLE( LO, HI, DEFAULT, PROMPT )
 
 C********************************************************************
-C       function body starts at line  77
-C
-C       CALLS:      TRIMLEN
+C Version "$Id: getdble.f 161 2015-02-23 23:31:27Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (c) 2004-2007 Baron Advanced Meteorological Systems,
+C (c) 2007-2013 Carlie J. Coats, Jr., and (C) 2014 UNC Institute
+C for the Environment.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
+C  function body starts at line  73
 C
 C  FUNCTION:
 C
@@ -32,27 +31,27 @@ C        PROMPT   Prompt for user
 C
 C    Output arguments:  none
 C
+C  CALLS:
+C
 C  RETURNS   user response after checking its range; or default.
 C
 C  REVISION  HISTORY:
 C       prototype 4/2003 by Carlie J. Coats, Jr, BAMS, adapted fromn GETREAL
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C********************************************************************
 
         IMPLICIT NONE
 
 C.......   ARGUMENTS:
 
-        REAL*8          LO , HI
-        REAL*8          DEFAULT
-        CHARACTER*(*)   PROMPT
+        REAL*8       , INTENT(IN   ) :: LO , HI
+        REAL*8       , INTENT(IN   ) :: DEFAULT
+        CHARACTER*(*), INTENT(IN   ) :: PROMPT
 
 
 C.......   EXTERNAL FUNCTION:  interpret I/O errors:
 
-        LOGICAL         ENVYN
-        INTEGER         TRIMLEN
-
-        EXTERNAL        ENVYN, TRIMLEN
+        LOGICAL, EXTERNAL :: ENVYN
 
 
 C.......   LOCAL VARIABLES:
@@ -66,10 +65,11 @@ C.......   LOCAL VARIABLES:
         CHARACTER*16    FMTSTR
         CHARACTER*1     CH
         CHARACTER*256   MESG
-        LOGICAL         PROMPTON
-        LOGICAL         FIRSTIME
-        DATA            FIRSTIME / .TRUE. /
-        SAVE            FIRSTIME, PROMPTON
+
+        LOGICAL, SAVE :: PROMPTON
+        LOGICAL, SAVE :: FIRSTIME = .TRUE.
+
+        CHARACTER*16, PARAMETER :: PNAME = 'GETDBLE'
 
 C*********************************************************************
 C       begin GETDBLE
@@ -78,18 +78,19 @@ C       begin GETDBLE
 
             PROMPTON = ENVYN( 'PROMPTFLAG', 'Prompt for input flag',
      &                      .TRUE., IOS )
+            IF ( IOS .GT. 0 ) THEN
+                CALL M3EXIT( PNAME,0,0,'Bad env vble "PROMPTFLAG"', 2 )
+            END IF
             FIRSTIME = .FALSE.
  
         END IF
-
-        P  =  TRIMLEN( PROMPT )
 
         IF( .NOT. PROMPTON ) THEN
             GETDBLE = DEFAULT
             WRITE( MESG, '( A , 1X , 1PD22.15, 1X, A )' ) 
      &          'Using default response', DEFAULT, ' for query:'
             CALL M3MSG2( MESG )
-            MESG = '"' // PROMPT( 1:P ) // '"'
+            MESG = '"' // TRIM( PROMPT ) // '"'
             CALL M3MSG2( MESG )
             RETURN
         END IF
@@ -104,7 +105,7 @@ C       begin GETDBLE
 100     CONTINUE
 
         WRITE( MESG, '( 2A , 1PD22.15, A )' )
-     &        PROMPT( 1:P ), ' [', LDF, '] >> '
+     &        TRIM( PROMPT ), ' [', LDF, '] >> '
         CALL M3PROMPT( MESG, BUFFER, IOS )
 
         IF ( IOS .NE. 0 )  THEN
@@ -238,7 +239,4 @@ C................   end body of GETDBLE  .......................................
 
 94011   FORMAT ( '(', A1, I3, '.', I3 , ')' )
 
-        END
-
-C................   end   GETDBLE  ....................................
-
+        END FUNCTION GETDBLE

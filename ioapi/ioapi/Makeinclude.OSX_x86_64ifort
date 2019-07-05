@@ -1,4 +1,7 @@
-# @(#)$Header$
+# VERSION "$Id: Makeinclude.OSX_x86_64ifort 1 2014-03-14 20:22:54Z coats $"
+#
+#  Library flags severely hacked to satisfy Sun's broken
+#  compiler-linker system
 #  From Scott N. Spak / Center for Sustainability and the Global Environment
 #  University of Wisconsin-Madison
 
@@ -9,10 +12,12 @@ M4   = m4
 CPP  = cpp
 LINK = $(CC)
 
+MODI = -I       ## Module-include-directory command
+
 MFLAGS    = -traceback
 
 OMPFLAGS  = 
-OMPLIBS   = #-Vaxlib
+OMPLIBS   =
 COPTFLAGS = -O3 -m64 ${MFLAGS}
 FOPTFLAGS = ${MFLAGS} -xT -O3 -ip -mdynamic-no-pic -warn declarations -recursive
 FPPFLAGS  = 

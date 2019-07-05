@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/KFWRITE.html,v 1.1.1.1 2001/12/05 20:25:32 coats Exp $ -->
+<!-- "$Id: KFWRITE.html 83 2014-12-29 14:31:32Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> KFWRITE()</TITLE>
 </HEAD>
@@ -13,21 +13,17 @@
       LEFTMARGIN="15" 
       MARGINWIDTH="15">
 <H1>    KFWRITE()</H1>
-
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
         
 <H2> Fortran version: </H2>
 <PRE>
     INTEGER FUNCTION KFWRITE( FNAME, COL, ROW, SDATE, STIME, KFLEN, VBLES )
-        CHARACTER*(*) FNAME      !  logical file name
-        INTEGER       COL        !  column number for this event
-        INTEGER       ROW        !  row    number for this event
-        INTEGER       SDATE      !  starting date, formatted YYYYDDD
-        INTEGER       STIME      !  starting time, formatted HHMMSS
-        INTEGER       KFLEN      !  event duration, formatted HHMMSS
-        REAL          VBLES(*)   !  output buffer array
+        CHARACTER*(*), INTENT(IN   ) :: FNAME      !  logical file name
+        INTEGER      , INTENT(IN   ) :: COL        !  column number for this event
+        INTEGER      , INTENT(IN   ) :: ROW        !  row    number for this event
+        INTEGER      , INTENT(IN   ) :: SDATE      !  starting date, formatted YYYYDDD
+        INTEGER      , INTENT(IN   ) :: STIME      !  starting time, formatted HHMMSS
+        INTEGER      , INTENT(IN   ) :: KFLEN      !  event duration, formatted HHMMSS
+        REAL         , INTENT(IN   ) :: VBLES(*)   !  output buffer array
 </PRE><P> 
 
 <H2> C version: </H2>  <VAR>not yet implemented</VAR>

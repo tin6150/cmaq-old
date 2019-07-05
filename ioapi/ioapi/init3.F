@@ -2,14 +2,14 @@
         INTEGER FUNCTION INIT3 ( )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: init3.F 321 2016-02-26 16:00:20Z coats $"
 C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
-C (C) 2003-2005 by Baron Advanced Meteorological Systems.
+C Copyright (C) 1992-2002 MCNC, (C) 1992-2013 Carlie J. Coats, Jr.,
+C and (C) 2003-2010 by Baron Advanced Meteorological Systems.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  subroutine body starts at line  153
+C  subroutine body starts at line  144
 C
 C  FUNCTION:
 C       Initialize state for Models-3 I/O.
@@ -24,7 +24,7 @@ C       Only call from within "!$OMP CRITICAL( S_LOGDEV )" blocks
 C       Do *NOT* call from within "!$OMP CRITICAL( S_NC )" blocks
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
-C       NAMEVAL(), ENVYN(), JUNIT(), TRIMLEN()
+C       NAMEVAL(), ENVYN(), JUNIT()
 C
 C  REVISION  HISTORY:
 C       prototype 3/1992 by CJC
@@ -33,7 +33,7 @@ C       Modified  8/1995 by CJC to support CLOSE3()
 C
 C       Modified  4/1996 by CJC to open SCENFILE first time only.
 C
-C       Modified  5/1996 by CJC                
+C       Modified  5/1996 by CJC
 C
 C       Modified  5/1998 by CJC for OpenMP thread-safety
 C
@@ -53,7 +53,7 @@ C       Modified 10/2003 by CJC:  log all 13 lines of NOTICE (instead of
 C       only lines 1:11); update release date; I/O API version moves to
 C       CSTATE3 variable VERSN3
 C
-C       Modified 12/2003 by CJC:  Hack "CALL INITBLK3" to deal with 
+C       Modified 12/2003 by CJC:  Hack "CALL INITBLK3" to deal with
 C       failure of SGI version 7.4 compilers to follow industry standards;
 C       re-structuring with INITLOG3() and removal of calls to M3MSG2()
 C       to avoid problems with nested critical sections.
@@ -63,6 +63,17 @@ C
 C       Modified 2/2006 by CJC:  char*512 EQNAME (instead of 256)
 C
 C       Modified 10/2006 by CJC: fix "STDOUT" logging bug
+C
+C       Modified 03/2010 by CJC: F90 changes for I/O API v3.1
+C
+C       Modified 10/2013 by CJC:  More F90 changes
+C
+C       Modified 12/2013 by CJC: Conditional preprocessor-code
+C       to implement  IARGC() and GETARG() for compilers
+C       ("gfortran" versions 4.8 and later, to be exact) that insist on
+C       enforcing F2003-only and breaking industry-standard usage.
+C
+C       Modified 01/2015 by CJC:  update LGPL link
 C***********************************************************************
 
       IMPLICIT NONE
@@ -80,42 +91,31 @@ C...........   INCLUDES:
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER         INITLOG3, JUNIT, TRIMLEN
+        INTEGER, EXTERNAL :: ENVINT, INITLOG3, JUNIT
+        LOGICAL, EXTERNAL :: ENVYN
+        EXTERNAL          :: INITBLK3        !!  initialize STATE3 commons
 
-        EXTERNAL        INITLOG3, JUNIT, TRIMLEN
-        EXTERNAL        INITBLK3        !!  initialize STATE3 commons
 
+C...........   PARAMETERs:
 
-C...........   SAVED LOCAL VARIABLES and their descriptions:
-C...........   NOTE:  the ANSI standard requires the use of SAVE statements
-C...........   for variables which must retain their values from call to call.
-
-        CHARACTER*16    SCENFILE
-        DATA            SCENFILE / 'SCENFILE        ' /
-
-        CHARACTER*64    NOTICE( 17 )
-        DATA            NOTICE
-     &   / 
-     &' ',
-     &'This program uses the EPA-AREAL/MCNC-EnvPgms/BAMS Models-3',
-     &'I/O Applications Programming Interface, [I/O API] which is ' ,
-     &'built on top of the netCDF I/O library (Copyright 1993, 1996',
-     &'University Corporation for Atmospheric Research/Unidata '    ,
-     &'Program) and the PVM parallel-programming library (from',
-     &'Oak Ridge National Laboratory).  Copyright (C) 1992-2002 MCNC' , 
-     &'and Carlie J. Coats, Jr., and 2003-2006 Baron Advanced' , 
-     &'Meteorological Systems, LLC and released under the GNU LGPL' , 
-     &'License, version 2.1.  See URL' , 
-     &' ',
-     &'    http://www.baronams.com/products/ioapi/LGPL.txt',
-     &' ',
-     &'for conditions of use.',
-     &' ',
-     &'Library release tag: $JDate: 2012262 $', 
-     &' '
-     &   / 
-
-        SAVE            SCENFILE, NOTICE
+        CHARACTER*16, PARAMETER:: SCENFILE = 'SCENFILE'
+        CHARACTER*64, PARAMETER :: NOTICE( 15 ) = (/
+     &'                                                              ',
+     &'This program uses the EPA-AREAL/MCNC-EnvPgms/BAMS Models-3    ',
+     &'I/O Applications Programming Interface, [I/O API] which is    ',
+     &'built on top of the netCDF I/O library (Copyright 1993, 1996  ',
+     &'University Corporation for Atmospheric Research/Unidata       ',
+     &'Program) and the PVM parallel-programming library (from       ',
+     &'Oak Ridge National Laboratory).  Copyright (C) 1992-2002 MCNC,',
+     &'(C) 1992-2013 Carlie J. Coats, Jr., and (C) 2003-2012 Baron   ',
+     &'Advanced Meteorological Systems, LLC and released under the   ',
+     &'GNU LGPL  License, version 2.1.  See URL                      ',
+     &'                                                              ',
+     &'    https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html   ',
+     &'                                                              ',
+     &'for conditions of use.                                        ',
+     &'                                                              '
+     &   /)
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -126,12 +126,9 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 
         CHARACTER *80 VARVER
         CHARACTER *80 NCFVER
-        CHARACTER *80 IOAPILIBVER
-        PARAMETER (   IOAPILIBVER =
-     &             '$Id: @(#) ioapi library version 3.0'
-!    &             // VERSION
-!$   &             // ' OpenMP enabled'
-     &             // ' $' )
+        CHARACTER *80, PARAMETER :: IOAPILIBVER =
+     &'ioapi-3.1: ' //
+     &'$Id:: init3.F 321 2016-02-26 16:00:20Z coats                $ '
 #ifdef IOAPICPL
         CHARACTER *80 IOCPLVER
         CHARACTER *80 PVMVER
@@ -173,26 +170,26 @@ C   begin body of subroutine  INIT3
      &    'Version with PARMS3.EXT/PARAMETER::MXVARS3=', MXVARS3
 
         WRITE( LOGDEV,'( 5X, A )' )
-     &          ( NOTICE( I ), I = 1, 17 ),
-     &          VERSN3( 1:TRIMLEN( VERSN3 ) ),
-     &          VARVER( 1:TRIMLEN( VARVER ) ),
+     &          ( NOTICE( I ), I = 1, 15 ),
+     &          TRIM( VERSN3 ),
+     &          TRIM( VARVER ),
 #ifdef          IOAPICPL
-     &          'IOCPL version '//IOCPLVER( 1:TRIMLEN(IOCPLVER ) ),
-     &          'PVM   version '//PVMVER(   1:TRIMLEN(PVMVER   ) ),
+     &          'IOCPL version '// TRIM( IOCPLVER ),
+     &          'PVM   version '// TRIM( PVMVER   ),
 #endif
-     &          'netCDF version '// NCFVER( 1:TRIMLEN( NCFVER ) ),
+     &          'netCDF version '// TRIM( NCFVER ),
      &          ' '
 
         IF ( .NOT.STDOUT ) THEN  !  also log this info to the screen:
 
-            WRITE( 6,'( 5X, A )' ) 
-     &          ( NOTICE( I ), I = 1, 17 ),
-     &          VERSN3( 1:TRIMLEN( VERSN3 ) ),
+            WRITE( 6,'( 5X, A )' )
+     &          ( NOTICE( I ), I = 1, 15 ),
+     &          TRIM( VERSN3 ),
 #ifdef IOAPICPL
-     &          'IOCPL version '//IOCPLVER( 1:TRIMLEN(IOCPLVER ) ),
-     &          'PVM   version '//PVMVER(   1:TRIMLEN(PVMVER   ) ),
+     &          'IOCPL version '// TRIM( IOCPLVER ),
+     &          'PVM   version '// TRIM( PVMVER   ),
 #endif
-     &          'netCDF version '// NCFVER( 1:TRIMLEN( NCFVER ) ),
+     &          'netCDF version '// TRIM( NCFVER ),
      &          ' '
 	    CALL FLUSH( 6 )
 
@@ -219,11 +216,11 @@ C   begin body of subroutine  INIT3
                 GO TO  12
             END IF
             DO  11  I = 1 , MXDESC3
-                READ( IDEV, '( A )', END=12, IOSTAT=IOST ) 
+                READ( IDEV, '( A )', END=12, IOSTAT=IOST )
      &              SCNDSC( I )
                 IF ( IOST .NE. 0 ) THEN
                     WRITE( LOGDEV,91020 )
-     &              'Error reading scenario file.  Error number', 
+     &              'Error reading scenario file.  Error number',
      &              IOST,
      &              'File: ', EQNAME
                     GO TO  12   ! escape this loop
@@ -244,7 +241,7 @@ C   begin body of subroutine  INIT3
             EXECN3 = CMISS3
         ELSE
             WRITE( LOGDEV, '( 5X, 2 A )'  )
-     &         'EXECUTION_ID: ', EXECN3( 1:TRIMLEN( EXECN3 ) )
+     &         'EXECUTION_ID: ', TRIM( EXECN3 )
         END IF
 
 
@@ -284,20 +281,12 @@ C******************  FORMAT  STATEMENTS   ******************************
 
 C...........   Error and warning message formats..... 91xxx
 
-91010   FORMAT ( //5X , '*** ERROR ABORT in subroutine INIT3 ***',
-     &            /5X , A , I3, :,
-     &            /5X , A , A , // )
-
 91020   FORMAT ( //5X , '>>> WARNING in subroutine INIT3 <<<',
      &            /5X , A , I3, :,
      &            /5X , A , A , // )
 
-91030   FORMAT ( //5X , '>>> WARNING in subroutine INIT3 <<<',
-     &            /5X , A , I3, :,
-     &            /5X , A , A , // )
 
-
-        END
+        END FUNCTION INIT3
 
 C-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -307,6 +296,41 @@ C-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         IMPLICIT NONE
         INTEGER IDEV
         RETURN
-        END
+        END SUBROUTINE FLUSH
+
+#endif
+
+#ifdef   NEED_ARGS
+
+        !!  needed by "gfortran" version 4.8 or later, which
+        !!  do not support industry-standard command line
+        !!  argument processing.
+
+        INTEGER FUNCTION IARGC()
+        IMPLICIT NONE
+        IARGC = COMMAND_ARGUMENT_COUNT()
+        RETURN
+        END  FUNCTION IARGC
+
+        SUBROUTINE GETARG( N, VALUE )
+            INTEGER,      INTENT(IN   ) :: N
+            CHARACTER(*), INTENT(  OUT) :: VALUE
+
+            INTEGER         LENGTH, ISTAT
+            CHARACTER*256   MESG
+
+            CALL GET_COMMAND_ARGUMENT( N, VALUE, LENGTH, ISTAT )
+            IF ( ISTAT .LT. 0 ) THEN
+                WRITE( MESG, '( 2( A, I10, 2X ) )' )
+     &             'GETARG:  result truncated from', LENGTH,
+     &             'to', LEN( VALUE )
+                CALL M3MESG( MESG )
+            ELSE IF ( ISTAT .GT. 0 ) THEN
+                CALL M3MESG( 'GETARG:  failure' )
+            END IF
+
+            RETURN
+
+        END SUBROUTINE GETARG
 
 #endif

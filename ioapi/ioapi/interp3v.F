@@ -1,19 +1,18 @@
-C.........................................................................
-C Version "@(#)$Header$"
-C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2004 Baron Advanced Meteorological Systems
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
+C
 #ifdef IOAPICPL
 
       LOGICAL FUNCTION INTERP3V( FID, VID, JDATE, JTIME, BUFFER )
 
 C***********************************************************************
-C  function body          starts at line   86
-C  Worker routine VIR2BUF starts at line  193
+C Version "$Id: interp3v.F 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
+C  function body          starts at line   81
+C  Worker routine VIR2BUF starts at line  188
 C
 C  FUNCTION:
 C       Set up INTERP3 for virtual files
@@ -53,14 +52,10 @@ C...........   ARGUMENTS and their descriptions:
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-      LOGICAL       CURRSTEP    !  finds start of timestep
-      INTEGER       SECSDIFF    !  computes date&time differences
-      INTEGER       TIME2SEC    !  converts time to seconds
-
-      EXTERNAL  CURRSTEP, SECSDIFF, TIME2SEC
-
-      LOGICAL           VIR2BUF
-      EXTERNAL          VIR2BUF
+      LOGICAL, EXTERNAL :: CURRSTEP    !  finds start of timestep
+      INTEGER, EXTERNAL :: SECSDIFF    !  computes date&time differences
+      INTEGER, EXTERNAL :: TIME2SEC    !  converts time to seconds
+      LOGICAL, EXTERNAL :: VIR2BUF
 
 
 

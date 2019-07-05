@@ -1,10 +1,10 @@
 
-        LOGICAL FUNCTION  CHKFIL3( FID )
+        LOGICAL FUNCTION CHKFIL3( FID )
 
 C***********************************************************************
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
-C (C) 2003-2007 by Baron Advanced Meteorological Systems.
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
@@ -35,6 +35,7 @@ C       Modified  8/2007 by CJC:  support same-set/different-order
 C       variables-lists.
 C       Modified 11/2007 by CJC:  Revert from 8/2007:  same-set/different-order
 C       is bogus
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
@@ -49,17 +50,14 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         FID             !  subscript for STATE3 arrays
+        INTEGER, INTENT(IN   ) :: FID             !  subscript for STATE3 arrays
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        LOGICAL		CKNAME
-        INTEGER         INDEX1  !  name-table lookup
-        INTEGER         JSTEP3  !  record number within a timestep sequence.
-        INTEGER         TRIMLEN !  length after trimming trailing blanks.
-
-        EXTERNAL        CKNAME, JSTEP3, TRIMLEN
+        LOGICAL, EXTERNAL :: CKNAME
+        INTEGER, EXTERNAL :: INDEX1  !  name-table lookup
+        INTEGER, EXTERNAL :: JSTEP3  !  record number within a timestep sequence.
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -452,6 +450,6 @@ C...........   Error and warning message formats..... 91xxx
      &        2 ( /5X , A , 1PE12.5 , : ),
      &            /5X , A , I9 )
 
-        END
+        END FUNCTION CHKFIL3
 
  

@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/YEAR4.html,v 1.1.1.1 2001/12/05 20:25:42 coats Exp $ -->
+<!-- "$Id: YEAR4.html 83 2014-12-29 14:31:32Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> YEAR4() </TITLE>
 </HEAD>
@@ -15,14 +15,10 @@
 
 <H1>    YEAR4() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
     INTEGER FUNCTION  YEAR4( YY )
-        INTEGER   YY
+        INTEGER, INTENT(IN   ) :: YY
 </PRE><P> 
 
 <H2> C version: </H2>

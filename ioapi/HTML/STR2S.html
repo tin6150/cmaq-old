@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/STR2S.html,v 1.1.1.1 2001/12/05 20:25:40 coats Exp $ -->
+<!-- "$Id: STR2S.html 83 2014-12-29 14:31:32Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> STR2S() </TITLE>
 </HEAD>
@@ -15,10 +15,6 @@
 
 <H1>    <VAR>STR2INT(), STR2REAL()</VAR>, and <VAR>STR2DBLE()</VAR></H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 
 <PRE>
@@ -26,7 +22,7 @@ by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
     INTEGER FUNCTION STR2INT(  ASTRING )
     REAL    FUNCTION STR2REAL( ASTRING )
     REAL*8  FUNCTION STR2DBLE( ASTRING )
-        CHARACTER*(*)   ASTRING  !  string to find effective length for
+        CHARACTER*(*), INTENT(IN   ) :: ASTRING  !  string to find effective length for
 </PRE><P>    
 
 <H2> NO C versions </H2>
@@ -36,19 +32,20 @@ by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 
 <H2> Summary: </H2>
 
-    Returns the <CODE>INTEGER</CODE> or <CODE>REAL</CODE> value decoded
-    from <CODE>ASTRING</CODE>, or <CODE>IMISS3</CODE>
-    or <CODE>BADVAL3</CODE> from 
-    <CODE><A HREF = "INCLUDE.html#parms">PARMS3.EXT</A></CODE> (as
+    Returns the <CODE>INTEGER</CODE>, <CODE>REAL</CODE>, or
+    <CODE>DOUBLE PRECISION</CODE> value decoded from
+    <CODE>ASTRING</CODE>, or <CODE>IMISS3</CODE> or <CODE>BADVAL3</CODE>
+    from  <CODE><A HREF = "INCLUDE.html#parms">PARMS3.EXT</A></CODE> (as
     appropriate) for "missing" or badly-formatted inputs. Skips leading
     whitespace (defined as ASCII characters less than or equal to the
-    BLANK/SPACE character; terminates input at the first nondigit or
-    the first non-exponent-designator, for <CODE>STR2REAL</CODE>.
-    <CODE>SCANINT()</CODE> returns the INTEGER value (equivalent to
-    <CODE>VALUE=STR2INT(ASTRING)</CODE>, and also returns the total
-    number <CODE>NCHARS</CODE> of characters consumed (including
-    whitespace) and the number <CODE>NDIGITS</CODE> of digit and/or
-    leading sign characters
+    BLANK/SPACE character; terminates input at the first nondigit or the
+    first non-exponent-designator, for <CODE>STR2REAL</CODE>.
+    <P>
+    <CODE>SCANINT()</CODE> returns the <CODE>INTEGER&nbsp;VALUE</CODE>
+    (equivalent to <CODE>VALUE=STR2INT(ASTRING)</CODE>, and also returns
+    the total number <CODE>NCHARS</CODE> of characters consumed
+    (including whitespace) and the number <CODE>NDIGITS</CODE> of digit
+    and/or leading sign characters.
     <P> 
 
         
@@ -74,13 +71,11 @@ by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 
 <PRE>
     ...
-    INCLUDE 'PARMS3.EXT'
+    USE M3UTILIO
     ...
     CHARACTER*256  ASTRING, BSTRING
     INTEGER        L
     REAL           R
-    INTEGER        STR2INT
-    EXTERNAL       STR2INT
     ...
     L = STR2INT( ASTRING )
     IF ( L .EQ. IMISS3 ) THEN

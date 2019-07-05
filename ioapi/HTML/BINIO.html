@@ -3,7 +3,7 @@
 
 <HTML> 
 <HEAD>
-<!-- @(#)$Header$ -->
+<!-- "$Id: BINIO.html 6 2014-03-20 17:30:58Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> 
     IOAPI Binary-Mode
@@ -20,10 +20,6 @@
 <H1>
     I/O&nbsp;API Binary-Mode Design and Implementation
 </H1>
-
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
 
     <!-- There are no tyops in this web page. -->
     <!--text of body for article  -->
@@ -153,7 +149,7 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 
    </UL>
 
-   <H3> Remarks on Implementation Strategy</H2>
+   <H3> Remarks on Implementation Strategy</H3>
 
     <UL>
        <LI>  Implementation is in C, interfacing to Fortran in the same
@@ -236,14 +232,14 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
         <DD> represented by a 4-byte string, in little-Endian order:
              <BLOCKQUOTE>
                  <STRONG><CODE>BYTE_0(X)</CODE></STRONG> contains
-                 <CODE>(unsigned&nbsp;char)(X&&255)</CODE>,
+                 <CODE>(unsigned&nbsp;char)(X&amp;&amp;255)</CODE>,
                  i.e.,  the least significant byte of X<BR>
                  <STRONG><CODE>BYTE_1(X)</CODE></STRONG> contains
-                 <CODE>(unsigned&nbsp;char)((X/256)&&255)</CODE><BR>
+                 <CODE>(unsigned&nbsp;char)((X/256)&amp;&amp;255)</CODE><BR>
                  <STRONG><CODE>BYTE_2(X)</CODE></STRONG> contains
-                 <CODE>(unsigned&nbsp;char)((X/65536)&&255)</CODE><BR>
+                 <CODE>(unsigned&nbsp;char)((X/65536)&amp;&amp;255)</CODE><BR>
                  <STRONG><CODE>BYTE_3(X)</CODE></STRONG> contains
-                 <CODE>(unsigned&nbsp;char)((X/16777216)&&255)</CODE><BR>
+                 <CODE>(unsigned&nbsp;char)((X/16777216)&amp;&amp;255)</CODE><BR>
              </BLOCKQUOTE>
         <DT> <STRONG><CODE>REAL</CODE></STRONG>
         <DD> represented by a character string formatted with format
@@ -581,9 +577,9 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 
 
 Send comments to 
-<A HREF = "mailto:carlie.coats@baronams.com"> <ADDRESS> 
+<A HREF = "mailto:cjcoats@email.unc.edu"> <ADDRESS> 
           Carlie J. Coats, Jr. <br> 
-          carlie.coats@baronams.com  </ADDRESS> </A><P> 
+          cjcoats@email.unc.edu  </ADDRESS> </A><P> 
 
 <!--#include virtual="/INCLUDES/footer.html" -->
 </BODY>      <!--end body  -->

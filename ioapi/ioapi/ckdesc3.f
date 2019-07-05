@@ -4,11 +4,11 @@
 C***********************************************************************
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C 2003-2008 by Baron Advanced Meteorological Systems.
+C 2003-2011 by Baron Advanced Meteorological Systems.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  function body starts at line  105
+C  function body starts at line  100
 C
 C  RETURNS:
 C       If environment variable IOAPI_CHECK_HEADERS begins with 'Y' or 'y',
@@ -40,8 +40,10 @@ C       Modified  5/2006 by CJC:  Support for VGTYP = VGWRFEM, as reported
 C       by Tanya Otte, US EPA
 C       Modified  6/2006 by CJC:  restructuring; support for VGTYP = VGWRFNM;
 C       format problem reported by Tanya Otte.
-C       Modified  7/2008 by CJC:  add support for EQMGRD3, TRMGRD3, 
+C       Modified  7/2008 by CJC:  add support for EQMGRD3, TRMGRD3,
 C       ALBGRD3, LEQGRD3
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
+C       Bug-fix  04/2011 in format 94030  from Matt Turner, UC Boulder.
 C***********************************************************************
 
       IMPLICIT NONE
@@ -56,38 +58,31 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*16    FNAME
+        CHARACTER*(*), INTENT(IN   ) :: FNAME
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        LOGICAL         CKNAME  !  checks legality of variable-names
-        LOGICAL         ENVYN   !  get Y/N from environment
-        INTEGER         INDEX1  !  string search
-        INTEGER         TRIMLEN !  length after trimming trailing blanks.
-
-        EXTERNAL        CKNAME, ENVYN, INDEX1, TRIMLEN
+        LOGICAL, EXTERNAL :: CKNAME  !  checks legality of variable-names
+        LOGICAL, EXTERNAL :: ENVYN   !  get Y/N from environment
+        INTEGER, EXTERNAL :: INDEX1  !  string search
 
 
 C...........   PARAMETER
 
-        CHARACTER*16	BLANK, AIR_LAT, AIR_LON, AIR_ELV
-        PARAMETER     ( BLANK    = ' ' ,
-     &                  AIR_LAT  = 'AIR_LAT' ,
-     &                  AIR_LON  = 'AIR_LON' ,
-     &                  AIR_ELV  = 'AIR_ELV' )
+        CHARACTER*16, PARAMETER :: BLANK    = ' '
+        CHARACTER*16, PARAMETER :: AIR_LAT  = 'AIR_LAT'
+        CHARACTER*16, PARAMETER :: AIR_LON  = 'AIR_LON'
+        CHARACTER*16, PARAMETER :: AIR_ELV  = 'AIR_ELV'
 
 
 C...........   SAVED LOCAL VARIABLES and their descriptions:
 C...........   NOTE:  the ANSI standard requires the use of SAVE statements
 C...........   for variables which must retain their values from call to call.
-        
-        LOGICAL         CHKHDR
-        LOGICAL         FIRSTIME
-        DATA            FIRSTIME / .TRUE. /
-        CHARACTER*19    ENVCHK
-        DATA            ENVCHK   / 'IOAPI_CHECK_HEADERS' /
-        SAVE            CHKHDR, FIRSTIME, ENVCHK
+
+        LOGICAL, SAVE :: CHKHDR
+        LOGICAL, SAVE :: FIRSTIME = .TRUE.
+        CHARACTER*19  :: ENVCHK   = 'IOAPI_CHECK_HEADERS'
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -101,7 +96,7 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 
 C***********************************************************************
 C   begin body of function  CKDESC3
-            
+
         IF ( FIRSTIME ) THEN
 
             FIRSTIME = .FALSE.
@@ -109,7 +104,7 @@ C   begin body of function  CKDESC3
             CALL M3MSG2( BLANK )
             CHKHDR   = ENVYN( ENVCHK, 'Perform file-header checks?',
      &                       .FALSE., ENVSTAT )
-         
+
             IF ( ENVSTAT .GT. 0 ) THEN
                 MESG = 'Invalid value for environment vble "' //
      &                 ENVCHK // '"'
@@ -123,9 +118,9 @@ C...........   Checks for duplicates in the variable-list
 
         IF ( NVARS3D .LT. 0 ) THEN
 
-            WRITE( MESG, 94010 ) 
+            WRITE( MESG, 94010 )
      &          'Illegal negative number of variables:', NVARS3D,
-     &          'for file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &          'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
 
@@ -135,12 +130,12 @@ C...........   Checks for duplicates in the variable-list
             DO  V = 1, U-1
                 IF( VNAME3D( U ) .EQ. VNAME3D( V ) ) THEN
 
-                    WRITE( MESG, 94030 ) 
+                    WRITE( MESG, 94030 )
      &              'Variable name VNAME3D(', U, ') = "' //
-     &              VNAME3D( U )( 1:TRIMLEN( VNAME3D( U ) ) ) //
+     &              TRIM( VNAME3D( U ) ) //
      &              '" duplicates VNAME3D(', V, ') = "' //
-     &              VNAME3D( V )( 1:TRIMLEN( VNAME3D( V ) ) ) // 
-     &              '" in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              TRIM( VNAME3D( V ) ) //
+     &              '" in file "' // TRIM( FNAME ) // '"'
 
                     CALL M3MSG2( MESG )
                     EFLAG = .TRUE.
@@ -149,12 +144,12 @@ C...........   Checks for duplicates in the variable-list
 
             END DO
             END DO
- 
+
         END IF          !  if nvars3d < 0
 
 
 C.......   If not chkhdr, just return TRUE:
-        
+
         IF ( .NOT. CHKHDR ) THEN
             CKDESC3 = .TRUE.
             RETURN
@@ -178,31 +173,28 @@ C...........   First:  file type and type-specific dimension checks:
         ELSE IF ( FTYPE3D .EQ. CUSTOM3 ) THEN
 
             IF ( NCOLS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad blob-size NCOLS', NCOLS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
-        ELSE IF ( FTYPE3D .EQ. GRDDED3  .OR. 
+        ELSE IF ( FTYPE3D .EQ. GRDDED3  .OR.
      &            FTYPE3D .EQ. TSRIES3  ) THEN
 
             IF ( NCOLS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad NCOLS', NCOLS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( NROWS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad NROWS', NROWS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -210,43 +202,38 @@ C...........   First:  file type and type-specific dimension checks:
         ELSE IF ( FTYPE3D .EQ. PTRFLY3 ) THEN	! "exotic" grdded3
 
             IF ( NCOLS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad NCOLS', NCOLS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( NROWS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad NROWS', NROWS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( INDEX1( AIR_LAT, NVARS3D, VNAME3D ) .LE. 0 ) THEN
                 MESG = 'Variable AIR_LAT not found in ' //
-     &                  'PTRFLY3-type file "' // 
-     &                  FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &                  'PTRFLY3-type file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( INDEX1( AIR_LON, NVARS3D, VNAME3D ) .LE. 0 ) THEN
                 MESG = 'Variable AIR_LON not found in ' //
-     &                  'PTRFLY3-type file "' // 
-     &                  FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &                  'PTRFLY3-type file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( INDEX1( AIR_ELV, NVARS3D, VNAME3D ) .LE. 0 ) THEN
                 MESG = 'Variable AIR_ELV not found in ' //
-     &                  'PTRFLY3-type file "' // 
-     &                  FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &                  'PTRFLY3-type file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -254,28 +241,25 @@ C...........   First:  file type and type-specific dimension checks:
         ELSE IF ( FTYPE3D .EQ. BNDARY3 ) THEN
 
             IF ( NCOLS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad NCOLS', NCOLS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( NROWS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad NROWS', NROWS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( ABS( NTHIK3D ) .GT. 1+MIN( NCOLS3D, NROWS3D ) ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad boundary width NTHIK', NTHIK3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -283,10 +267,9 @@ C...........   First:  file type and type-specific dimension checks:
         ELSE IF ( FTYPE3D .EQ. IDDATA3 ) THEN
 
             IF ( NROWS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad max site count NROWS', NROWS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -294,19 +277,17 @@ C...........   First:  file type and type-specific dimension checks:
         ELSE IF ( FTYPE3D .EQ. PROFIL3 ) THEN
 
             IF ( NROWS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad max site count NROWS', NROWS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( NCOLS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad max level count NCOLS', NCOLS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -314,19 +295,17 @@ C...........   First:  file type and type-specific dimension checks:
         ELSE IF ( FTYPE3D .EQ. GRNEST3 ) THEN
 
             IF ( NCOLS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad max cell-count NCOLS', NCOLS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( NROWS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad max nest count NROWS', NROWS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -334,28 +313,25 @@ C...........   First:  file type and type-specific dimension checks:
         ELSE IF ( FTYPE3D .EQ. SMATRX3 ) THEN
 
             IF ( NCOLS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad max matrix coeff-count NCOLS', NCOLS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( NROWS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad matrux NROWS', NROWS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( NTHIK3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad full-matrix col-count NTHIK', NTHIK3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -363,28 +339,26 @@ C...........   First:  file type and type-specific dimension checks:
         ELSE IF ( FTYPE3D .EQ. KFEVNT3 ) THEN
 
             IF ( NCOLS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad NCOLS', NCOLS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( NROWS3D .LE. 0 ) THEN
-                WRITE( MESG, 94010 ) 
+                WRITE( MESG, 94010 )
      &              'Bad NROWS', NROWS3D,
-     &              'for file "' // 
-     &              FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
         ELSE
 
-            WRITE( MESG, 94010 ) 
+            WRITE( MESG, 94010 )
      &          'Illegal file type:', FTYPE3D,
-     &          'for file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &          'for file "' // TRIM( FNAME ) // '"'
             CALL M3WARN( 'CKDESC3', 0, 0, MESG )
             CKDESC3 = .FALSE.
             RETURN
@@ -396,9 +370,9 @@ C...........   Next, checks on the variable-list
 
         IF ( NVARS3D .EQ. 0 ) THEN         !  _is_ legal, but unusual
 
-            WRITE( MESG, 94010 ) 
+            WRITE( MESG, 94010 )
      &          'WARNING:  number of variables:', NVARS3D,
-     &          'for file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &          'for file "' // TRIM( FNAME ) // '"'
             CALL M3MSG2( MESG )
 
         END IF
@@ -407,21 +381,19 @@ C...........   Next, checks on the variable-list
 
             IF ( .NOT. CKNAME( VNAME3D( U ) ) ) THEN
                 WRITE( MESG, 94000 )
-     &              'Illegal variable name "' ,
-     &              VNAME3D( U )( 1:TRIMLEN( VNAME3D( U ) ) ), 
-     &              '" in file ', FNAME( 1:TRIMLEN( FNAME ) ), '"'
+     &              'Illegal variable name "' , TRIM( VNAME3D( U ) ),
+     &              '" in file ', TRIM( FNAME ), '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
             IF ( VTYPE3D( U ) .LT. M3INT  .OR.
      &           VTYPE3D( U ) .GT. M3DBLE ) THEN
-        
+
                 WRITE( MESG, 94010 )
      &              'Illegal data type ', VTYPE3D( U ),
-     &              'for variable "' //
-     &              VNAME3D( U )( 1:TRIMLEN( VNAME3D( U ) ) ) // 
-     &              '" in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'for variable "' // TRIM( VNAME3D( U ) ) //
+     &              '" in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
 
@@ -429,11 +401,11 @@ C...........   Next, checks on the variable-list
 
             IF ( UNITS3D( U )        .EQ. BLANK  .OR.
      &           UNITS3D( U )( 1:1 ) .EQ. CHAR( 0 ) ) THEN
-        
+
                 WRITE( MESG, 94000 )
      &              'No UNITS specifier for variable "',
-     &              VNAME3D( U )( 1:TRIMLEN( VNAME3D( U ) ) ),
-     &              '" in file "', FNAME( 1:TRIMLEN( FNAME ) ), '"'
+     &              TRIM( VNAME3D( U ) ),
+     &              '" in file "', TRIM( FNAME ), '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
 
@@ -445,12 +417,12 @@ C...........   Next, checks on the variable-list
 C...........   Checks on the horizontal coordinate description:
 
         IF ( GDTYP3D .EQ. LATGRD3 ) THEN
-        
+
             IF ( XORIG3D .LT. -180.0D0 .OR.
      &           XORIG3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad grid origin', XORIG3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -459,7 +431,7 @@ C...........   Checks on the horizontal coordinate description:
      &           YORIG3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad grid origin', YORIG3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -470,7 +442,7 @@ C...........   Checks on the horizontal coordinate description:
      &           XCENT3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', XCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -479,7 +451,7 @@ C...........   Checks on the horizontal coordinate description:
      &           YCENT3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', YCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -488,7 +460,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_ALP3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-ALPHA', P_ALP3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -497,7 +469,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_BET3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-BETA', P_BET3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -506,7 +478,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_GAM3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-GAMMA', P_GAM3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -517,7 +489,7 @@ C...........   Checks on the horizontal coordinate description:
      &           XCENT3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', XCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -526,7 +498,7 @@ C...........   Checks on the horizontal coordinate description:
      &           YCENT3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', YCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -535,7 +507,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_ALP3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-ALPHA', P_ALP3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -544,7 +516,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_BET3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-BETA', P_BET3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -553,7 +525,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_GAM3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-GAMMA', P_GAM3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -564,7 +536,7 @@ C...........   Checks on the horizontal coordinate description:
      &           XCENT3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', XCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -573,7 +545,7 @@ C...........   Checks on the horizontal coordinate description:
      &           YCENT3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', YCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -582,7 +554,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_ALP3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-ALPHA', P_ALP3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -591,7 +563,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_BET3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-BETA', P_BET3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -602,7 +574,7 @@ C...........   Checks on the horizontal coordinate description:
      &           XCENT3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', XCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -611,7 +583,7 @@ C...........   Checks on the horizontal coordinate description:
      &           YCENT3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', YCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -619,7 +591,7 @@ C...........   Checks on the horizontal coordinate description:
             IF ( ABS( ABS( P_ALP3D ) - 1.D0 ) .GT. 1.0E-5 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-ALPHA', P_ALP3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -628,7 +600,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_BET3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-BETA', P_BET3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -637,7 +609,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_GAM3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-GAMMA', P_GAM3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -646,11 +618,11 @@ C...........   Checks on the horizontal coordinate description:
 
             IF ( P_ALP3D .LT.  0.9D0 .OR.
      &           P_ALP3D .GT. 36.1D0 .OR.
-     &           ABS( P_ALP3D - 
+     &           ABS( P_ALP3D -
      &                DBLE( NINT( P_ALP3D ) ) ) .GT. 0.01 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-ALPHA', P_ALP3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -661,7 +633,7 @@ C...........   Checks on the horizontal coordinate description:
      &           XCENT3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', XCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -670,7 +642,7 @@ C...........   Checks on the horizontal coordinate description:
      &           YCENT3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', YCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -679,7 +651,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_ALP3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-ALPHA', P_ALP3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -688,7 +660,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_GAM3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-GAMMA', P_GAM3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -699,7 +671,7 @@ C...........   Checks on the horizontal coordinate description:
      &           XCENT3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', XCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -708,7 +680,7 @@ C...........   Checks on the horizontal coordinate description:
      &           YCENT3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', YCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -717,7 +689,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_GAM3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-GAMMA', P_GAM3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -728,7 +700,7 @@ C...........   Checks on the horizontal coordinate description:
      &           XCENT3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', XCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -737,7 +709,7 @@ C...........   Checks on the horizontal coordinate description:
      &           YCENT3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', YCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -746,7 +718,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_ALP3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-ALPHA', P_ALP3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -755,7 +727,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_BET3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-BETA', P_BET3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -764,7 +736,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_GAM3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-GAMMA', P_GAM3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -775,7 +747,7 @@ C...........   Checks on the horizontal coordinate description:
      &           XCENT3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', XCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -784,7 +756,7 @@ C...........   Checks on the horizontal coordinate description:
      &           YCENT3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad X-Y origin', YCENT3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -793,7 +765,7 @@ C...........   Checks on the horizontal coordinate description:
      &           P_ALP3D .GT.  90.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-ALPHA', P_ALP3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
@@ -802,24 +774,23 @@ C...........   Checks on the horizontal coordinate description:
      &           P_GAM3D .GT.  180.0D0 ) THEN
                 WRITE( MESG, 94020 )
      &              'Bad PROJ-GAMMA', P_GAM3D,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
             END IF
 
         ELSE IF ( GDTYP3D .EQ. IMISS3  ) THEN   !  "other" -- legal but unusual
 
-            WRITE( MESG, 94010 ) 
-     &          'WARNING:  Horizontal grid/coordinate type:', GDTYP3D, 
-     &          '"MISSING"  in file "' // 
-     &          FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+            WRITE( MESG, 94010 )
+     &          'WARNING:  Horizontal grid/coordinate type:', GDTYP3D,
+     &          '"MISSING"  in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
 
         ELSE    !  illegal grid type
 
-            WRITE( MESG, 94010 ) 
+            WRITE( MESG, 94010 )
      &         'Illegal horizontal grid/coordinate type:', GDTYP3D,
-     &         'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &         'in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
                 EFLAG = .TRUE.
 
@@ -830,9 +801,9 @@ C...........   Checks on the vertical coordinate description:
 
         IF ( NLAYS3D .LT. 1 .AND. FTYPE3D .GE. CUSTOM3 ) THEN
 
-            WRITE( MESG, 94010 ) 
+            WRITE( MESG, 94010 )
      &         'Illegal vertical layer dimension:', NLAYS3D,
-     &         'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &         'in file "' // TRIM( FNAME ) // '"'
             CALL M3MSG2( MESG )
             EFLAG = .TRUE.
 
@@ -858,7 +829,7 @@ C...........   Checks on the vertical coordinate description:
 
                     WRITE( MESG, 94010 )
      &              'Bad layer monotonicity at layer', L,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &              'in file "' // TRIM( FNAME ) // '"'
 
                     CALL M3MSG2( MESG )
                     EFLAG = .TRUE.
@@ -869,10 +840,9 @@ C...........   Checks on the vertical coordinate description:
 
         ELSE IF ( VGTYP3D .EQ. IMISS3  ) THEN   !  "other" -- legal but unusual
 
-            WRITE( MESG, 94010 ) 
+            WRITE( MESG, 94010 )
      &          'WARNING:  Vertical grid/coordinate type:', VGTYP3D,
-     &          '"MISSING" in file "' // 
-     &          FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &          '"MISSING" in file "' // TRIM( FNAME ) // '"'
                 CALL M3MSG2( MESG )
 
             INCREASING = ( VGLVS3D( 2 ) .GT. VGLVS3D( 1 ) )
@@ -884,8 +854,8 @@ C...........   Checks on the vertical coordinate description:
 
                     WRITE( MESG, 94010 )
      &              'Bad layer monotonicity at layer', L,
-     &              'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
-   
+     &              'in file "' // TRIM( FNAME ) // '"'
+
                     CALL M3MSG2( MESG )
                     EFLAG = .TRUE.
 
@@ -895,15 +865,15 @@ C...........   Checks on the vertical coordinate description:
 
         ELSE    !  illegal grid type
 
-            WRITE( MESG, 94010 ) 
+            WRITE( MESG, 94010 )
      &         'Unknown vertical grid/coordinate type:', VGTYP3D,
-     &         'in file "' // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
+     &         'in file "' // TRIM( FNAME ) // '"'
             CALL M3MSG2( MESG )
             EFLAG = .TRUE.
 
         END IF  !  if  vgtyp3d = vgsgph3, etc.
-      
-           
+
+
 C...........   Set function value and return:
 
         IF ( EFLAG ) THEN
@@ -925,8 +895,8 @@ C...........   Internal buffering formats............ 94xxx
 
 94020   FORMAT( A, 1PG14.7, :, 2X, A )
 
-94030   FORMAT( 4 ( A, I2, :, 2X ) )
+94030   FORMAT( 4 ( A, I5, :, 2X ) )
 
 
-        END
+        END FUNCTION CKDESC3
 

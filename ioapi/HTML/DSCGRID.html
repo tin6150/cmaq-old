@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/DSCGRID.html,v 1.1.1.1 2001/12/05 20:25:26 coats Exp $ -->
+<!-- "$Id: DSCGRID.html 83 2014-12-29 14:31:32Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> DSCGRID() and DSCOORD() </TITLE>
 </HEAD>
@@ -14,34 +14,36 @@
       MARGINWIDTH="15">
 <H1>    DSCGRID() and DSCOORD() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
     LOGICAL FUNCTION DSCGRID( 
  &amp;              GNAME,  CNAME,
  &amp;              CTYPE, P_ALP, P_BET, P_GAM, XCENT, YCENT,
  &amp;              XORIG, YORIG, XCELL, YCELL, NCOLS, NROWS, NTHIK )
+        CHARACTER*(*), INTENT(IN   ) :: GNAME	!  grid  sys name
+        CHARACTER*(*), INTENT(  OUT) :: CNAME	!  coord sys name
+        INTEGER,       INTENT(  OUT) :: CTYPE	!  coord sys type
+        REAL*8 ,       INTENT(  OUT) :: P_ALP	!  first, second, third map
+        REAL*8 ,       INTENT(  OUT) :: P_BET	!  projection descriptive
+        REAL*8 ,       INTENT(  OUT) :: P_GAM	!  parameters
+        REAL*8 ,       INTENT(  OUT) :: XCENT	!  lon for coord-system X=0
+        REAL*8 ,       INTENT(  OUT) :: YCENT	!  lat for coord-system Y=0
+        REAL*8 ,       INTENT(  OUT) :: XORIG	!  X-coordinate origin of grid (map units)
+        REAL*8 ,       INTENT(  OUT) :: YORIG	!  Y-coordinate origin of grid
+        REAL*8 ,       INTENT(  OUT) :: XCELL	!  X-coordinate cell dimension
+        REAL*8 ,       INTENT(  OUT) :: YCELL	!  Y-coordinate cell dimension
+        INTEGER,       INTENT(  OUT) :: NCOLS	!  number of grid columns
+        INTEGER,       INTENT(  OUT) :: NROWS	!  number of grid rows
+        INTEGER,       INTENT(  OUT) :: NTHIK	!  BOUNDARY:  perimeter thickness (cells)
 
     ENTRY   DSCOORD( CNAME, CTYPE, P_ALP, P_BET, P_GAM, XCENT, YCENT )
-
-        CHARACTER*(*) GNAME     !  grid  sys name
-        CHARACTER*(*) CNAME     !  coord sys name
-        INTEGER       CTYPE     !  coord sys type
-        REAL*8        P_ALP     !  first, second, third map
-        REAL*8        P_BET     !  projection descriptive
-        REAL*8        P_GAM     !  parameters
-        REAL*8        XCENT     !  lon for coord-system X=0
-        REAL*8        YCENT     !  lat for coord-system Y=0
-        REAL*8        XORIG     !  X-coordinate origin of grid (map units)
-        REAL*8        YORIG     !  Y-coordinate origin of grid
-        REAL*8        XCELL     !  X-coordinate cell dimension
-        REAL*8        YCELL     !  Y-coordinate cell dimension
-        INTEGER       NCOLS     !  number of grid columns
-        INTEGER       NROWS     !  number of grid rows
-        INTEGER       NTHIK     !  BOUNDARY:  perimeter thickness (cells)
+        CHARACTER*(*), INTENT(IN   ) :: CNAME	!  coord sys name
+        INTEGER      , INTENT(  OUT) :: CTYPE	!  coord sys type
+        REAL*8       , INTENT(  OUT) :: P_ALP	!  first, second, third map
+        REAL*8       , INTENT(  OUT) :: P_BET	!  projection descriptive
+        REAL*8       , INTENT(  OUT) :: P_GAM	!  parameters
+        REAL*8       , INTENT(  OUT) :: XCENT	!  lon for coord-system X=0
+        REAL*8       , INTENT(  OUT) :: YCENT	!  lat for coord-system Y=0
 </PRE><P>    
 
 <H2> C version: </H2>

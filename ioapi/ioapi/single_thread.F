@@ -1,5 +1,11 @@
 C================================================================
 C @(#)$Header$
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
 C
 C     The next 3 functions: read3v, write3v, and shut3v
 C     need a OpenMP critical section around them to ensure
@@ -11,7 +17,14 @@ C     variables in the FDESC common block
 C
 C       Modified 9/2004 by CJC for virtual INTERP bug-fix: change to
 C       READ3V and WRITE3V interfaces
+C
+C       Modified 6/2016 by CJC:  INTENT; conditionally compiles
+C       only  if  IOAPICPL is defined:  Edward Anderson (Lockheed Martin, 
+C       supporting the U.S. EPA) points out this is troublesome
+C       for shared-library construction otherwise.
 C================================================================
+
+#ifdef IOAPICPL
 
       LOGICAL FUNCTION READ3V( FID, VID, SKIP, COUNT,
      $                         JDATE, JTIME, BUFFER )
@@ -24,17 +37,16 @@ C================================================================
 
 C.....Arguments
 
-      INTEGER        FID, VID
-      INTEGER        SKIP
-      INTEGER        JDATE
-      INTEGER        JTIME
-      INTEGER        COUNT
-      REAL           BUFFER(*)
+      INTEGER, INTENT(IN   ) :: FID, VID
+      INTEGER, INTENT(IN   ) :: SKIP
+      INTEGER, INTENT(IN   ) :: JDATE
+      INTEGER, INTENT(IN   ) :: JTIME
+      INTEGER, INTENT(IN   ) :: COUNT
+      REAL   , INTENT(  OUT) :: BUFFER(*)
 
 C.....Function prototype
 
-      LOGICAL        READ3V_ST
-      EXTERNAL       READ3V_ST
+      LOGICAL, EXTERNAL :: READ3V_ST
 
 !$OMP CRITICAL( S_PVM )
       READ3V = READ3V_ST( PLIST3(FID), VLIST3(VID,FID), SKIP,
@@ -42,7 +54,8 @@ C.....Function prototype
      $                       VTYPE3( VID,FID ) )
 !$OMP END CRITICAL( S_PVM )
       RETURN
-      END
+      END FUNCTION READ3V
+
 C================================================================
 
       LOGICAL FUNCTION WRITE3V( FID, VID,
@@ -56,14 +69,14 @@ C================================================================
 
 C.....Arguments
 
-      INTEGER        FID, VID
-      INTEGER        JDATE
-      INTEGER        JTIME
-      REAL           BUFFER(*)
+      INTEGER, INTENT(IN   ) :: FID, VID
+      INTEGER, INTENT(IN   ) :: JDATE
+      INTEGER, INTENT(IN   ) :: JTIME
+      REAL   , INTENT(IN   ) :: BUFFER(*)
 
 C.....Function prototype
-      LOGICAL        WRITE3V_ST
-      EXTERNAL       WRITE3V_ST
+
+      LOGICAL, EXTERNAL :: WRITE3V_ST
 
 !$OMP CRITICAL( S_PVM )
       WRITE3V = WRITE3V_ST( PLIST3(FID), VLIST3(VID,FID),
@@ -72,7 +85,8 @@ C.....Function prototype
      &                      VTYPE3( VID,FID ) )
 !$OMP END CRITICAL( S_PVM )
       RETURN
-      END
+      END FUNCTION WRITE3V
+
 C================================================================
 
       LOGICAL FUNCTION SHUT3V()
@@ -83,15 +97,17 @@ C.....Arguments
 
 C.....Function prototype
 
-      LOGICAL        SHUT3V_ST
-      EXTERNAL       SHUT3V_ST
+      LOGICAL, EXTERNAL :: SHUT3V_ST
 
 !$OMP CRITICAL( S_PVM )
       SHUT3V = SHUT3V_ST()
 !$OMP END CRITICAL( S_PVM )
       RETURN
-      END
+      END FUNCTION SHUT3V
+
 C================================================================
+
+#endif      /*  ifdef IOAPICPL   */
 
 
 

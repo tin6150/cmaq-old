@@ -1,21 +1,19 @@
 
-C.........................................................................
-C Version "@(#)$Header$"
-C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003 Baron Advanced Meteorological Systems
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
         LOGICAL FUNCTION   RDATT3( FNAME, VNAME, ANAME, ATYPE, AMAX,
      &                             ASIZE, AVAL )
         IMPLICIT NONE
         LOGICAL            RDATTC
 
 C***********************************************************************
-C  subroutine body starts at line   88
-C   Entry  RDATTC  starts at line  105
+C Version "$Id: rdatt3.f 1 2014-03-14 20:22:54Z coats $"
+C BAMS/MCNC/EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
+C (C) 2003-2011 Baron Advanced Meteorological Systems
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
+C  subroutine body starts at line   86
+C   Entry  RDATTC  starts at line  103
 C
 C  FUNCTION:
 C       Reads the attribute named ANAME for the variable VNAME in the
@@ -24,7 +22,7 @@ C       global attribute ANAME.
 C       AVAL must have type ATYPE, which should be one of M3REAL, M3INT, or
 C       M3DBLE.
 C
-C       CHARACTER-string attributes use 
+C       CHARACTER-string attributes use
 C               ENTRY   RDATTC( FNAME, VNAME, ANAME, CVAL )
 C
 C  PRECONDITIONS REQUIRED:
@@ -38,6 +36,8 @@ C       prototype 1/2002 by Carlie J. Coats, Jr., MCNC-EMC
 C
 C       Modified 7/2003 by CJC:  bugfix -- clean up critical sections
 C       associated with INIT3()
+C
+C       Modified 9/2013 by CJC:  Fortran-90 stuff; use NAME2FID()
 C***********************************************************************
 
 C...........   INCLUDES:
@@ -49,34 +49,35 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)   FNAME         !  logical file name
-        CHARACTER*(*)   VNAME         !  variable name, or ALLVARS3
-        CHARACTER*(*)   ANAME         !  attribute name
-        INTEGER         ATYPE         !  attribute type (M3REAL, M3INT, M3DBLE)
-        INTEGER         AMAX          !  attribute dimensionality
-        INTEGER         ASIZE         !  attribute actual size
-        REAL            AVAL( AMAX )  !  attribute value (numeric)
-        CHARACTER*(*)   CVAL          !  attribute value (character-string)
+        CHARACTER*(*), INTENT(IN   ) :: FNAME         !  logical file name
+        CHARACTER*(*), INTENT(IN   ) :: VNAME         !  variable name, or ALLVARS3
+        CHARACTER*(*), INTENT(IN   ) :: ANAME         !  attribute name
+        INTEGER      , INTENT(IN   ) :: ATYPE         !  attribute type (M3REAL, M3INT, M3DBLE)
+        INTEGER      , INTENT(IN   ) :: AMAX          !  attribute dimensionality
+        INTEGER      , INTENT(  OUT) :: ASIZE         !  attribute actual size
+        REAL         , INTENT(  OUT) :: AVAL( AMAX )  !  attribute value (numeric)
+        CHARACTER*(*), INTENT(  OUT) :: CVAL          !  attribute value (character-string)
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER         INIT3      !  Initialize I/O API
-        INTEGER         INDEX1     !  look up names in name tables
-        INTEGER         TRIMLEN    !  trimmed string length
-
-        EXTERNAL  INIT3, INDEX1, TRIMLEN
+        INTEGER, EXTERNAL :: INIT3      !  Initialize I/O API
+        INTEGER, EXTERNAL :: INDEX1     !  look up names in name tables
+        INTEGER, EXTERNAL :: NAME2FID   !  fname~~> fid lookup
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 
         INTEGER         F, V            !  subscripts for STATE3 arrays
         INTEGER         FID, VID        !  netCDF ID's
+        INTEGER         VLEN            !  name length for vble
         INTEGER         IERR            !  netCDF error status return
         INTEGER         ATYP, ITYP, ALEN
         LOGICAL         EFLAG
+        CHARACTER*16    PNAME
         CHARACTER*16    FIL16           !  scratch file-name buffer
         CHARACTER*16    VAR16           !  scratch vble-name buffer
+        CHARACTER*16    ATT16           !  scratch  att-name buffer
         CHARACTER*256   MESG            !  message-buffer
 
 
@@ -84,14 +85,13 @@ C***********************************************************************
 C   begin body of subroutine  RDATT3
 
 C...........   Check attribute type
-            
-        IF ( ( ATYPE .NE. NF_CHAR  ) .AND. 
-     &       ( ATYPE .NE. NF_INT   ) .AND. 
-     &       ( ATYPE .NE. NF_FLOAT ) .AND. 
+
+        IF ( ( ATYPE .NE. NF_INT   ) .AND.
+     &       ( ATYPE .NE. NF_FLOAT ) .AND.
      &       ( ATYPE .NE. NF_DOUBLE  ) ) THEN
 
-            WRITE( MESG , '( 3 A, I10 )' ) 
-     &           'RDATT3:  Attribute "'  , ANAME, 
+            WRITE( MESG , '( 3 A, I10 )' )
+     &           'RDATT3:  Attribute "'  , ANAME,
      &           '" has unsupported type', ATYPE
             CALL M3WARN( 'RDATT3', 0, 0, MESG )
             RDATT3 = .FALSE.
@@ -99,82 +99,53 @@ C...........   Check attribute type
 
         END IF
 
-        ITYP = ATYPE
+        ITYP  = ATYPE
+        PNAME = 'RDATT3'
         GO TO 111
-        
+
         ENTRY RDATTC( FNAME, VNAME, ANAME, CVAL )
-        ITYP = NF_CHAR
+        ITYP   = NF_CHAR
+        PNAME = 'RDATT3C'
+
         !! fall through to  111
 
 111     CONTINUE
 
-C.......   Check that Models-3 I/O has been initialized:
 
-        EFLAG = .FALSE.
-!$OMP   CRITICAL( S_INIT )
-        IF ( .NOT. FINIT3 ) THEN
-            LOGDEV = INIT3()
-            EFLAG  = .TRUE.
-        END IF          !  if not FINIT3
-!$OMP   END CRITICAL( S_INIT )
-        IF ( EFLAG ) THEN
-            RDATT3 = .FALSE.
-            CALL M3WARN( 'RDATT3', 0,0, 'I/O API not yet initialized' )
-            RETURN
+        VLEN  = LEN_TRIM( VNAME )
+        F     = NAME2FID( FNAME )
+
+        IF ( F .LE. 0 ) THEN
+            EFLAG = .TRUE.
+        ELSE IF ( CDFID3( F ) .LT. 0 ) THEN
+            EFLAG = .TRUE.
+            MESG  = 'File:  "' // FIL16 // '" is NOT A NetCDF file.'
+            CALL M3MSG2( MESG )
+        ELSE
+            EFLAG = .FALSE.
         END IF
 
-        IF ( TRIMLEN( FNAME ) .GT. NAMLEN3 ) THEN
+        IF ( VLEN .GT. NAMLEN3 ) THEN
             EFLAG = .TRUE.
-            MESG  = 'File "'// FNAME // '" Variable "'// VNAME // '"'
-            CALL M3MSG2( MESG )
-            WRITE( MESG, '( A , I10 )' )
-     &          'Max file name length 16; actual:', TRIMLEN( FNAME )
-            CALL M3MSG2( MESG )
-        END IF          !  if len( fname ) > 16
-
-        IF ( TRIMLEN( VNAME ) .GT. NAMLEN3 ) THEN
-            EFLAG = .TRUE.
-            MESG  = 'File "'// FNAME// '" Variable "'// VNAME // '"'
-            CALL M3MSG2( MESG )
             WRITE( MESG, '( A, I10 )'  )
-     &          'Max vble name length 16; actual:', TRIMLEN( VNAME )
+     &          'Max vble name length 16; actual:', VLEN
             CALL M3MSG2( MESG )
         END IF          !  if len( vname ) > 16
-        
+
         IF ( EFLAG ) THEN
             MESG = 'Invalid variable or file name arguments'
-            CALL M3WARN( 'RDATT3', 0, 0, MESG )
+            CALL M3WARN( PNAME, 0, 0, MESG )
             RDATT3 = .FALSE.
             RETURN
         END IF
 
         VAR16 = VNAME   !  fixed-length-16 scratch copy of name
         FIL16 = FNAME   !  fixed-length-16 scratch copy of name
-
-        F     = INDEX1( FIL16, COUNT3, FLIST3 )
-
-        IF ( F .EQ. 0 ) THEN  !  file not available
-
-            MESG = 'File "'// FIL16 // '" not yet opened.'
-            CALL M3WARN( 'RDATT3', 0, 0, MESG )
-            RDATT3 = .FALSE.
-            RETURN
-
-        ELSE IF ( CDFID3( F ) .LT. 0 ) THEN
-
-            MESG = 'File:  "' // FIL16 // '" is NOT A NetCDF file.'
-            CALL M3WARN( 'RDATT3', 0, 0, MESG )
-            RDATT3 = .FALSE.
-            RETURN
-
-        ELSE
-
-            FID = CDFID3( F )
-
-        END IF          !  if file not opened, or if readonly, or if volatile
+        ATT16 = ANAME   !  fixed-length-16 scratch copy of name
+        FID   = CDFID3( F )
 
 C...........   Get ID for variable(s) to be read.
-            
+
         IF ( VAR16 .EQ. ALLVAR3 ) THEN
 
             VID = NCGLOBAL
@@ -185,7 +156,7 @@ C...........   Get ID for variable(s) to be read.
             IF ( V .EQ. 0 ) THEN
                 MESG = 'Variable "'      // VAR16 //
      &                 '" not in file "' // FIL16 // '"'
-                CALL M3WARN( 'RDATT3', 0, 0, MESG )
+                CALL M3WARN( PNAME, 0, 0, MESG )
                 RDATT3 = .FALSE.
                 RETURN
             ELSE
@@ -209,7 +180,7 @@ C...........   one can't execute a RETURN within a critical section.
             MESG = 'Error inquiring type&size for attribute "' //
      &             ANAME // '" for file "' // FNAME //
      &             '" and vble "' // VNAME // '"'
-            CALL M3WARN( 'RDATT3', 0, 0, MESG )
+            CALL M3WARN( PNAME, 0, 0, MESG )
             EFLAG = .TRUE.
 
         ELSE IF ( ITYP .NE. ATYP ) THEN
@@ -217,20 +188,20 @@ C...........   one can't execute a RETURN within a critical section.
             MESG = 'Bad type for attribute "' //
      &             ANAME // '" for file "' // FNAME //
      &             '" and vble "' // VNAME // '"'
-            CALL M3WARN( 'RDATT3', 0, 0, MESG )
+            CALL M3WARN( PNAME, 0, 0, MESG )
             EFLAG = .TRUE.
 
         ELSE IF ( ITYP .EQ. NF_CHAR ) THEN
 
             IF ( ALEN .GT. LEN( CVAL ) ) THEN
 
-                MESG = 'Bad size for CHAR attribute "' // ANAME // 
+                MESG = 'Bad size for CHAR attribute "' // ANAME //
      &             '" for file "' // FNAME //
      &             '" and vble "' // VNAME // '"'
-                CALL M3WARN( 'RDATT3', 0, 0, MESG )
+                CALL M3WARN( PNAME, 0, 0, MESG )
                 EFLAG = .TRUE.
 
-            ELSE 
+            ELSE
 
                 IERR = NF_GET_ATT_TEXT( FID, VID, ANAME, CVAL )
 
@@ -240,10 +211,10 @@ C...........   one can't execute a RETURN within a critical section.
 
             IF ( ALEN .GT. AMAX ) THEN
 
-                MESG = 'Bad size for nonCHAR attribute "' // ANAME // 
+                MESG = 'Bad size for nonCHAR attribute "' // ANAME //
      &             '" for file "' // FNAME //
      &             '" and vble "' // VNAME // '"'
-                CALL M3WARN( 'RDATT3', 0, 0, MESG )
+                CALL M3WARN( PNAME, 0, 0, MESG )
                 EFLAG = .TRUE.
 
             ELSE IF ( ITYP .EQ. NF_INT ) THEN
@@ -259,6 +230,7 @@ C...........   one can't execute a RETURN within a critical section.
                 IERR = NF_GET_ATT_DOUBLE( FID, VID, ANAME, AVAL )
 
             END IF
+            ASIZE = ALEN
 
         END IF  !  if ierr; else if type-mismatch; else char; else...
 
@@ -272,7 +244,7 @@ C...........   one can't execute a RETURN within a critical section.
             MESG = 'Error reading attribute "' // ANAME //
      &             '" for file "' // FNAME //
      &             '" and vble "' // VNAME // '"'
-            CALL M3WARN( 'RDATT3', 0, 0, MESG )
+            CALL M3WARN( PNAME, 0, 0, MESG )
         END IF          !  ierr nonzero:  NCAPTC) failed
         IF ( ITYP .EQ. NF_CHAR ) THEN
             RDATTC = ( .NOT. EFLAG )
@@ -282,5 +254,5 @@ C...........   one can't execute a RETURN within a critical section.
 
         RETURN
 
-        END
+        END FUNCTION RDATT3
 

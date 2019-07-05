@@ -1,11 +1,13 @@
-# @(#)$Header$
-#
+# VERSION "$Id: Makeinclude.Linux2_ia64ifortdbg 1 2014-03-14 20:22:54Z coats $"
+
 AR   = ar
 CC   = icc
 FC   = ifort -auto -cm -w95 -warn notruncated_source
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
+
+MODI = -J       ## Module-include-directory command
 
 MFLAGS    = -tpp2 -traceback
 

@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/FINDS.html,v 1.1.1.1 2001/12/05 20:25:27 coats Exp $ -->
+<!-- "$Id: FINDS.html 83 2014-12-29 14:31:32Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> FIND*() </TITLE>
 </HEAD>
@@ -17,44 +17,68 @@
         FINDR1(), FINDR2(), FINDR3(), FINDR4() 
 </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 
 <H2> Fortran version: </H2>
+<STRONG>Generic version:</STRONG>  compiler selects the appropriate
+type-specific form depending upon the number and types of the keys and
+key-lists:
+
 <PRE>
-    INTEGER FUNCTION FINDC( KEY,N, LIST )
+    INTEGER FUNCTION FINDKEY( KEY1[,...,] N, LIST1[,...] )
+        INTEGER  N              !   table size
+        &lt;type&gt;   KEY1[, ...]
+        &lt;type&gt;   LIST1(N)[, ...]
+</PRE><P> 
+
+<STRONG>Type-specific forms:</STRONG>
+<PRE>
+    INTEGER FUNCTION FINDC( KEY,N, CLIST )
+
     INTEGER FUNCTION FIND1( K1, N, LIST1 )
     INTEGER FUNCTION FIND2( K1, K2, N, LIST1, LIST2 )
     INTEGER FUNCTION FIND3( K1, K2, K3, N, LIST1, LIST2, LIST3 )
     INTEGER FUNCTION FIND4( K1, K2, K3, K4, 
- &amp                          N, LIST1, LIST2, LIST3, LIST4 )
+ &amp;                          N, LIST1, LIST2, LIST3, LIST4 )
+
+    INTEGER FUNCTION FIND1( L1, N, LLST1 )
+    INTEGER FUNCTION FIND2( L1, L2, N, LLST1, LLST2 )
+    INTEGER FUNCTION FIND3( L1, L2, L3, N, LLST1, LLST2, LLST3 )
+    INTEGER FUNCTION FIND4( L1, L2, L3, L4, 
+ &amp;                          N, LLST1, LLST2, LLST3, LLST4 )
 
     INTEGER FUNCTION FINDR1( X1, N, XLST1 )
     INTEGER FUNCTION FINDR2( X1, X2, N, XLST1, XLST2 )
     INTEGER FUNCTION FINDR3( X1, X2, X3, N, XLST1, XLST2, XLST3 )
     INTEGER FUNCTION FINDR4( X1, X2, X3, X4, 
- &amp                          N, XLST1, XLST2, XLST3, XLST4 )
-        CHARACTER*(*)  KEY       !  key
-        INTEGER  K1              !  first  key
-        INTEGER  K2              !  second key
-        INTEGER  K3              !  third  key
-        INTEGER  K4              !  fourth key
-        INTEGER  N               !  table size
-        CHARACTER*(*)  LIST( N ) !  table to search for KEY
-        INTEGER  LIST1( N )      !  table to search for K1
-        INTEGER  LIST2( N )      !  table to search for K2
-        INTEGER  LIST3( N )      !  table to search for K3
-        INTEGER  LIST4( N )      !  table to search for K4
-        INTEGER  X1              !  first  key
-        INTEGER  X2              !  second key
-        INTEGER  X3              !  third  key
-        INTEGER  X4              !  fourth key
-        INTEGER  XLST1( N )      !  table to search for K1
-        INTEGER  XLST2( N )      !  table to search for K2
-        INTEGER  XLST3( N )      !  table to search for K3
-        INTEGER  XLST4( N )      !  table to search for K4
+ &amp;                          N, XLST1, XLST2, XLST3, XLST4 )
+
+        CHARACTER*(*), INTENT(IN   ) :: KEY           !  key string
+        INTEGER      , INTENT(IN   ) :: K1            !  first  key
+        INTEGER      , INTENT(IN   ) :: K2            !  second key
+        INTEGER      , INTENT(IN   ) :: K3            !  third  key
+        INTEGER      , INTENT(IN   ) :: K4            !  fourth key
+        INTEGER(8)   , INTENT(IN   ) :: L1            !  first  Ley
+        INTEGER(8)   , INTENT(IN   ) :: L2            !  second Ley
+        INTEGER(8)   , INTENT(IN   ) :: L3            !  third  Ley
+        INTEGER(8)   , INTENT(IN   ) :: L4            !  fourth Ley
+        REAL         , INTENT(IN   ) :: X1            !  first  key
+        REAL         , INTENT(IN   ) :: X2            !  second key
+        REAL         , INTENT(IN   ) :: X3            !  third  key
+        REAL         , INTENT(IN   ) :: X4            !  fourth key
+        INTEGER      , INTENT(IN   ) :: N             !  table size
+        CHARACTER*(*), INTENT(IN   ) :: CLIST( N )    !  table to search for KEY
+        INTEGER      , INTENT(IN   ) :: LIST1( N )    !  table to search for K1
+        INTEGER      , INTENT(IN   ) :: LIST2( N )    !  table to search for K2
+        INTEGER      , INTENT(IN   ) :: LIST3( N )    !  table to search for K3
+        INTEGER      , INTENT(IN   ) :: LIST4( N )    !  table to search for K4
+        INTEGER(8)   , INTENT(IN   ) :: LLST1( N )    !  table to search for L1
+        INTEGER(8)   , INTENT(IN   ) :: LLST2( N )    !  table to search for L2
+        INTEGER(8)   , INTENT(IN   ) :: LLST3( N )    !  table to search for L3
+        INTEGER(8)   , INTENT(IN   ) :: LLST4( N )    !  table to search for L4
+        REAL         , INTENT(IN   ) :: XLST1( N )    !  table to search for X1
+        REAL         , INTENT(IN   ) :: XLST2( N )    !  table to search for X2
+        REAL         , INTENT(IN   ) :: XLST3( N )    !  table to search for X3
+        REAL         , INTENT(IN   ) :: XLST4( N )    !  table to search for X4
 </PRE><P> 
 
 <H2> C version:   </H2>
@@ -119,8 +143,9 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 
 <H2> Summary: </H2>
 
-    Return subscript at which the target character-string, integer, or
-    real key-tuple appears, or negative number in case of failure.
+    <STRONG>Binary key-tuple search</STRONG>  Return subscript at which
+    the target character-string, integer, or real key-tuple appears, or
+    negative number in case of failure.
     <P> 
 
     Fortran version returns Fortran subscript (1, ..., N); C version returns
@@ -129,13 +154,15 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
     <P>
     
     See also <A HREF = "SORTI.html">SORTIC, SORTI1, SORTI2, SORTI3, 
-    SORTI4, SORTR1, SORTR2, SORTR3, SORTR4</A> for sorting key-tuple 
-    tables, and <A HREF = "SORTI.html">LOCATC, LOCAT1, LOCAT2, LOCAT3, 
-    LOCAT4, LOCATR1, LOCATR2, LOCATR3, LOCATR4</A> for determining
-    where to insert entries into sorted  key-tuple tables.
+    SORTI4, SORTL1, SORTL2, SORTL3, SORTL4, SORTR1, SORTR2, SORTR3,
+    SORTR4</A> for sorting key-tuple  tables, and
+    <A HREF = "SORTI.html">LOCATC, LOCAT1, LOCAT2, LOCAT3,  LOCAT4, LOCATR1,
+    LOCATR2, LOCATR3, LOCATR4</A> for determining where to insert
+    entries into sorted  key-tuple tables.
     <P> 
 
-    For Fortran-90 declarations and interface checking:    
+    For Fortran-90 generic interface <CODE>FINDKEY()</CODE> and
+    declarations and interface checking:    
     <PRE>
     <A HREF = "M3UTILIO.html">USE M3UTILIO</A>
     </PRE><P>
@@ -154,8 +181,8 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 <H2> Fortran Usage: </H2>
 <PRE>
     ...
+    USE M3UTILIO
     ...
-    INTEGER  FIND2
     INTEGER  KEY1, KEY2
     INTEGER  I
     
@@ -168,16 +195,16 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
     !!          ...in this case, key will be found at location 2
     KEY1 = 1980
     KEY2 = 7
-    I = FIND2( KEY1, KEY2, 8, LIST1, LIST2 )
+    I = FIND2( KEY1, KEY2, 7, LIST1, LIST2 )
     IF ( I .LT. 0 ) THEN
         ... KEY not found in LIST1
     END IF
     ...
     
+    !!          ...generic:  compiler will select FIND1()
     !!          ...in this case, key will not not found:
-    KEY1 = 1985
-    KEY2 = 7
-    I = FIND2( KEY1, KEY2, 8, LIST1, LIST2 )
+    KEY1 = 1986
+    I = FINDKEY( KEY1, 7, LIST1 )
     IF ( I .LT. 0 ) THEN
         ... KEY not found in LIST1
     END IF

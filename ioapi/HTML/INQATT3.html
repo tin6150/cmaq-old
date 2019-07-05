@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/DESC3.html,v 1.1.1.1 2001/12/05 20:25:25 coats Exp $ -->
+<!-- "$Id: INQATT3.html 131 2015-01-26 14:03:44Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> DESC3() and desc3c() </TITLE>
 </HEAD>
@@ -14,21 +14,16 @@
       MARGINWIDTH="15">
 <H1>    INQATT3() and inqatt3c() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
-    LOGICAL FUNCTION INQATT3( FNAME, VNAME, MXATTS, 
- &                            NATTS, ANAMES, ATYPES, ASIZES )
-        CHARACTER*(*)   FNAME             !  logical file name
-        CHARACTER*(*)   VNAME             !  vble name, or ALLVARS3
-        INTEGER         MXATTS            !  max number of attributes
-        INTEGER         NATTS             !  number of actual attributes
-        CHARACTER*(*)   ANAMES( MXATTS ) !  attribute names
-        INTEGER         ATYPES( MXATTS ) !  " types (M3REAL, M3INT, M3DBLE)
-        INTEGER         ASIZES( MXATTS ) !  " size/length
+    LOGICAL FUNCTION INQATT3( FNAME, VNAME, MXATTS, NATTS, ANAMES, ATYPES, ASIZES )
+        CHARACTER*(*), INTENT(IN   ) :: FNAME             !  logical file name
+        CHARACTER*(*), INTENT(IN   ) :: VNAME             !  vble name, or ALLVARS3
+        INTEGER      , INTENT(IN   ) :: MXATTS            !  max number of attributes
+        INTEGER      , INTENT(  OUT) :: NATTS             !  number of actual attributes
+        CHARACTER*(*), INTENT(  OUT) :: ANAMES( MXATTS )  !  attribute names
+        INTEGER      , INTENT(  OUT) :: ATYPES( MXATTS )  !  " types (M3REAL, M3INT, M3DBLE)
+        INTEGER      , INTENT(  OUT) :: ASIZES( MXATTS )  !  " size/length
 </PRE><P> 
 
 <H2> C version: </H2>
@@ -70,6 +65,7 @@ int inqatt3c( const char          * fname ,
 
 <H2> Preconditions: </H2>
 
+    <CODE><A HREF = "M3UTILIO.html">USE M3UTILIO</A></CODE> or
     <A HREF = "INCLUDE.html#iodecl"> 
     <CODE>INCLUDE&nbsp;'IODECL3.EXT'</CODE> </A> for Fortran, or 
     <CODE>#include&nbsp;&quot;iodecl3.h&quot;</CODE> and 
@@ -102,6 +98,7 @@ int inqatt3c( const char          * fname ,
         <LI>  <A HREF = "WRATT3.html" >WRATT3() and WRATTC()</A>
         <LI>  <A HREF = "DESC3.html" >DESC3()</A>
         <LI>  <A HREF = "OPEN3.html" >OPEN3()</A>
+        <LI>  <A HREF = "M3ATTS.html" >MODULE&nbsp;M3ATTS</A>
     </UL>
     <P>
 

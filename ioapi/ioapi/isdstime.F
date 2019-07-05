@@ -2,14 +2,14 @@
         LOGICAL FUNCTION ISDSTIME( JDATE )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: isdstime.F 45 2014-09-12 20:05:29Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2007 Baron Advanced Meteorological Systems
+C (C) 2003-2010 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  function body starts at line  69
+C  function body starts at line  70
 C
 C  RETURNS:  
 C       TRUE iff Daylight Savings Time is in effect for JDATE,
@@ -34,25 +34,26 @@ C       Bugfix     7/2002 by CJC
 C
 C       Version 1/2007 by CJC:  update for 2007 Daylight Saving Time changes;
 C       handle negative JDATE arguments correctly
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         JDATE   !  Julian date, coded YYYYDDD
+        INTEGER, INTENT( IN ) :: JDATE   !  Julian date, coded YYYYDDD
 
 
 C...........   PARAMETERS and their descriptions:
 
-        INTEGER         APR1
-        INTEGER         OCT31
-
 #ifdef IO_360
-        PARAMETER     ( APR1  =  91 , OCT31 = 300 )
+        INTEGER, PARAMETER :: APR1  =  91
+        INTEGER, PARAMETER :: OCT31 = 300
 #endif
 #ifndef IO_360
-        PARAMETER     ( APR1  =  91 , OCT31 = 304 )
+        INTEGER, PARAMETER :: APR1  =  91
+        INTEGER, PARAMETER :: OCT31 = 304
 #endif
 
 
@@ -112,5 +113,5 @@ C.......   wkday = 1 + mod( k + day, 7 )
 
         RETURN
 
-        END
+        END FUNCTION ISDSTIME
 

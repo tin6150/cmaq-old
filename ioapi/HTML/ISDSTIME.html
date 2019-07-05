@@ -2,28 +2,24 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/ISDSTIME.html,v 1.1.1.1 2001/12/05 20:25:31 coats Exp $ -->
-<META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
+<!-- "$Id: ISDSTIME.html 138 2015-01-27 21:45:43Z coats $" -->
+<META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE">
 <TITLE> ISDSTIME() </TITLE>
 </HEAD>
 
-<BODY BGCOLOR="#FFFFFF" 
-      TOPMARGIN="15" 
-      MARGINHEIGHT="15" 
-      LEFTMARGIN="15" 
+<BODY BGCOLOR="#FFFFFF"
+      TOPMARGIN="15"
+      MARGINHEIGHT="15"
+      LEFTMARGIN="15"
       MARGINWIDTH="15">
 <H1>    ISDSTIME() </H1>
-
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
 
 
 <H2> Fortran version: </H2>
 <PRE>
     INTEGER FUNCTION  ISDSTIME( JDATE )
-        INTEGER   JDATE	!  Julian date (YYYYDDD)
-</PRE><P> 
+        INTEGER, INTENT(IN   ) :: JDATE	!  Julian date (YYYYDDD)
+</PRE><P>
 
 <H2> No C version:   </H2>
 
@@ -36,47 +32,54 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
     for DST.  Handles both pre-2007 (starts first Sunday in April, ends
     last Sunday in October) and 2007-and-after (second Sunday in March,
     first Sunday in November).
-    <P> 
+    <P>
 
-    See also subroutines 
-    <A HREF = "DAYMON.html"> DAYMON()</A>,
-    <A HREF = "HHMMSS.html"> HHMMSS()</A>,
-    <A HREF = "JULIAN.html"> JULIAN()</A>,
-    <A HREF = "MMDDYY.html"> MMDDYY()</A>,
-    <A HREF = "WKDAY.html">  WKDAY()</A>,
-    and <A HREF = "DT2STR.html"> DT2STR() </A> 
-    as well as EDSS/ Models-3 date-time manipulation programs
-    <A HREF = "GREGDATE.html"> <STRONG>gregdate</STRONG></A> and
-    <A HREF = "JULDATE.html">  <STRONG> juldate</STRONG></A>.
-    <P> 
-
-
-<H2> Preconditions:   </H2>
-
-    JDATE represented according to EDSS/Models-3 
-    <A HREF = "DATETIME.html"> date and time conventions </A>
-<P> 
-
-<H2> Fortran Usage: </H2>
-
-    For Fortran-90 declarations and interface checking:    
+    For Fortran-90 declarations and interface checking:
     <PRE>
     <A HREF = "M3UTILIO.html">USE M3UTILIO</A>
     </PRE><P>
 
+    <STRONG>See also</STRONG> subroutines
+    <BLOCKQUOTE>
+    <A HREF = "DAYMON.html"> DAYMON()</A>,<BR>
+    <A HREF = "HHMMSS.html"> HHMMSS()</A>,<BR>
+    <A HREF = "JULIAN.html"> JULIAN()</A>,<BR>
+    <A HREF = "MMDDYY.html"> MMDDYY()</A>,<BR>
+    <A HREF = "WKDAY.html">  WKDAY()</A>,<BR>
+    and <A HREF = "DT2STR.html"> DT2STR() </A><BR>
+    </BLOCKQUOTE>
+    as well as EDSS/ Models-3 date-time manipulation programs
+    <BLOCKQUOTE>
+    <A HREF = "GREGDATE.html"> <STRONG>gregdate</STRONG></A> and<BR>
+    <A HREF = "JULDATE.html">  <STRONG> juldate</STRONG></A>.
+    </BLOCKQUOTE>
+    <P>
+
+
+<H2> Preconditions:   </H2>
+
+    JDATE represented according to EDSS/Models-3
+    <A HREF = "DATETIME.html"> date and time conventions </A>
+<P>
+
+<H2> Fortran Usage: </H2>
+
 <PRE>
     ...
+    USE M3UTILIO
     ...
     LOGICAL   ISDSTIME
     INTEGER   JDATE
     ...
     IF ( ISDSTIME( JDATE ) ) THEN
-C	    ...daylight savings time in effect
-    ELSE    
-C	    ...daylight savings time NOT in effect
+        !!  ...daylight savings time in effect
+        ...
+    ELSE
+        !!  ...daylight savings time NOT in effect
+        ...
     END IF
     ...
-</PRE><P> 
+</PRE><P>
 
 
 
@@ -84,18 +87,18 @@ C	    ...daylight savings time NOT in effect
 
 <A HREF = "HHMMSS.html" >
 Previous:  <STRONG>HHMMSS</STRONG>
-</A><P> 
+</A><P>
 
 <A HREF = "JDATE3.html" >
 Next:  <STRONG>JDATE3</STRONG>
-</A><P> 
-
-<A HREF = "AA.html#datestuff"> 
-Up: <STRONG>Date-Time Manipulation Routines</STRONG> 
 </A><P>
 
-<A HREF = "AA.html"> 
-To: <STRONG>Models-3/EDSS I/O API:   The Help Pages</STRONG> 
+<A HREF = "AA.html#datestuff">
+Up: <STRONG>Date-Time Manipulation Routines</STRONG>
+</A><P>
+
+<A HREF = "AA.html">
+To: <STRONG>Models-3/EDSS I/O API:   The Help Pages</STRONG>
 </A><P>
 
 </BODY>

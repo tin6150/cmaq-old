@@ -1,4 +1,5 @@
-# @(#)$Header$
+# VERSION "$Id: Makeinclude.Linux2_x86_64g95 1 2014-03-14 20:22:54Z coats $"
+
 AR   = ar
 CC   = gcc
 FC   = g95
@@ -6,6 +7,8 @@ FC   = g95
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
+
+MODI = -I       ## Module-include-directory command
 
 MFLAGS    = -march=opteron -ffast-math -funroll-loops
 
@@ -22,5 +25,4 @@ ARCHLIB   = -lc
 # ARCHLIB   = -lc -lgfortran -lg2c
 
 M4DEFFILE = $(PVM_ROOT)/conf/$(PVM_ARCH).m4
-PVM_ARCH  = LINUXX86_64
 PVMLIBS   = -L$(PVM_ROOT)/lib/$(PVM_ARCH) -lpvm3

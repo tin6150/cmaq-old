@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/GRIDS.html,v 1.1.1.1 2001/12/05 20:25:30 coats Exp $ -->
+<!-- "$Id: GRIDS.html 6 2014-03-20 17:30:58Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> On The Definition of Grids and Coordinates for Models-3  </TITLE>
 </HEAD>
@@ -15,10 +15,6 @@
 <H1>    On The Definition of <A HREF = "#horiz"> Horizontal </A> and 
                              <A HREF = "#vert">  Vertical </A>
         Grids and Coordinates for Models-3  </H1>
-
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
 
         
 <H2> <A NAME = "horiz"> Horizontal </A> Coordinates and Grids </H2>
@@ -89,7 +85,19 @@ Capabilities of this software subsystem include the following:
     <LI>  Perform grid-to-grid data transformations of these
           types
 
-</UL><P> 
+</UL><P>
+
+<EM><STRONG>NOTE:</STRONG>  Longitudes are presumed to be in the range
+<CODE>[-180,180]</CODE>.  This is consistent with duly-enacted ISO
+Standard 6709, treaty obligations since 1878, and several centuries of
+common usage (as well as virtually all of the currently available GIS or
+mapping software).  Beware that the WMO with its GRIB &quot;standards&quot;
+violates all of these.  When you deal with WMO &quot;longitudes&quot;,
+you will have to write special-purpose modeling-code hacks to transform
+longitude-values into ISO-6709 compliant form.  Plotting WMO-style
+data against a map will be particularly troublesome; sorry.
+</EM>
+<P>
 
 The following types of coordinate systems are supported.  They are
 identified by the use of  <A HREF = "INCLUDE.html#magic"> &quot;magic

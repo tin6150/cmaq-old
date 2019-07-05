@@ -2,14 +2,14 @@
         INTEGER FUNCTION JSTEP3( JDATE, JTIME, SDATE, STIME, TSTEP )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: jstep3.F 45 2014-09-12 20:05:29Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2008 Baron Advanced Meteorological Systems
+C (C) 2003-2010 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  function body starts at line  82
+C  function body starts at line  72
 C
 C  FUNCTION:
 C       returns the timestep-record number corresponding to JDATE:JTIME
@@ -41,24 +41,24 @@ C       NY Division of Environmental Conservation:  be careful to avoid
 C       integer overflow, for climate modeling applications, etc.
 C       Gross simplification:  use result from (new no-overflow version
 C       of) CURREC()
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         JDATE   !  requested date YYYYDDD
-        INTEGER         JTIME   !  requested time HHMMSS
-        INTEGER         SDATE   !  starting date  YYYYDDD
-        INTEGER         STIME   !  starting time  HHMMSS
-        INTEGER         TSTEP   !  time step      H*MMSS
+        INTEGER, INTENT( IN ) :: JDATE   !  requested date YYYYDDD
+        INTEGER, INTENT( IN ) :: JTIME   !  requested time HHMMSS
+        INTEGER, INTENT( IN ) :: SDATE   !  starting date  YYYYDDD
+        INTEGER, INTENT( IN ) :: STIME   !  starting time  HHMMSS
+        INTEGER, INTENT( IN ) :: TSTEP   !  time step      H*MMSS
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER       CURREC    !  returns normalized cdate:ctime
-        EXTERNAL      CURREC
-
+        INTEGER, EXTERNAL :: CURREC    !  returns normalized cdate:ctime
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 
@@ -101,5 +101,5 @@ C   begin body of function  JSTEP3
 
         RETURN
 
-        END
+        END FUNCTION JSTEP3
 

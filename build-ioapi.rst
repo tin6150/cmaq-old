@@ -21,6 +21,13 @@ ioapi doc says ver 0.9 to 3.1 is upward compatible by concious effort.
 so, using that (3.2 has a few compatibility problem).
 https://www.cmascenter.org/ioapi/documentation/all_versions/html/AVAIL.html#v31
 
+rm -rf m3tools notcdf exclude Makefile* HTML iotests ioapi  README.txt VERSION.txt
+tar xfz ioapi-3.1.tar.gz 
+# rm ioapi 3.0 files first  cuz don't want files not in 3.1 to linger
+# and indeed there are quite a number per git status
+
+
+
 
 
 ISSUE

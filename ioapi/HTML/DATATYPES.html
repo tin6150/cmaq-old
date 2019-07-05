@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- "$Id: DATATYPES.html 90 2015-01-14 22:35:22Z coats $" -->
+<!-- "$Id: DATATYPES.html 179 2015-03-02 17:01:44Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> File and Data Types Supported by the I/O API </TITLE>
 </HEAD>
@@ -447,7 +447,7 @@ C........ create if necessary; otherwise perform consistency check):
 <P> 
 
     To form a matrix-vector product P = M * V in this representation,
-    use <A HREF="SMATVEC.html"></A><CODE>SMATVEC()</CODE></A>, which has
+    use <A HREF="SMATVEC.html"><CODE>SMATVEC()</CODE></A>, which has
     the following algorithm:
     <PRE> 
     ...
@@ -481,9 +481,9 @@ C........ create if necessary; otherwise perform consistency check):
     efficient, even as a serial code!) parallel algorithm:
     <PRE>
 !$OMP   PARALLEL DO
-!$OMP&    DEFAULT( NONE ),
-!$OMP&     SHARED( NROWS, CNT, IS, CS, U, V ),
-!$OMP&    PRIVATE( R, SUM )
+!$OMP&amp;    DEFAULT( NONE ),
+!$OMP&amp;     SHARED( NROWS, CNT, IS, CS, U, V ),
+!$OMP&amp;    PRIVATE( R, SUM )
 
     DO  R = 1, NROWS
         SUM = 0.0

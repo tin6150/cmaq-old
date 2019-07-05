@@ -1,15 +1,15 @@
 
-C.........................................................................
-C Version "@(#)$Header$"
-C EDSS/Models-3 I/O API.  Copyright (C) 1992-2002 MCNC
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
       INTEGER FUNCTION WKDAY( JDATE )
  
 C***********************************************************************
-C  function body starts at line  57
+C Version "$Id: wkday.F 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
+C  function body starts at line  58
 C
 C  RETURNS:
 C	day (1=Monday, ..., 7=Sunday) of the week for the given Julian date
@@ -25,6 +25,7 @@ C
 C       Unification 2/2002 by CJC with global-climate DAYMON, which
 C       uses a 360-day "year"
 C
+C       Modified 03/2010 by CJC: F90 changes for I/O API v3.1
 C***********************************************************************
  
       IMPLICIT NONE
@@ -32,17 +33,16 @@ C***********************************************************************
 
 C...........   ARGUMENTS and their descriptions:
 
-      INTEGER  JDATE	!  Julian date, YYYYDDD = 1000 * YEAR + DAY
+      INTEGER, INTENT(IN   ) :: JDATE	!  Julian date, YYYYDDD = 1000 * YEAR + DAY
 
 
 C...........   PARAMETERS and their descriptions:
 
-        INTEGER         YDAYS   !  "normal"-year # of days
 #ifdef IO_360
-        PARAMETER     ( YDAYS = 360 )
+        INTEGER, PARAMETER :: YDAYS = 360
 #endif
 #ifndef IO_360
-        PARAMETER     ( YDAYS = 365 )
+        INTEGER, PARAMETER :: YDAYS = 365
 #endif
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -62,5 +62,5 @@ C   begin body of function  WKDAY
       WKDAY = 1 + MOD (K, 7)
  
       RETURN
-      END
+      END FUNCTION WKDAY
 

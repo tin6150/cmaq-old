@@ -4,7 +4,7 @@
 C***********************************************************************
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2007 by Baron Advanced Meteorological Systems.
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
@@ -53,6 +53,8 @@ C
 C       Modified 11/2004 by CJC:  new "verbose-flag" argument
 C
 C       Modified 1/2007 by CJC:  improved error-messages; logic simplification
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
@@ -66,21 +68,19 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         FID             !  subscript for file in STATE3 arrays
-        INTEGER         VID             !  subscript for vble in STATE3 arrays
-        INTEGER         JDATE           !  date (YYYYDDD) for query
-        INTEGER         JTIME           !  time (HHMMSS) for query
-        INTEGER         STEP            !  time step record number
-        LOGICAL         VERBOSE
+        INTEGER, INTENT(INOUT) :: FID             !  subscript for file in STATE3 arrays
+        INTEGER, INTENT(IN   ) :: VID             !  subscript for vble in STATE3 arrays
+        INTEGER, INTENT(IN   ) :: JDATE           !  date (YYYYDDD) for query
+        INTEGER, INTENT(IN   ) :: JTIME           !  time (HHMMSS) for query
+        INTEGER, INTENT(  OUT) :: STEP            !  time step record number
+        LOGICAL, INTENT(IN   ) :: VERBOSE
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER         JSTEP3          !  compute time step record numbers
-        INTEGER         RDBFLAG         !  for BINFIL3 files
-        LOGICAL         SYNCFID
-
-        EXTERNAL        JSTEP3, RDBFLAG, SYNCFID
+        INTEGER, EXTERNAL :: JSTEP3          !  compute time step record numbers
+        INTEGER, EXTERNAL :: RDBFLAG         !  for BINFIL3 files
+        LOGICAL, EXTERNAL :: SYNCFID
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -310,5 +310,5 @@ C...........   Error and warning message formats..... 91xxx
 
 91030   FORMAT ( A , I6.6 )
 
-        END
+        END FUNCTION RDTFLAG
 

@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML> 
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/ERRORS.html,v 1.1.1.1 2001/12/05 20:25:27 coats Exp $ -->
+<!-- "$Id: ERRORS.html 81 2014-12-19 17:51:11Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> 
     I/O API Troubleshooting
@@ -20,10 +20,6 @@
     EDSS/Models-3 I/O&nbsp;API Troubleshooting
 </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2><A NAME="contents"> 
 
     Contents 
@@ -31,10 +27,14 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 </A></H2>
 
     <UL>
-         <LI>  <A HREF="#gfort"><VAR>gfortran</VAR> build issues</A>
+         <LI>  <A HREF="AVAIL.html#ncf4">netCDF Version&nbsp;4 issues</A>
+         <LI>  <A HREF="AVAIL.html#gfort"><VAR>gfortran</VAR> build issues</A>
          <LI>  <A HREF="#ccfc">Compiler/system-library compatibility issues</A>
+         <LI>  <A HREF="#g95"><VAR>g95</VAR> / recent-<VAR>gcc</VAR> link errors</A>
          <LI>  <A HREF="#pgi">Link errors with <VAR>pgf90</VAR> and
                 <VAR>ifort</VAR> on <VAR>Linux</VAR></A>
+         <LI>  <A HREF="#reloc"><VAR>relocation error</VAR> link issues
+                for <VAR>x86_64</VAR></A>
          <LI>  <A HREF="#gcc"><VAR>gcc/g77</VAR> on <VAR>x86_64</VAR>
                 Problems</A>
          <LI>  <A HREF="#irix">IRIX 7.4 Problems</A>
@@ -43,47 +43,29 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
          <LI>  <A HREF="#other">  Other Problems </A>
     </UL>
 
-
-<HR> <!----------------------------------------------------------------->
-
-<H2><A NAME="gfort"> 
-
-     <VAR>gfortran</VAR> build issues
-
-</A></H2>
-
-    For every version of <VAR>gfortran</VAR> to which I have access
-    (the latest of these available to me being 4.2.3-6), there are a
-    random set of the source files (starting with <CODE>bilin.f</CODE>)
-    for which the make-log seems to indicate the compile was
-    successful, but for which the object file is nowhere to be found. 
-    Eventually you see something like:
+<H3>NOTE</H3>
+    
+    If you run into troubles with I/O&nbsp;API related programs, it is 
+    useful to know the versions of all the software components.  The
+    CVS-related program <VAR>ident</VAR> can report to you versioning
+    keywords in the various components of object, library, or executable
+    files. For example:
     <PRE>
-ar: bilin.o: No such file or directory
+% cd $HOME/apps/$BIN
+% ident init3.o
+init3.o:
+     $Id:: ERRORS.html 81 2014-12-19 17:51:11Z coats             $
+% ident libioapi.a
+libioapi.a:
+     $Id:: ERRORS.html 81 2014-12-19 17:51:11Z coats             $
+     $Id:: ERRORS.html 81 2014-12-19 17:51:11Z coats             $
+% ident m3stat
+m3stat:
+     $Id:: ERRORS.html 81 2014-12-19 17:51:11Z coats             $
+     $Id:: ERRORS.html 81 2014-12-19 17:51:11Z coats             $
+     $Id: ERRORS.html 81 2014-12-19 17:51:11Z coats $
     </PRE>
-    You can in fact build the library by manually compiling all the
-    Fortran source directly in the I/O&nbsp;API source directory (the
-    compile <EM>does</EM> seem to work in-place) and then
-    <VAR>cp</VAR>-ing it to <CODE>${OBJDIR}</CODE> and doing
-    <VAR>make</VAR> to build the library from the object-files. (You can
-    also expect similar problems building programs that depend upon the
-    I/O&nbsp;API, the <VAR>M3TOOLS</VAR> programs, for example.)
-    <P>
-
-    <BLOCKQUOTE>
-    <STRONG>
-    At this time, <VAR>gfortran</VAR> should be considered an extremely
-    flawed and unsupported compiler. 
-    </STRONG>
-    <BR>
-    --Carlie J. Coats, Jr., Ph.D.<BR>
-    I/O&nbsp;API author
-    </BLOCKQUOTE>
-    <P>
-
-
-    <A HREF="#contents">Back to &quot;Troubleshooting&quot; Contents</A>
-    <P>
+<P>
 
 
 <HR> <!----------------------------------------------------------------->
@@ -100,9 +82,9 @@ ar: bilin.o: No such file or directory
     <VAR>SMOKE</VAR>, etc. with a common compiler set and common set of
     compile-flags.  When this is not done, there are a number of
     compatibility issues with mixed compiler sets, and with the GNU
-    3.x-4.x compiler set these are probably going to get worse. Some of
-    these problems show up at link time; others at run-time. In
-    particular, the following are known to have problems:
+    3.x-4.x compiler set these get worse. Some of these problems show up
+    at link time; others at run-time. In particular, the following are
+    known to have problems:
     <UL>
          <LI>  Builds with mixed <VAR>g77</VAR>, <VAR>g95</VAR>, and/or
                <VAR>gfortran</VAR>:  these seem to link correctly, but
@@ -115,18 +97,13 @@ ar: bilin.o: No such file or directory
          <LI>  Linux-distribution-supplied <VAR>libnetcdf.a</VAR>
                rarely works with CMAS-supported compiler sets.
                It is best to build your own, with the same compilers
-               and compiler-flags
+               and compiler-flags as your <VAR>libioapi.a</VAR>
+               and models.
          <P>
 
-         <LI>  NetCDF Version&nbsp;4.x have lots of additional build
-               options, that will require a complex set of additional
-               libraries in <VAR>Makefile</VAR>s and other build systems.
-               It is recommended that you disable these options by adding
-               the command-line flags below to your netCDF <VAR>configure</VAR>
-               command:
-               <BLOCKQUOTE><CODE>
-               --disable-netcdf4 --disable-dap
-               </CODE></BLOCKQUOTE>
+         <LI>  NetCDF Version&nbsp;4.x have lots of changes; see
+               <A HREF="AVAIL.htmlo#ncf4">this note about it in
+               the build instructions.</A>
          <P>
 
          <LI>  Builds with mixed <VAR>f77</VAR> <VAR>f90</VAR> on
@@ -158,6 +135,32 @@ ar: bilin.o: No such file or directory
 
 <HR> <!----------------------------------------------------------------->
 
+<H2><A NAME="g95"> 
+
+     Link Errors / Build Issues with <VAR>g95</VAR> and recent 
+     <VAR>gcc</VAR>s
+
+</A></H2>
+
+    I (Carlie Coats) have been unable to get  <VAR>g95</VAR> to work
+    with <VAR>gcc</VAR> version 4.6 or later; I get errors like
+<PRE>
+/bin///ld: i386 architecture of input file `/lib///crt1.o' is incompatible with i386:x86-64 output
+/bin///ld: i386 architecture of input file `/lib///crti.o' is incompatible with i386:x86-64 output
+/bin///ld: i386 architecture of input file `/lib///crtn.o' is incompatible with i386:x86-64 output
+</PRE>
+
+    If anyone knows a fix, I'd like to hear it.<BR>
+    &mdash;Carlie&nbsp;J&nbsp;Coats,&nbsp;Jr.<BR>
+    I/O&nbsp;API Author/Maintainer.
+    <P>
+
+    <A HREF="#contents">Back to &quot;Troubleshooting&quot; Contents</A>
+    <P>
+
+
+<HR> <!----------------------------------------------------------------->
+
 <H2><A NAME="pgi"> 
 
      Link errors with <VAR>pgf90</VAR> and <VAR>ifort</VAR> on <VAR>Linux</VAR>
@@ -167,6 +170,9 @@ ar: bilin.o: No such file or directory
     <EM><STRONG>General Principle:</STRONG>  various Fortran compilers
     &quot;mangle&quot; subroutine names (etc.) for the linker in various
     ways.</EM>
+    <P>
+
+    <STRONG>Note</STRONG>:  64-bit mode under Linux adds further issues.
     <P>
 
     <STRONG>Note added 2/24/2009:</STRONG>:  Aparna Vemuri of EPRI
@@ -269,6 +275,49 @@ class `AREG'
     <VAR>FC3/gcc/g77</VAR> systems, and the same fix seems to work for
     many other problems as well.
     <P>
+
+    <A HREF="#contents">Back to &quot;Troubleshooting&quot; Contents</A>
+    <P>
+
+
+<HR> <!----------------------------------------------------------------->
+
+<H2><A NAME="reloc"> 
+
+     <CODE>relocation error</CODE> link issues for <VAR>x86_64</VAR> Linux
+
+</A></H2>
+
+    If sizes of individual arrays or of <CODE>COMMON</CODE> blocks
+    exceed 2GB on the <VAR>x86_64</VAR> platforms, Intel <VAR>ifort</VAR>
+    and <VAR>icc</VAR> will give you failures, with messages about 
+    <CODE>relocation error</CODE>s at link-time.  The problem is that
+    the default &quot;memory model&quot; doesn't support huge arrays and
+    huge code-sets properly.  The &quot;medium&quot; memory model
+    supports huge arrays, and the &quot;medium&quot; memory model
+    supports both huge arrays and huge code-sets.  To get around 
+    this, you will <STRONG>need to add</STRONG>
+    <BLOCKQUOTE><VAR>
+        -mcmodel=medium -shared-intel
+    </VAR></BLOCKQUOTE>
+    to your compile and link flags (for the medium model), and then
+    <STRONG>recompile everything including <VAR>libioapi.a</VAR>
+    and <VAR>libnetcdf.a</VAR></STRONG> using these flags.  Note
+    that this generates a new binary type that should not be mixed
+    with the default-model binaries.
+    There is a new binary type
+    <STRONG><CODE>BIN=Linux2_x86_64ifort_medium</CODE></STRONG> for this
+    binary type, and a  is a sample <VAR>Makeinclude</VAR> file for
+    it, to demonstrate these flags:
+    <BLOCKQUOTE><VAR>
+        Makeinclude.Linux2_x86_64ifort_medium
+    </VAR></BLOCKQUOTE>
+    <P>
+
+    Other compilers and other non-Linux <VAR>x86_64</VAR> platforms will
+    have similar problems, but the solutions are compiler specific.
+    <P>
+
 
     <A HREF="#contents">Back to &quot;Troubleshooting&quot; Contents</A>
     <P>
@@ -557,7 +606,7 @@ class `AREG'
                    attempting to time-step a time-independent file;
                    would indicate a bug in  I/O&nbsp;API internals
                    <LI> <STRONG>nf_echar = -56: </STRONG>
-                   Attempt to convert between text & numbers (would 
+                   Attempt to convert between text and numbers (would 
                    indicate a bug in I/O&nbsp;API internals)
                    <LI> <STRONG>nf_eedge = -57: </STRONG>
                    subscript out-of-bounds error  (would indicate
@@ -894,8 +943,7 @@ Other Problems
                with a particular fill-value that you are seeing, and this
                is an indication that the data for that variable and time 
                step was never written to the file.  This happens, for 
-               example, at the starting time for an 
-               <A HREF = "/projects/ppar/mcpl.html">
+               example, at the starting time for an <A HREF = "MCPL.html">
                MM5/MCPL</A> run, for some of the variables which aren't
                calculated until after the run is in progress.
                <P>
@@ -953,9 +1001,9 @@ To: <STRONG>Models-3/EDSS I/O API:   The Help Pages</STRONG>
 </A><P>
 
 Send comments to 
-<A HREF = "mailto:carlie.coats@baronams.com"> <ADDRESS> 
+<A HREF = "mailto:cjcoats@email.unc.edu"> <ADDRESS> 
           Carlie J. Coats, Jr. <br> 
-          carlie.coats@baronams.com  </ADDRESS> </A><P> 
+          cjcoats@email.unc.edu  </ADDRESS> </A><P> 
 
 <!--#include virtual="/INCLUDES/footer.html" -->
 </BODY>      <!--end body  -->

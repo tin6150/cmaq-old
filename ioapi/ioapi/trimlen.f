@@ -1,7 +1,10 @@
 
 C.........................................................................
-C Version "@(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/trimlen.f,v 1.2 2000/11/28 21:23:07 smith_w Exp $"
-C EDSS/Models-3 I/O API.  Copyright (C) 1992-1999 MCNC
+C Version "$Id: trimlen.f 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 Baron Advanced Meteorological Systems, and
+C (C) 2014 UNC Institute for the Environment.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
@@ -19,9 +22,9 @@ C
 C  SUBROUTINES AND FUNCTIONS CALLED:  none
 C
 C  REVISION  HISTORY:  
-C             Prototype 8/91 by CJC
-C             Version 2/93 for CRAY by CJC
-C
+C       Prototype  8/1991 by CJC
+C       Version    2/1993 for CRAY by CJC
+C       Version    9/2014 by CJC:  Use F90 LEN_TRIM
 C***********************************************************************
 
       IMPLICIT NONE
@@ -29,31 +32,15 @@ C***********************************************************************
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)	STRING
-
-
-C...........   SCRATCH LOCAL VARIABLES and their descriptions:
-
-        INTEGER  	L, K
+        CHARACTER*(*), INTENT( IN ) :: STRING
 
 
 C***********************************************************************
 C   begin body of function  TRIMLEN
 
-        L = LEN( STRING )
-        DO  11  K = L, 1, -1
-            IF ( STRING( K:K ) .NE. ' ' ) THEN
-                GO TO  12
-            END IF
-11      CONTINUE
-
-        K = 1
-
-12      CONTINUE
-
-        TRIMLEN = K
+        TRIMLEN = LEN_TRIM( STRING )
 
         RETURN
 
-        END
+        END FUNCTION  TRIMLEN
 

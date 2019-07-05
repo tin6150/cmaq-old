@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- "$Id: AA.html 118 2015-01-19 16:55:54Z coats $" -->
+<!-- "$Id: AA.html 179 2015-03-02 17:01:44Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE">
 <TITLE>  The BAMS/EDSS/Models-3 I/O&nbsp;API </TITLE>
 </HEAD>
@@ -469,6 +469,12 @@ Changes from I/O&nbsp;API Version&nbsp;1
              read <VAR>&lt;time step sequence &gt;</VAR> of
              <VAR>&lt;layer&gt;</VAR> of <VAR>&lt;variable&gt;</VAR>
              from <VAR>&lt;file&gt;</VAR>
+        <DT> <A HREF = "RUNSPEC.html" >
+             <STRONG>RUNSPEC</STRONG>:
+             </A>
+             Get <VAR>&lt;time step sequence &gt;</VAR> for a program
+             run, consistent with, and with defaults from, a specified
+             <VAR>&lt;file&gt;</VAR>
         <DT> <A HREF = "WRITE4D.html" >
              <STRONG>WRITE4D</STRONG>:
              </A>
@@ -675,6 +681,12 @@ Changes from I/O&nbsp;API Version&nbsp;1
              </A>
              update <VAR>&lt;jdate-&amp;-time&gt;</VAR> by
              <VAR>&lt;timestep&gt;</VAR>
+        <DT> <A HREF = "RUNSPEC.html" >
+             <STRONG>RUNSPEC</STRONG>:
+             </A>
+             Get <VAR>&lt;time step sequence &gt;</VAR> for a program
+             run, consistent with, and with defaults from, a specified
+             <VAR>&lt;file&gt;</VAR>
         <DT> <A HREF = "SEC2TIME.html" >
              <STRONG>SEC2TIME</STRONG>:
              </A>
@@ -1186,7 +1198,8 @@ Changes from I/O&nbsp;API Version&nbsp;1
              Perform coordinate conversions and grid-related
              computations for Lat-Lon, Lambert, and UTM coordinate
              systems.<BR>
-             <EM><STRONG>Deprecated</STRONG> for Version 3.1 and later.
+             <EM><STRONG>Deprecated</STRONG> for I/O&nbsp;API Version
+             3.1 and later.</EM>
         <P>
         <DT> <STRONG>Programs for date-manipulation </STRONG><P>
              Verbose, prompt based, for interactive use:
@@ -1337,7 +1350,7 @@ Send comments to
 
 <!--#include virtual="/INCLUDES/footer.html" -->
     <PRE>
-    $Id: AA.html 118 2015-01-19 16:55:54Z coats $
+    $Id: AA.html 179 2015-03-02 17:01:44Z coats $
     </PRE>
 
 </BODY>

@@ -2,14 +2,14 @@
         CHARACTER*14 FUNCTION  MMDDYY ( JDATE )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: mmddyy.F 1 2014-03-14 20:22:54Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2007 Baron Advanced Meteorological Systems
+C (C) 2003-2013 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  function body starts at line  104
+C  function body starts at line  93
 C
 C  FUNCTION:  format and return the date as a character string
 C             "M+ D+, YYYY"
@@ -32,60 +32,49 @@ C       Unification 2/2002 by CJC with global-climate MMDDYY, which
 C       uses a 360-day "year"
 C
 C       Version 1/2007 by CJC:  handle negative JDATEs correctly
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
+C
+C       Version 5/2013 by CJC:  PARAMETERs; handle standard-year
+C
+C       Version 11/2013 by CJC:  bug-fix for "standard-year" case
 C***********************************************************************
 
       IMPLICIT NONE
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER  	JDATE	!  Julian date, coded YYYYDDD
+        INTEGER, INTENT(IN   ) :: JDATE	!  Julian date, coded YYYYDDD
 
 
-C...........   SAVED LOCAL VARIABLES and their descriptions:
-C...........   NOTE:  the ANSI standard requires the use of SAVE statements
-C...........   for variables which must retain their values from call to call.
-
+C...........   PARAMETERS and their descriptions:
 C.......   Lookup table for months:
 
-        CHARACTER*5	MONTHS ( 12 )
-        DATA       	MONTHS
-     &          /
-     &      'Jan.' , 'Feb.' , 'March', 'April', 'May'  , 'June',
-     &      'July' , 'Aug.' , 'Sept.', 'Oct.' , 'Nov.' , 'Dec.'
-     &          /
-        INTEGER  	MLENS ( 12 ) 	!  string lengths for MONTHS
-        DATA     	MLENS 
-     &          /
-     &       4, 4, 5, 5, 3, 4, 4, 4, 5, 4, 4, 4
-     &          /
+        CHARACTER*5, PARAMETER :: MONTHS ( 12 ) = (/
+     &      'Jan. ' , 'Feb. ' , 'March', 'April', 'May  ' , 'June ',
+     &      'July ' , 'Aug. ' , 'Sept.', 'Oct. ', 'Nov  ' , 'Dec. '
+     &          /)
+        INTEGER, PARAMETER :: MLENS ( 12 ) = (/	!  string lengths for MONTHS
+     &       4, 4, 5, 5, 3, 4, 4, 4, 5, 4, 4, 4 /)
 
 C.......   Lookup table of cumulative days accumulated ( in non-leap year)
 C.......   before the given month.  CUMDAY(13) is total days per year.
 
-        INTEGER  	CUMDAY ( 13 )
-        DATA     	CUMDAY 
-     &          /
+        INTEGER, PARAMETER :: CUMDAY ( 13 ) = (/
 #ifdef IO_360
      &      0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360
 #endif
 #ifndef IO_360
      &      0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365
 #endif
-     &          /
+     &          /)
 
-        INTEGER  	LEAPDAY ( 13 )
-        DATA     	LEAPDAY 
-     &          /
+        INTEGER, PARAMETER :: LEAPDAY ( 13 ) = (/
      &      0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366
-     &          /
+     &          /)
 
-        CHARACTER*1	DIGITS( 0:9 )
-        DATA       	DIGITS
-     &          /
-     &      '0','1','2','3','4','5','6','7','8','9'
-     &          /
-
-        SAVE MONTHS, MLENS, CUMDAY, DIGITS
+        CHARACTER*1, PARAMETER :: DIGITS( 0:9 ) = (/
+     &      '0','1','2','3','4','5','6','7','8','9' /)
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -125,10 +114,19 @@ C   begin body of function  YYMMDD
 #endif
 
 #ifndef IO_360
-        IF (          ( MOD (YEAR,4)   .EQ. 0 )        !  leap year adjustment
-     &     .AND. (    ( MOD (YEAR,100) .NE. 0 )        !  month >= FEB
-     &           .OR. ( MOD (YEAR,400) .EQ. 0 ) )
-     &     .AND. ( IDAY .GE. CUMDAY ( 3 ) + 1 ) ) THEN
+        IF ( YEAR .LE. 2 ) THEN      !! standard-year case...
+         
+            DO  MNTH = 1 , 12
+                IF ( IDAY .LE. CUMDAY ( MNTH + 1 ) )  THEN
+                    IDAY = IDAY - CUMDAY( MNTH )
+                    GO TO 201
+                END IF
+            END  DO
+
+       ELSE IF (          ( MOD (YEAR,4)   .EQ. 0 )        !  leap year adjustment
+     &          .AND. (    ( MOD (YEAR,100) .NE. 0 )        !  month >= FEB
+     &                .OR. ( MOD (YEAR,400) .EQ. 0 ) )
+     &          .AND. ( IDAY .GE. CUMDAY ( 3 ) + 1 ) ) THEN
 
             DO  MNTH = 1 , 12
                 IF ( IDAY .LE. LEAPDAY( MNTH + 1 ) )  THEN
@@ -215,5 +213,5 @@ C.......   If you get to here:  error in formatting of date.
         MMDDYY = CHRBUF
 
         RETURN
-        END
+        END FUNCTION  MMDDYY
 

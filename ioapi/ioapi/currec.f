@@ -1,21 +1,21 @@
 
-        INTEGER FUNCTION CURREC( JDATE, JTIME, 
-     &                           SDATE, STIME, TSTEP, 
-     &                           CDATE, CTIME )
+        INTEGER FUNCTION CURREC ( JDATE, JTIME, 
+     &                            SDATE, STIME, TSTEP, 
+     &                            CDATE, CTIME )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: currec.f 45 2014-09-12 20:05:29Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2008 Baron Advanced Meteorological Systems
+C (C) 2003-2010 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  subroutine body starts at line  75
+C  subroutine body starts at line  71
 C
 C  FUNCTION:  Return the record number the time step in the time step 
 C             sequence starting at SDATE:STIME and having time step TSTEP 
-C             and compute its normalized date&time  CDATE:CTIME
+C             and compute its  date&time  CDATE:CTIME
 C             In particular, this is the largest time step in the sequence 
 C             having the property:
 C
@@ -43,24 +43,20 @@ C***********************************************************************
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER       SDATE, STIME    !  starting d&t for the sequence
-        INTEGER       TSTEP           !  time step for the sequence
-        INTEGER       JDATE, JTIME    !  d&t requested
-        INTEGER       CDATE, CTIME    !  d&t for timestep of JDATE:JTIME
+        INTEGER, INTENT(IN   ) :: SDATE, STIME    !  starting d&t for the sequence
+        INTEGER, INTENT(IN   ) :: TSTEP           !  time step for the sequence
+        INTEGER, INTENT(IN   ) :: JDATE, JTIME    !  d&t requested
+        INTEGER, INTENT(  OUT) :: CDATE, CTIME    !  d&t for timestep of JDATE:JTIME
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER       SECSDIFF, SEC2TIME, TIME2SEC
-        EXTERNAL      SECSDIFF, SEC2TIME, TIME2SEC
+        INTEGER, EXTERNAL :: SECSDIFF, SEC2TIME, TIME2SEC
 
 
 C...........   PARAMETERS and their descriptions:
 
-        INTEGER         YSECS4  !  seconds in 4 years
-        INTEGER         YSTEP4  !  hhmmss for 4 years
-
-        PARAMETER     ( YSECS4 = ( 3*365+366 ) * 24 * 60 * 60 )
-        PARAMETER     ( YSTEP4 = 10000*( YSECS4/3600 ) )
+        INTEGER, PARAMETER :: YSECS4 = ( 3*365+366 ) * 24 * 60 * 60     !  seconds in 4 years
+        INTEGER, PARAMETER :: YSTEP4 = 10000*( YSECS4/3600 )            !  hhmmss for 4 years
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -81,8 +77,8 @@ C   begin body of subroutine  CURREC
 
         END  IF
 
-        IF ( JDATE .LT. -10000000  .OR. ! out-of-range probable-error cases
-     &       JDATE .GT.  10000000  ) THEN
+        IF ( JDATE .LT. -10000000  .OR.         !  out-of-range
+     &       JDATE .GT.  10000000  ) THEN       !  probable-error cases 
 
                 CURREC = -1
                 RETURN

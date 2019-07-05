@@ -1,7 +1,7 @@
 #!/bin/csh -f
 #!/usr/local/bin/tcsh
 #.........................................................................
-# Version "@(#)$Header$"
+# Version "$Id$"
 # EDSS/Models-3 I/O API.  Copyright (C) 2002 MCNC
 # Distributed under the GNU Lesser PUBLIC LICENSE version 2.1
 # See file "LGPL.txt" for conditions of use.

@@ -1,10 +1,10 @@
 /**************************************************************************
-VERSION "@(#)$Header$"
+VERSION "$Id: bufint3.c 45 2014-09-12 20:05:29Z coats $"
     EDSS/Models-3 I/O API.
 
 COPYRIGHT
     (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-    (C) 2003 Baron Advanced Meteorological Systems.
+    (C) 2003-2010 Baron Advanced Meteorological Systems.
     Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
     See file "LGPL.txt" for conditions of use.
 
@@ -75,6 +75,7 @@ REVISION HISTORY:
     add allocation facilites to BUFPUT* routines; new interface to READ3V.
     Modified 11/2005 by CJC:  extra name-mangling for Absoft Pro Fortran:
     upper-case Fortran  symbols, prepend _C to common blocks.
+    Modified 04/2011 for full buffered-file file descriptions.
 **************************************************************************/
 
 #include <stdio.h>

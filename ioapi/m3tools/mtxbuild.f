@@ -2,10 +2,10 @@
         PROGRAM MTXBUILD
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: mtxbuild.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2002-2008 Baron Advanced Meteorological Systems. LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
@@ -13,40 +13,46 @@ C  program body starts at line  104
 C
 C  DESCRIPTION:
 C       Builds a sparse (grid-to-grid transform) matrix from data contained
-C	in a "fractions" file.
+C       in a "fractions" file.
 C
 C  PRECONDITIONS REQUIRED:
 C       setenv <logical name> <physical (path) name> for the input,
 C       output, and GRIDDESC files.
-C	"fractions" file consists of list-formatted (whitespace-delimited)
-C	lines with the following fields:
+C       "fractions" file consists of list-formatted (whitespace-delimited)
+C       lines with the following fields:
 C
-C		output grid row number
-C		output grid col number
-C		input grid row number
-C		input grid col number
-C		fraction:  AREA(input-cell intersect output-cell)
-C			   divided by AREA(input-cell)
+C           output grid row number
+C           output grid col number
+C           input grid row number
+C           input grid col number
+C           fraction:  AREA(input-cell intersect output-cell)
+C              divided by AREA(input-cell)
 C
-C	These lines should  be sorted into lexicographic order
-C	in terms of the first four fields.
+C       These lines should  be sorted into lexicographic order
+C       in terms of the first four fields.
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
 C       I/O API
 C
 C  REVISION  HISTORY:
 C       Prototype 9/2000 by Carlie J. Coats, Jr.,
-C	MCNC Environmental Programs
+C       MCNC Environmental Programs
 C       Version 11/2001 by CJC for I/O API Version 2.1
 C       Version  11/2005 by CJC:  eliminate unused vbles
-C       Version    8/2008 by CJC:  USE M3UTILIO, MATXATTS to put
+C       Version   8/2008 by CJC:  USE M3UTILIO, MATXATTS to put
 C       grid-attributes into matrix.
+C       Version  02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C***********************************************************************
 
       USE M3UTILIO
       USE MATXATTS
 
       IMPLICIT NONE
+
+C...........   PARAMETERS and their descriptions:
+
+       CHARACTER*16, PARAMETER :: PNAME = 'MTXBUILD'
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -59,10 +65,10 @@ C...........   LOCAL VARIABLES and their descriptions:
         INTEGER         FDEV        !  fractions-file unit number
         INTEGER         LDEV        !  log-device unit number
         INTEGER         ISTAT       !  allocation-status
-        INTEGER         NCOL1	    !  number of  input-grid rows
-        INTEGER         NCOL2	    !  number of output-grid rows
-        INTEGER         MROWS	    !  number of sparse-matrix rows
-        INTEGER         MCOEF 	    !  number of sparse-matrix coeffs
+        INTEGER         NCOL1       !  number of  input-grid rows
+        INTEGER         NCOL2       !  number of output-grid rows
+        INTEGER         MROWS       !  number of sparse-matrix rows
+        INTEGER         MCOEF       !  number of sparse-matrix coeffs
         INTEGER         V, L, N     !  loop counters
 
         CHARACTER*16    IGRID   !  GRIDDESC name, parameters for  input grid
@@ -118,28 +124,29 @@ C   begin body of program MTXBUILD
      &'These lines should  be sorted into lexicographic order',
      &'relative to the first four fields.',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2008 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
+     &' ',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
-     &' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &'$Id:: mtxbuild.f 336 2008-09-25 20:26:52Z coats@bdsl          $',
-     &'Program release tag: $Name$',
+     &'$Id:: mtxbuild.f 44 2014-09-12 18:03:16Z coats                $',
      &' '
 
         IF ( .NOT. GETYN( 'Continue with program?', .TRUE. ) ) THEN
-            CALL M3EXIT( 'MTXBUILD', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Program terminated at user request', 2 )
         END IF
 
@@ -147,23 +154,23 @@ C   begin body of program MTXBUILD
 C...............  Open and "count" input "fractions" file
 
         MESG = 'Enter logical name for input "fractions" file'
-	FDEV = PROMPTFFILE( MESG, .TRUE., .TRUE.,
-     &                      'FRACTIONS', 'MTXBUILD' )
+        FDEV = PROMPTFFILE( MESG, .TRUE., .TRUE.,
+     &                      'FRACTIONS', PNAME )
 
-	L = 0
-	N = 0
+        L = 0
+        N = 0
         IGRID = ' '
         OGRID = ' '
 11      CONTINUE                !  head of "count fractions" loop
 
-	    READ( FDEV, '( A )', END = 22, IOSTAT=ISTAT ) LINE
+            READ( FDEV, '( A )', END = 22, IOSTAT=ISTAT ) LINE
             L = L + 1
             IF ( ISTAT .NE. 0 ) THEN
                 WRITE( MESG, '(A, I9, 2X, A, I9, 2X, A )' )
      &              'I/O error', ISTAT,
      &              'encountered reading line', N,
      &              'of FRACTIONS file'
-                CALL M3EXIT( 'MTXBUILD', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
             IF ( LINE( 1:1 ) .NE. '#' ) THEN
                 N = N + 1
@@ -177,7 +184,7 @@ C...............  Open and "count" input "fractions" file
             GO TO  11           !  to head of "count fractions" loop
 
 22      CONTINUE                !  exit from "count fractions" loop
-	MCOEF = N
+        MCOEF = N
         REWIND( FDEV )
 
 
@@ -197,26 +204,26 @@ C...............  Get output grid description
             CALL M3MSG2( MESG )
         END IF
 
-	IF ( .NOT. DSCGRID( IGRID, CNAME, GDTYP1,
+        IF ( .NOT. DSCGRID( IGRID, CNAME, GDTYP1,
      &              P_ALP1, P_BET1,P_GAM1, XCENT1, YCENT1,
      &              XORIG1, YORIG1, XCELL1, YCELL1,
      &              NCOLS1, NROWS1, NTHIK1 ) ) THEN
 
             MESG   = '"' // TRIM( IGRID ) //
      &               '" not found in GRIDDESC file'
-            CALL M3EXIT( 'MTXBUILD', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
         END IF
         NCOL1 = NCOLS3D
 
-	IF ( .NOT. DSCGRID( OGRID, CNAME, GDTYP2,
+        IF ( .NOT. DSCGRID( OGRID, CNAME, GDTYP2,
      &              P_ALP2, P_BET2,P_GAM2, XCENT2, YCENT2,
      &              XORIG2, YORIG2, XCELL2, YCELL2,
      &              NCOLS2, NROWS2, NTHIK2 ) ) THEN
 
             MESG   = '"' // TRIM( OGRID ) //
      &               '" not found in GRIDDESC file'
-            CALL M3EXIT( 'MTXBUILD', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
 
         END IF
 
@@ -230,7 +237,7 @@ C...............  Get output grid description
         IF ( ISTAT .NE. 0 ) THEN
             WRITE( MESG, '( A, I10 )' )
      &               'Buffer allocation failed:  STAT=', ISTAT
-            CALL M3EXIT( 'MTXBUILD', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
 
@@ -275,7 +282,7 @@ C...............  Build output sparse matrix file
 
         MESG = 'Enter name for output SPARSE MATRIX file'
         MNAME = PROMPTMFILE( MESG, FSUNKN3,
-     &                       'MATRIX_FILE', 'MTXBUILD' )
+     &                       'MATRIX_FILE', PNAME )
 
 
 
@@ -320,7 +327,7 @@ C...............  Shut down program:
             MESG  = 'Success in program MTXBUILD'
             ISTAT = 0
         END IF
-        CALL M3EXIT( 'MTXBUILD', 0, 0, MESG, ISTAT )
+        CALL M3EXIT( PNAME, 0, 0, MESG, ISTAT )
 
 
         END PROGRAM MTXBUILD
@@ -328,24 +335,24 @@ C...............  Shut down program:
 
 C===========================================================================
 
-	SUBROUTINE  RDFRAC( FDEV, MCOLS, MROWS, NCOL1, NCOL2,
+        SUBROUTINE  RDFRAC( FDEV, MCOLS, MROWS, NCOL1, NCOL2,
      &                      NX, IX, CX )
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !!  DESCRIPTION
-        !!  	Read the input fractions-file with unit number FDEV
-        !!  	into the indicated sparse matrix.
+        !!      Read the input fractions-file with unit number FDEV
+        !!      into the indicated sparse matrix.
         !!  PRECONDITIONS
-        !!	FDEV already open
-        !!	FDEV consists of list-formatted lines sorted into
-        !!	lexicographic order by the first four fields
-        !!	The fields are:
-	!!        	input grid row number
-	!!        	input grid col number
-	!!        	output grid row number
-	!!        	output grid col number
-	!!        	fraction:    AREA(input-cell intersect output-cell)
-	!!        		   / AREA(input-cell)
+        !!      FDEV already open
+        !!      FDEV consists of list-formatted lines sorted into
+        !!      lexicographic order by the first four fields
+        !!      The fields are:
+        !!          input grid row number
+        !!          input grid col number
+        !!          output grid row number
+        !!          output grid col number
+        !!          fraction:    AREA(input-cell intersect output-cell)
+        !!                 / AREA(input-cell)
         !!
         !!  HISTORY
         !!      Prototype 9/2000 by Carlie J. Coats, Jr., MCNC-EP
@@ -364,6 +371,7 @@ C===========================================================================
         INTEGER, INTENT(OUT)::   IX( MCOLS )
         REAL,    INTENT(OUT)::   CX( MCOLS )
 
+        CHARACTER*24, PARAMETER :: PNAME = 'MTXBUILD/RDFRAC'
 
         !!  Local Variables:
 
@@ -388,7 +396,7 @@ C===========================================================================
         J = 0
 
 
-111     CONTINUE	!  loop:  skip header lines
+111     CONTINUE    !  loop:  skip header lines
 
             L = L + 1
             READ( FDEV, '( A )', IOSTAT=ISTAT ) LINE
@@ -397,7 +405,7 @@ C===========================================================================
      &              'I/O error', ISTAT,
      &              'encountered reading line', L,
      &              'of FRACTIONS file'
-                 CALL M3EXIT( 'MTXBUILD', 0, 0, MESG, 2 )
+                 CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
             IF ( LINE( 1:1 ) .EQ. '#' ) GO TO 111
 
@@ -408,15 +416,15 @@ C===========================================================================
      &          'I/O error', ISTAT,
      &          'encountered parsing line', L,
      &          'of FRACTIONS file'
-             CALL M3EXIT( 'MTXBUILD', 0, 0, MESG, 2 )
+             CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
         ROW = ICOL + ( IROW - 1 )*NCOL2
 
-        DO  R = 1, MROWS	! loop on matrix rows
+        DO  R = 1, MROWS    ! loop on matrix rows
 
             N = 0
 
-122         CONTINUE		!  loop reading matrix coeffs for this row
+122         CONTINUE        !  loop reading matrix coeffs for this row
 
                 IF ( ROW .GT. R ) GO TO 133
 
@@ -432,7 +440,7 @@ C===========================================================================
      &                  'I/O error', ISTAT,
      &                 'encountered reading line', L,
      &                  'of FRACTIONS file'
-                     CALL M3EXIT( 'MTXBUILD/RDFRAC', 0, 0, MESG, 2 )
+                     CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                 END IF
                 READ( LINE, *, IOSTAT=ISTAT )
      &                  IROW, ICOL, JROW, JCOL, FRAC
@@ -442,17 +450,17 @@ C===========================================================================
      &                  'I/O error', ISTAT,
      &                 'encountered parsing line', L,
      &                  'of FRACTIONS file'
-                     CALL M3EXIT( 'MTXBUILD/RDFRAC', 0, 0, MESG, 2 )
+                     CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                 END IF
                 ROW = ICOL + ( IROW - 1 )*NCOL2
 
-                GO TO 122		!  to head of loop reading matrix coeffs
+                GO TO 122       !  to head of loop reading matrix coeffs
 
-133         CONTINUE			!  exit from loop reading matrix coeffs
+133         CONTINUE            !  exit from loop reading matrix coeffs
 
             NX( R ) = N
 
-        END DO			!  end loop on matrix rows
+        END DO          !  end loop on matrix rows
 
         RETURN
 

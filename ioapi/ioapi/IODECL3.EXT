@@ -1,7 +1,12 @@
 
 !.........................................................................
-! Version "@(#)$Header$"
-!    EDSS/Models-3 I/O API.  Copyright (C) 1992-2002 MCNC
+! Version "$Id: IODECL3.EXT 1 2014-03-14 20:22:54Z coats $"
+!    EDSS/Models-3 I/O API.
+!   Copyright (C) 1992-2002 MCNC,
+!   (C) 1992-2002,2005-2013 Carlie J. Coats, Jr.,
+!   (C) 2003-2011 Baron Advanced Meteorological Systems, LLC.,
+!   (C) 2014 UNC Institute for the Environment.
+!
 !    Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 !    See file "LGPL.txt" for conditions of use.
 !....................................................................
@@ -18,7 +23,7 @@
 !       resulting modified INCLUDE-file.
 !
 !       By making any changes to this INCLUDE file, the user
-!       explicitly agrees that in the case any assistance is 
+!       explicitly agrees that in the case any assistance is
 !       required of MCNC or of the I/O API author, Carlie J. Coats, Jr.
 !       as a result of such changes, THE USER AND/OR HIS PROJECT OR
 !       CONTRACT AGREES TO REIMBURSE MCNC AND/OR THE I/O API AUTHOR,
@@ -40,38 +45,35 @@
 !       Modified  2/2002 by CJC:  updated dates, license, compatibility
 !       with both free and fixed Fortran 9x source forms
 !
+!       Modified 3/2014 by CJC:  F90-style EXTERNAL statements
+!
 !....................................................................
 
-        LOGICAL         CHECK3  !  is JDATE:JTIME available for FNAME?
-        LOGICAL         CLOSE3  !  close FNAME
-        LOGICAL         DESC3   !  Puts M3 file descriptions into FDESC3.EXT
-        LOGICAL         FILCHK3 ! check file type and dimensions
-        INTEGER         INIT3   !  Initializes M3 API and returns unit for log
-        LOGICAL         SHUT3   !  Shuts down API
-        LOGICAL         OPEN3   !  opens an M3 file
-        LOGICAL         READ3   !  read M3 file for variable,layer,timestep
-        LOGICAL         WRITE3  !  write timestep to M3 file
-        LOGICAL         XTRACT3 !  extract window from timestep in a M3 file
-        LOGICAL         INTERP3 !  do time interpolation from a M3 file
-        LOGICAL         DDTVAR3 !  do time derivative from M3 file
+        LOGICAL, EXTERNAL :: CHECK3  !  is JDATE:JTIME available for FNAME?
+        LOGICAL, EXTERNAL :: CLOSE3  !  close FNAME
+        LOGICAL, EXTERNAL :: DESC3   !  Puts M3 file descriptions into FDESC3.EXT
+        LOGICAL, EXTERNAL :: FILCHK3 ! check file type and dimensions
+        INTEGER, EXTERNAL :: INIT3   !  Initializes M3 API and returns unit for log
+        LOGICAL, EXTERNAL :: SHUT3   !  Shuts down API
+        LOGICAL, EXTERNAL :: OPEN3   !  opens an M3 file
+        LOGICAL, EXTERNAL :: READ3   !  read M3 file for variable,layer,timestep
+        LOGICAL, EXTERNAL :: WRITE3  !  write timestep to M3 file
+        LOGICAL, EXTERNAL :: XTRACT3 !  extract window from timestep in a M3 file
+        LOGICAL, EXTERNAL :: INTERP3 !  do time interpolation from a M3 file
+        LOGICAL, EXTERNAL :: DDTVAR3 !  do time derivative from M3 file
 
-        LOGICAL         INTERPX !  time interpolation from a window
+        LOGICAL, EXTERNAL :: INTERPX !  time interpolation from a window
                                 !  extraction from an M3 gridded file
-!!        LOGICAL      PINTERPB !  parallel time interpolation from an
+!!        LOGICAL, EXTERNAL :: PINTERPB !  parallel time interpolation from an
                                 !  M3 boundary file
 
-        LOGICAL         INQATT3 !  inquire attributes in M3 file
-        LOGICAL         RDATT3  !  read numeric attributes by name from M3 file
-        LOGICAL         WRATT3  !  add new numeric attributes "
-        LOGICAL         RDATTC  !  read CHAR attributes       "
-        LOGICAL         WRATTC  !  add new CHAR attributes    "
+        LOGICAL, EXTERNAL :: INQATT3 !  inquire attributes in M3 file
+        LOGICAL, EXTERNAL :: RDATT3  !  read numeric attributes by name from M3 file
+        LOGICAL, EXTERNAL :: WRATT3  !  add new numeric attributes "
+        LOGICAL, EXTERNAL :: RDATTC  !  read CHAR attributes       "
+        LOGICAL, EXTERNAL :: WRATTC  !  add new CHAR attributes    "
 
-        LOGICAL         SYNC3   !  flushes file to disk, etc.
-
-        EXTERNAL        CHECK3 , CLOSE3,  DESC3  , FILCHK3, INIT3  ,    &
-     &                  SHUT3  , OPEN3  , READ3  , WRITE3 , XTRACT3,    &
-     &                  INTERP3, DDTVAR3, INQATT3, RDATT3 , WRATT3 ,    &
-     &                  RDATTC , WRATTC,  SYNC3,   INTERPX ! , PINTERPB
+        LOGICAL, EXTERNAL :: SYNC3   !  flushes file to disk, etc.
 
 !.......................................................................
 !..................  API FUNCTION USAGE AND EXAMPLES  ..................
@@ -89,7 +91,7 @@
 !.......   file descriptions are passed via commons BDESC3 and CDESC3
 !.......   in file FDESC3.EXT.
 !.......
-!.......   CHECK3():  check whether timestep JDATE:JTIME is available 
+!.......   CHECK3():  check whether timestep JDATE:JTIME is available
 !.......   for variable VNAME in file FILENAME.
 !.......   FORTRAN usage is:
 !.......
@@ -98,7 +100,7 @@
 !.......           ... (data-record not available in file FNAME)
 !.......       END IF
 !.......
-!.......   CLOSE3():  check whether timestep JDATE:JTIME is available 
+!.......   CLOSE3():  check whether timestep JDATE:JTIME is available
 !.......   for variable VNAME in file FILENAME.
 !.......   FORTRAN usage is:
 !.......
@@ -120,7 +122,7 @@
 !.......       (Now common FDESC3 (file FDESC3.EXT) contains the descriptive
 !.......       information for this file.)
 !.......
-!.......   FILCHK3():   check whether file type and dimensions for file 
+!.......   FILCHK3():   check whether file type and dimensions for file
 !.......   FILENAME match the type and dimensions supplied by the user.
 !.......   FORTRAN usage is:
 !.......
@@ -216,8 +218,8 @@
 !.......           ... (extract failed -- process this error.)
 !.......       END IF
 !.......
-!.......   INTERP3():  read/interpolate gridded, boundary, or custom data 
-!.......   into location  ARRAY from FILENAME for time JDATE:JTIME, variable 
+!.......   INTERP3():  read/interpolate gridded, boundary, or custom data
+!.......   into location  ARRAY from FILENAME for time JDATE:JTIME, variable
 !.......   VNAME, and all layers.  Note use of ASIZE = transaction size =
 !.......   size of ARRAY, for error-checking.
 !.......   FORTRAN usage is:
@@ -229,21 +231,21 @@
 !.......       END IF
 !.......
 !.......   INTERPX():  read/interpolate/window gridded, boundary, or custom
-!.......   data into location  ARRAY from FILENAME for time JDATE:JTIME, 
+!.......   data into location  ARRAY from FILENAME for time JDATE:JTIME,
 !.......   variable VNAME, and all layers.
 !.......   FORTRAN usage is:
 !.......
-!.......       STATUS = INTERPX ( FILENAME, VNAME, CALLER, 
+!.......       STATUS = INTERPX ( FILENAME, VNAME, CALLER,
 !.......   &                      COL0, COL1, ROW0, ROW1, LAY0, LAY1,
 !.......   &                      JDATE, JTIME, ARRAY )
 !.......       IF ( .NOT. STATUS ) THEN
 !.......           ... (windowed interpolate failed -- process this error.)
 !.......       END IF
 !.......
-!.......   DDTVAR3():  read and calculate mean time derivative (per second) 
-!.......   for gridded, boundary, or custom data.  Put result into location  
-!.......   ARRAY from FILENAME for time JDATE:JTIME, variable VNAME, and all 
-!.......   layers.  Note use of ASIZE = transaction size = size of ARRAY, 
+!.......   DDTVAR3():  read and calculate mean time derivative (per second)
+!.......   for gridded, boundary, or custom data.  Put result into location
+!.......   ARRAY from FILENAME for time JDATE:JTIME, variable VNAME, and all
+!.......   layers.  Note use of ASIZE = transaction size = size of ARRAY,
 !.......   for error-checking.  Note  d/dt( time-independent )==0.0
 !.......   FORTRAN usage is:
 !.......
@@ -255,16 +257,16 @@
 !.......
 !.......   INQATT():  inquire how many attributes there are for a
 !.......   particular file and variable (or for the file globally,
-!.......   if the variable-name ALLVAR3 is used)), and what the 
+!.......   if the variable-name ALLVAR3 is used)), and what the
 !.......   names, types, and array-dimensions of these attributes are.
 !.......   FORTRAN usage is:
 !.......
-!.......       STATUS = INQATT3( FNAME, VNAME, MXATTS, 
+!.......       STATUS = INQATT3( FNAME, VNAME, MXATTS,
 !.......   &                     NATTS, ANAMES, ATYPES, ASIZES )
 !.......       IF ( .NOT. STATUS ) THEN
 !.......           ... (operation failed -- process this error.)
 !.......       END IF
-!....... 
+!.......
 !.......   RDATT3():  Reads an INTEGER, REAL, or DOUBLE attribute by name
 !.......   for a specified file and variable into a user-specified array.
 !.......   If variable name is ALLVAR3, reads the file-global attribute.
@@ -277,15 +279,15 @@
 !.......       END IF
 !.......
 !.......   WRATT3():  Writes an INTEGER, REAL, or DOUBLE attribute by name
-!.......   for a specified file and variable.  If variable name is ALLVAR3, 
+!.......   for a specified file and variable.  If variable name is ALLVAR3,
 !.......   reads the file-global attribute.
 !.......
-!.......       STATUS =  WRATT3( FNAME, VNAME, 
+!.......       STATUS =  WRATT3( FNAME, VNAME,
 !.......   &                     ANAME, ATYPE, AMAX, AVAL )
 !.......       IF ( .NOT. STATUS ) THEN
 !.......           ... (operation failed -- process this error.)
 !.......       END IF
-!.......   
+!.......
 !.......   RDATTC():  Reads a CHARACTER string attribute by name
 !.......   for a specified file and variable into a user-specified array.
 !.......   If variable name is ALLVAR3, reads the file-global attribute.
@@ -297,7 +299,7 @@
 !.......       END IF
 !.......
 !.......   WRATT3():  Writes a CHARACTER string attribute by name
-!.......   for a specified file and variable.  If variable name is ALLVAR3, 
+!.......   for a specified file and variable.  If variable name is ALLVAR3,
 !.......   reads the file-global attribute.
 !.......
 !.......       STATUS =  WRATTC( FNAME, VNAME, ANAME, CVAL )

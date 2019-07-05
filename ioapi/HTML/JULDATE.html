@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/JULDATE.html,v 1.1.1.1 2001/12/05 20:25:31 coats Exp $ -->
+<!-- "$Id: JULDATE.html 131 2015-01-26 14:03:44Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> Program JULDATE </TITLE>
 </HEAD>
@@ -13,10 +13,6 @@
       LEFTMARGIN="15" 
       MARGINWIDTH="15">
 <H1>    Program JULDATE </H1>
-
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
 
 <H2> Usage </H2>
 <PRE>
@@ -32,7 +28,9 @@ for the month, day is day-of-month, and year is the full 4-digit year
 (&quot;1995&quot; instead of &quot;95&quot;).  For the alternate form,
 the capitalization or not for the argument <TT>today</TT> (etc.) is not 
 significant:  the program handles  <TT>juldate today</TT> and  
-<TT>juldate TODAY</TT> identically.
+<TT>juldate TODAY</TT> identically.  If there is no command-line
+argument, the program will give a usage-screen and prompt you for the
+date to be converted.
 <P> 
  
 <H2> Summary </H2>
@@ -43,16 +41,6 @@ YYYYDDD.  It also displays the day-of-week (Sunday, Monday, ..., or
 Saturday), and indicates whether or not daylight savings time should
 be in effect.  In case <VAR>jdate</VAR> is out of range, or not given
 as a command line argument, JULDATE prompts the user for it.
-
-<STRONG>Versions of the program</STRONG> are available for each 
-<A HREF = "LIBS.html"> supported architecture </A>
-(workstation versions are currently in the directories 
-<VAR>/env/apps/(SunOS5 | IRIX5 | alphaOSF1)/bin</VAR>; Cray versions
-are in <VAR>/work/xcc/m3tools</VAR> on <VAR>sequoia</VAR>) and
-<VAR>/flyer/com/epa/coats/bin</VAR> or
-<VAR>/usr/local/edss/framework/EDSSv0.3pre/unicos9_TS/bin/OPTIMIZE</VAR>
-on <VAR>flyer</VAR>.
-<P> 
 
 
 <H2> Examples </H2>
@@ -137,17 +125,39 @@ or even
 
 <H2> See Also </H2>
 
+<BLOCKQUOTE>
 <A HREF = "AA.html#datestuff"> 
 EDSS/ Models-3 date-time manipulation routines </a>
-<P> 
+<BR> 
 
 <A HREF = "DATSHIFT.html" >
-<STRONG>DATSHIFT</STRONG></A>
-<P>
+<STRONG>datshift</STRONG></A>
+<BR>
 
 <A HREF = "GREGDATE.html" >
-<STRONG>GREGDATE</STRONG></A>
-<P>
+<STRONG>gregdate</STRONG></A>
+<BR>
+
+<A HREF = "GREG2JUL.html" >
+<STRONG>greg2jul</STRONG></A>
+<BR>
+
+<A HREF = "JUL2GREG.html" >
+<STRONG>jul2greg</STRONG></A>
+<BR>
+
+<A HREF = "JULDIFF.html" >
+<STRONG>juldiff</STRONG></A>
+<BR>
+
+<A HREF = "JULSHIFT.html" >
+<STRONG>julshift</STRONG></A>
+<BR>
+
+<A HREF = "TIMESHIFT.html" >
+<STRONG>timeshift</STRONG></A>
+<BR>
+</BLOCKQUOTE>
 
 
 

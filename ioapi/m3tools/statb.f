@@ -1,23 +1,24 @@
 
+
         SUBROUTINE  STATB( SIZE, NCOLS, NROWS, NLAYS, NTHIK, BDRY,
      &                     NEPS, EPS, LABEL, LOGDEV )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: statb.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2002-2007 Baron Advanced Meteorological Systems. LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  subroutine body starts at line  68
+C  subroutine body starts at line  71
 C
 C  FUNCTION:
 C       Produce statistics report to LOGDEV
 C
 C  PRECONDITIONS REQUIRED:
-C	Stack-allocation operating environment (such as CRAY)
-C	number of columns, rows, and levels at most 99
+C       Stack-allocation operating environment (such as CRAY)
+C       number of columns, rows, and levels at most 99
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
 C       none
@@ -27,22 +28,24 @@ C       Prototype 3/1993 by CJC
 C       Version   3/2007 by CJC: REAL*8 accumulators
 C       Version  11/2007 by CJC: Bug-fix for misplaced initialization
 C       of perimeter-counter K
+C       Version  12/2013 by CJC: INTENT for arguments
 C***********************************************************************
 
       IMPLICIT NONE
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         SIZE    !  horiz size,       from INNAME header
-        INTEGER         NCOLS   !  grid dimensions,  from INNAME header
-        INTEGER         NROWS   !  grid dimensions,  from INNAME header
-        INTEGER         NLAYS   !  grid dimensions,  from INNAME header
-        INTEGER         NTHIK   !  bdry thickness,   from INNAME header
-        REAL		BDRY( SIZE, NLAYS )	!  the grid.
-        INTEGER         LOGDEV  !  unit number for stats report
-        INTEGER		NEPS	!  number of thresholds
-        REAL		EPS( * )!  thresholds for threshold-fraction reports
-        CHARACTER*(*)   LABEL   !  legend text
+        INTEGER, INTENT(IN) :: SIZE     !  horiz size,       from INNAME header
+        INTEGER, INTENT(IN) :: NCOLS    !  grid dimensions,  from INNAME header
+        INTEGER, INTENT(IN) :: NROWS    !  grid dimensions,  from INNAME header
+        INTEGER, INTENT(IN) :: NLAYS    !  grid dimensions,  from INNAME header
+        INTEGER, INTENT(IN) :: NTHIK    !  bdry thickness,   from INNAME header
+        REAL   , INTENT(IN) :: BDRY( SIZE, NLAYS )  !  the grid.
+        INTEGER, INTENT(IN) :: NEPS     !  number of thresholds
+        REAL   , INTENT(IN) :: EPS( * ) !  thresholds for threshold-fraction reports
+        INTEGER, INTENT(IN) :: LOGDEV   !  unit number for stats report
+
+        CHARACTER*(*), INTENT(IN) :: LABEL   !  legend text
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -56,7 +59,7 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         REAL*8          ASUM
         REAL*8          ASSQ
         REAL*8          DNOM
-        INTEGER		ECNT
+        INTEGER         ECNT
 
 
 C***********************************************************************
@@ -78,9 +81,9 @@ C...........   mean, and sigma
         ASSQ = 0.0
 
         DO  155  L = 1, NLAYS   !  traversal:  all layers, all edges
-        
+
             K = 0
-            DO  112  R = 1 - NTHIK, 0		!  south edge
+            DO  112  R = 1 - NTHIK, 0       !  south edge
             DO  111  C = 1, NCOLS + NTHIK
                 K    = K + 1
                 T    = BDRY( K,L )
@@ -99,8 +102,8 @@ C...........   mean, and sigma
                 END IF
 111         CONTINUE
 112         CONTINUE
-        
-            DO  122  R = 1, NROWS + NTHIK		! east edge
+
+            DO  122  R = 1, NROWS + NTHIK       ! east edge
             DO  121  C = NCOLS + 1, NCOLS + NTHIK
                 K    = K + 1
                 T    = BDRY( K,L )
@@ -119,8 +122,8 @@ C...........   mean, and sigma
                 END IF
 121         CONTINUE
 122         CONTINUE
-        
-            DO  133  R = NROWS + 1, NROWS + NTHIK	! north edge
+
+            DO  133  R = NROWS + 1, NROWS + NTHIK   ! north edge
             DO  132  C = 1 - NTHIK, 0
                 K    = K + 1
                 T    = BDRY( K,L )
@@ -139,8 +142,8 @@ C...........   mean, and sigma
                 END IF
 132         CONTINUE
 133         CONTINUE
-        
-            DO  144  R = 1 - NTHIK, NROWS		!  west edge
+
+            DO  144  R = 1 - NTHIK, NROWS       !  west edge
             DO  143  C = 1 - NTHIK, 0
                 K    = K + 1
                 T    = BDRY( K,L )
@@ -159,8 +162,8 @@ C...........   mean, and sigma
                 END IF
 143         CONTINUE
 144         CONTINUE
-        
-155     CONTINUE	!  end loop on levels
+
+155     CONTINUE    !  end loop on levels
 
         DNOM = 1.0 / DBLE( NCOLS * NROWS * NLAYS )
         ASUM = DNOM * ASUM
@@ -186,7 +189,7 @@ C...........   mean, and sigma
 C...........   For each threshold level, count the number of times the
 C...........   grid value exceeds the threshold, and report it:
 
-        DO  199  V = 1, NEPS	!  count threshold excesses:
+        DO  199  V = 1, NEPS    !  count threshold excesses:
             ECNT = 0
             T    = EPS( V )
             DO  188  L = 1, NLAYS
@@ -214,5 +217,6 @@ C...........   Informational (LOG) message formats... 92xxx
 92020   FORMAT ( 9X , 'Number of times ', 1PE12.5,
      &           2X, 'exceeded:', I8,
      &           2X, 'fraction:', F10.8 )
-        END
+
+        END SUBROUTINE  STATB
 

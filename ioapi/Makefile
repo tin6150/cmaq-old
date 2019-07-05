@@ -69,7 +69,7 @@
 #
 ######################################################################
 
-VERSION = 3.0
+VERSION = 3.1
 
 #      ----------   Definitions for "make configure"  ------------------
 #
@@ -92,7 +92,7 @@ VERSION = 3.0
 #       Defining BIN3_DEBUG turns on trace-messages for native-binary
 #       mode routines.
 
-BASEDIR    = ${HOME}/web30
+BASEDIR    = ${HOME}/web31
 INSTALL    = /SOMEWHERE
 LIBINST    = $(INSTALL)/$(BIN)
 BININST    = $(INSTALL)/$(BIN)
@@ -139,36 +139,7 @@ OBJDIR     = $(BASEDIR)/$(BIN)
 #
 all:  dirs fix
 	(cd $(IODIR)   ; make all)
-	(cd $(NOTDIR)  ; make all)
 	(cd $(TOOLDIR) ; make all)
-	(cd $(TESTDIR) ; make all)
-
-cpl:  dirs fix
-	(cd $(IODIR)   ; make -f Makefile.cpl all)
-	(cd $(NOTDIR)  ; make all)
-	(cd $(TOOLDIR) ; make -f Makefile.cpl all)
-	(cd $(TESTDIR) ; make -f Makefile.cpl all)
-
-nocpl:  dirs fix
-	(cd $(IODIR)   ; make -f Makefile.nocpl all)
-	(cd $(NOTDIR)  ; make all)
-	(cd $(TOOLDIR) ; make -f Makefile.nocpl all)
-	(cd $(TESTDIR) ; make -f Makefile.nocpl all)
-
-f77:  dirs fix
-	(cd $(IODIR)   ; make -f Makefile.f77only all)
-	(cd $(NOTDIR)  ; make all)
-	(cd $(TOOLDIR) ; make f77)
-
-f77cpl:  dirs fix
-	(cd $(IODIR)   ; make -f Makefile.cpl.f77only all)
-	(cd $(NOTDIR)  ; make all)
-	(cd $(TOOLDIR) ; make -f Makefile.cpl f77)
-
-f77nocpl:  dirs fix
-	(cd $(IODIR)   ; make -f Makefile.nocpl.f77only all)
-	(cd $(NOTDIR)  ; make all)
-	(cd $(TOOLDIR) ; make -f Makefile.nocpl f77)
 
 configure:
 	(cd $(IODIR)   ;  sed $(SEDCMD) < Makefile.$(CPLMODE).sed > Makefile.$(CPLMODE) ; cp  Makefile.$(CPLMODE) Makefile )
@@ -176,31 +147,23 @@ configure:
 	(cd $(TOOLDIR) ;  sed $(SEDCMD) < Makefile.$(CPLMODE).sed > Makefile.$(CPLMODE) ; cp  Makefile.$(CPLMODE) Makefile )
 	(cd $(TESTDIR) ;  sed $(SEDCMD) < Makefile.$(CPLMODE).sed > Makefile.$(CPLMODE) ; cp  Makefile.$(CPLMODE) Makefile )
 
+bins:  dirs
+	(cd $(IODIR)   ; make bins)
+	(cd $(TOOLDIR) ; make bins)
+
 clean:
-	(cd $(IODIR)   ; make clean)
-	(cd $(NOTDIR)  ; make clean)
-	(cd $(TOOLDIR) ; make clean)
-	(cd $(TESTDIR) ; make clean)
+	(cd $(IODIR)   ; make -i clean)
+	(cd $(NOTDIR)  ; make -i clean)
+	(cd $(TOOLDIR) ; make -i clean)
+	(cd $(TESTDIR) ; make -i clean)
 
 relink:
 	(cd $(TOOLDIR) ; make -i rmexe; make)
-	(cd $(TESTDIR) ; make -i rmexe; make)
 
 install: $(LIBINST) $(BININST)
-	echo "Installing I/O API and M3TOOLS in $(INSTALL)"
+	echo "Installing I/O API and M3TOOLS in $(LIBINST) and $(BININST)"
 	(cd $(IODIR)   ; make install)
-	(cd $(NOTDIR)  ; make install)
 	(cd $(TOOLDIR) ; make install)
-
-SGI:
-	(BIN = IRIX6n32     ; make -f Makefile.f77only all)
-	(BIN = IRIX6n32f90  ; make all)
-	(BIN = IRIX64       ; make -f Makefile.f77only all)
-	(BIN = IRIX64f90    ; make all)
-
-Sun:
-	(BIN = SunOS5     ; make -f Makefile.f77only all)
-	(BIN = SunOS5f90  ; make all)
 
 dirs: $(OBJDIR) $(FIXDIR)
 
@@ -210,8 +173,7 @@ fix:
 gtar:
 	cd $(BASEDIR); date > VERSION.txt; \
 gtar cvfz ioapi-$(VERSION).tar.gz --dereference -X $(BASEDIR)/exclude \
-Makefile*  VERSION.txt exclude ioapi HTML m3tools iotests notcdf
-	if ( test ${USER} == 'coats' ) ; then Mail -s "New I/O API version" zac@unc.edu < VERSION.txt ; fi
+Makefile*  *.txt exclude ioapi HTML m3tools iotests notcdf
 
 lib:  dirs
 	(cd $(IODIR)   ; make all)
@@ -220,6 +182,7 @@ not:  dirs
 	(cd $(NOTDIR)  ; make all)
 
 nametest:  lib $(OBJDIR)/libnetcdf.a
+	(cd $(IODIR)   ; make nametest)
 
 $(FIXDIR):
 	mkdir -p $(FIXDIR)

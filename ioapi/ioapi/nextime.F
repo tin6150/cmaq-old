@@ -2,14 +2,14 @@
       SUBROUTINE NEXTIME  ( JDATE , JTIME, DTIME )
 
 C.....................................................................
-C Version "@(#)$Header$"
+C Version "$Id: nextime.F 1 2014-03-14 20:22:54Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2007 Baron Advanced Meteorological Systems
+C (C) 2003-2010 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C       subroutine body starts approx line 72
+C       subroutine body starts approx line 74
 C
 C  FUNCTION:
 C
@@ -41,15 +41,17 @@ C       Version 5/2005 by CJC:  special case for time-independent data
 C       (necessary for date:time=0000000:000000 normalization in CRTFIL3())
 C
 C       Version 1/2007 by CJC:  handle negative JDATEs correctly
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C........................................................................
 
         IMPLICIT  NONE
 
 C.......   ARGUMENTS:
 
-        INTEGER         JDATE           !  date (encoded YYYYDDD)
-        INTEGER         JTIME           !  time (encoded  HHMMSS)
-        INTEGER         DTIME           !  time increment (encoded HHMMSS)
+        INTEGER, INTENT(INOUT) :: JDATE           !  date (encoded YYYYDDD)
+        INTEGER, INTENT(INOUT) :: JTIME           !  time (encoded  HHMMSS)
+        INTEGER, INTENT(IN   ) :: DTIME           !  time increment (encoded HHMMSS)
 
 
 C.......   LOCAL VARIABLES:  day and year components of date
@@ -217,4 +219,4 @@ C...........   Note that each year must be treated individually
 
 
         RETURN
-        END
+        END  SUBROUTINE NEXTIME

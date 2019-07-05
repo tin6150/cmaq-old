@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/ENVINT.html,v 1.1.1.1 2001/12/05 20:25:26 coats Exp $ -->
+<!-- "$Id: ENVINT.html 83 2014-12-29 14:31:32Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> ENVINT() and envintc() </TITLE>
 </HEAD>
@@ -14,20 +14,16 @@
       MARGINWIDTH="15">
 <H1>    ENVINT() and envintc() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <BLOCKQUOTE>
         ENVINT() is a Fortran wrapper calling the C envintc()
 </BLOCKQUOTE><P> 
 <PRE>
-    INTEGER FUNCTION ENVINT( LNAME, DESCRIP, DEFAULT, STATUS )
-        CHARACTER*(*)   LNAME   ! logical name to evaluate
-        CHARACTER*(*)   DESCRIP ! description of the value
-        INTEGER         DEFAULT ! default value (if LNAME not set, or empty)
-        INTEGER         STATUS  ! for distinguishing default/error cases
+    INTEGER FUNCTION ENVINT( LNAME, DESCRIP, DEFAULT, STAT )
+        CHARACTER*(*), INTENT(IN   ) :: LNAME   ! logical name to evaluate
+        CHARACTER*(*), INTENT(IN   ) :: DESC    ! description of the value
+        INTEGER      , INTENT(IN   ) :: DEFAULT ! default value (if LNAME not set, or empty)
+        INTEGER      , INTENT(  OUT) :: STAT    ! for error/default-case detection
 </PRE><P>    
 
 <H2> C version: </H2>
@@ -48,13 +44,13 @@ int envintc( const char * lname       ,
     logical name is not defined, is defined but has an empty value, 
     or has an improper value.  Writes a message to the log indicating 
     the value returned -- and if the value was improper, writes a 
-    warning notice.  STATUS takes the following values:
+    warning notice.  <CODE>STAT</CODE> takes the following values:
     <UL> 
         <LI>  1  for improperly formatted value (e.g., something alphabetic),
-              returning DEFAULT
+              returning <CODE>DEFAULT</CODE>
         <LI>  0  for normal value
-        <LI>  -1 for environment value set but empty (returning DEFAULT)
-        <LI>  -2 for environment value not set (returning DEFAULT)
+        <LI>  -1 for environment value set but empty (returning <CODE>DEFAULT</CODE>)
+        <LI>  -2 for environment value not set (returning <CODE>DEFAULT</CODE>)
     </UL>
     <P> 
 

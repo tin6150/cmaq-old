@@ -2,16 +2,16 @@
         PROGRAM LATLON
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: latlon.F 1703 2013-11-15 21:39:36Z coats@bdsl$"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2002-2005 Baron Advanced Meteorological Systems. LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body      starts at line  101
-C  subroutine MAKEGRD starts at line 403
-C  subroutine MAKEBDY starts at line 554
+C  program body      starts at line   77
+C  subroutine MAKEGRD starts at line 372
+C  subroutine MAKEBDY starts at line 495
 C
 C  DESCRIPTION:
 C       Builds 1-layer time-independent gridded file with LAT and LON
@@ -34,51 +34,33 @@ C       Version 11/2001 by CJC for I/O API Version 2.1
 C       Version 11/2005 by CJC:  eliminate unused vbles
 C       Version 11/2007 by CJC:  splash-screen/contact-info update
 C       Version 06/2008 by CJC:  Changes for Albers conformal conic
+C
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
+C       Version 12/2013 by CJC:  PARAMETER  CMENU(:), CTYPE(:)
 C***********************************************************************
 
-#ifndef AUTO_ARRAYS
-#if __sgi  || __sun || __osf__ || __mips__
-#define AUTO_ARRAYS 0
-#endif
-#if _CRAY || _AIX
-#define AUTO_ARRAYS 1
-#endif
-#endif
-
-#ifndef AUTO_ARRAYS
-#include   "--Error compiling:  unsupported architecture---"
-#endif
+      USE M3UTILIO
 
       IMPLICIT NONE
 
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'      ! I/O API constants
-      INCLUDE 'FDESC3.EXT'      ! I/O API file description data structure
-      INCLUDE 'IODECL3.EXT'     ! I/O API function declarations
-
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        LOGICAL         DSCGRID
-        REAL*8          GETDBLE
-        INTEGER         GETMENU
-        INTEGER         GETNUM
-        REAL            GETREAL
-        LOGICAL         GETYN
-        INTEGER         TRIMLEN
-
-        EXTERNAL  DSCGRID, GETDBLE, GETMENU, GETNUM, GETREAL, GETYN, 
-     &            TRIMLEN
-
 C...........   PARAMETERS and their descriptions:
 
-        CHARACTER*16    NONE
-        PARAMETER     ( NONE = 'NONE' )
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &  '$Id: latlon.F 336 2008-09-25 20:26:52Z coats@bdsl $'
-     &  /
-
+        CHARACTER*16, PARAMETER :: NONE  = 'NONE'
+        CHARACTER*16, PARAMETER :: PNAME = 'LATLON'
+        CHARACTER*20, PARAMETER :: CMENU( 6 ) =
+     &          (/
+     &          'lat-lon            ',  !  coordinate types menu item 1
+     &          'Lambert Conformal  ',  !  coordinate types menu item 2
+     &          'Mercator           ',  !  coordinate types menu item 3
+     &          'Stereographic      ',  !  coordinate types menu item 4
+     &          'UTM                ',  !  coordinate types menu item 5
+     &          'Albers Equal-Area  '   !  coordinate types menu item 6
+     &          /)
+        INTEGER, PARAMETER :: CTYPE( 6 ) =
+     &          (/
+     &          LATGRD3, LAMGRD3, MERGRD3, STEGRD3, UTMGRD3, ALBGRD3
+     &          /)
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -87,21 +69,6 @@ C...........   LOCAL VARIABLES and their descriptions:
         CHARACTER*16    ANAME
         CHARACTER*16    BNAME, GNAME
         CHARACTER*160   MESG
-        CHARACTER*60    CMENU( 6 )
-        DATA            CMENU
-     &          /
-     &          'lat-lon',              !  coordinate types menu item 1
-     &          'Lambert Conformal',    !  coordinate types menu item 2
-     &          'Mercator',             !  coordinate types menu item 3
-     &          'Stereographic',        !  coordinate types menu item 4
-     &          'UTM',                  !  coordinate types menu item 5
-     &          'Albers Equal-Area'     !  coordinate types menu item 6
-     &          /
-        INTEGER         CTYPE( 6 )
-        DATA            CTYPE
-     &          /
-     &          LATGRD3, LAMGRD3, MERGRD3, STEGRD3, UTMGRD3, ALBGRD3
-     &          /
 
 
 C***********************************************************************
@@ -109,7 +76,7 @@ C.......   First:  Initialize the I/O API:
 
         LOGDEV = INIT3()	!  initialization returns unit # for log
 
-        WRITE( *,92000 )        !  opening screen:
+        WRITE( *, '( 5X, A )' )        !  opening screen:
      &' ',
      &'Program LATLON to construct matching TIME-INDEPENDENT 1-LAYER ',
      &'GRIDDED and BOUNDARY TIME-INDEPENDENT I/O API files containing',
@@ -132,28 +99,27 @@ C.......   First:  Initialize the I/O API:
      &' ',
      &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2008 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    920 Main Campus Drive, Suite 101',
-     &'    Raleigh, NC 27606',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     & PROGVER, 
-     &' ',
-     &'Program release tag: $Name$', 
+     &  '$Id:: latlon.F 42 2014-09-10 20:10:50Z coats               $',
      &' '
 
-        IF ( .NOT. GETYN( 'Continue with program?', 
+        IF ( .NOT. GETYN( 'Continue with program?',
      &                    .TRUE. ) ) THEN
-            CALL M3EXIT( 'LATLON', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Program ended at user request', 0 )
         END IF
 
@@ -164,7 +130,7 @@ C.......   First:  Initialize the I/O API:
         CALL GETSTR( MESG, 'BDYFILE', BNAME )
 
         IF ( GNAME .EQ. NONE  .AND.  BNAME .EQ. NONE ) THEN
-            CALL M3EXIT( 'LATLON', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'No output files requested', 2 )
         END IF
 
@@ -176,40 +142,40 @@ C.......   First:  Initialize the I/O API:
         !!  in MKS units, i.e. Meters) relative to some known origin
         !!  (XCENT,YCENT), in terms of some known defining angles
         !!  (P_ALP, P_BET, P_GAM).
-        !!  
+        !!
         !!  Having defined a map projection, one than then define
-        !!  horizontal grids within it by specifying: 
-        !!  
-        !!      The (1,1)-corner (XORIG, YORIG) in terms of the 
+        !!  horizontal grids within it by specifying:
+        !!
+        !!      The (1,1)-corner (XORIG, YORIG) in terms of the
         !!      Cartesian coordinates of the map projection
         !!      (note that for the specification of this corner,
         !!      we take a "grid-cells are volumes" approach rather
         !!      than a Poincare-dual "grid is array of node-points"
         !!      point of view);
-        !!  
+        !!
         !!      The cellsize (XCELL, YCELL) in both coordinate
-        !!      directions; 
-        !!  
+        !!      directions;
+        !!
         !!      The dimensionality (NCOLS,NROWS).
-        !!  
+        !!
         !!      (Optionally) the thickness NTHIK in cells of a
         !!      boundary data-structure for the grid.
-        !!  
+        !!
         !!  Note that frequently, we expect to have multiple grids
         !!  with the same map projection.
-        !!  
+        !!
         !!  Having defined a grid in terms of a (MKS-unit) Cartesian
         !!  coordinate system mapped from the surface of the Earth,
         !!  one can then transform grid-related problems into problems
         !!  stated in (non-metric) grid-normal coordinates defined
         !!  relative to the (1,1) corner of the grid, as given by the
         !!  formulas
-        !!  
+        !!
         !!      REAL C,R
         !!      ...
         !!      C = (X - XORIG) / XCELL
         !!      R = (Y - YORIG) / YCELL
-        !!  
+        !!
         !!  for which the (I,J) cell is {(C,R): I-1 <= C <I, J-1 <= R <J }
 
 
@@ -218,24 +184,23 @@ C.......   First:  Initialize the I/O API:
             IF ( GETYN( 'Specify grid by name from GRIDDESC file?',
      &                  .TRUE. ) ) THEN
 
-                CALL GETSTR( 'Enter grid name', 
-     &                       'SMRAQ54_50X48', 
+                CALL GETSTR( 'Enter grid name',
+     &                       'SMRAQ54_50X48',
      &                       GDNAM3D )
-                IF ( .NOT. DSCGRID( GDNAM3D, ANAME  , GDTYP3D, 
-     &                              P_ALP3D, P_BET3D, P_GAM3D, 
+                IF ( .NOT. DSCGRID( GDNAM3D, ANAME  , GDTYP3D,
+     &                              P_ALP3D, P_BET3D, P_GAM3D,
      &                              XCENT3D, YCENT3D,
-     &                              XORIG3D, YORIG3D, XCELL3D, YCELL3D, 
+     &                              XORIG3D, YORIG3D, XCELL3D, YCELL3D,
      &                              NCOLS3D, NROWS3D, NTHIK3D ) ) THEN
 
-                    MESG = 'Grid "' // 
-     &                     GDNAM3D( 1:TRIMLEN( GDNAM3D ) ) //
+                    MESG = 'Grid "' // TRIM( GDNAM3D ) //
      &                     '" not found in GRIDDESC file'
-                    CALL M3WARN( 'LATLON', 0, 0, MESG )
+                    CALL M3WARN( PNAME, 0, 0, MESG )
                     IF ( GETYN( 'Try again?', .TRUE. ) ) THEN
                         GO TO  11
                     ELSE
-                        CALL M3EXIT( 'LATLON', 0, 0,
-     &                               'Program ended at user request', 
+                        CALL M3EXIT( PNAME, 0, 0,
+     &                               'Program ended at user request',
      &                               2 )
                     END IF
 
@@ -243,11 +208,11 @@ C.......   First:  Initialize the I/O API:
 
             ELSE        !  enter grid specs interactively
 
-                CALL GETSTR( 'Enter grid name', 
-     &                       'SMRAQ54_48X50', 
+                CALL GETSTR( 'Enter grid name',
+     &                       'SMRAQ54_48X50',
      &                       GDNAM3D )
-                GDTYP3D = CTYPE( GETMENU( 6, 2, 
-     &          'Enter number for horizontal coordinate system type', 
+                GDTYP3D = CTYPE( GETMENU( 6, 2,
+     &          'Enter number for horizontal coordinate system type',
      &           CMENU ) )
 
                 IF ( GDTYP3D .EQ. LATGRD3 ) THEN !  lat-lon:  no P_ALP, ...
@@ -261,10 +226,10 @@ C.......   First:  Initialize the I/O API:
                 ELSE IF ( GDTYP3D .EQ. LAMGRD3  .OR.
      &                    GDTYP3D .EQ. ALBGRD3  ) THEN !  Lambert or Albers conic projection
 
-                    P_ALP3D = GETDBLE( -90.0D0, 90.0D0, 30.0D0, 
+                    P_ALP3D = GETDBLE( -90.0D0, 90.0D0, 30.0D0,
      &                                 'Enter secant angle     P_ALP' )
                     P_BET3D = GETDBLE( P_ALP3D, 90.0D0, 60.0D0,
-     &                                 'Enter secant angle     P_BET' ) 
+     &                                 'Enter secant angle     P_BET' )
                     P_GAM3D = GETDBLE( -180.0D0, 180.0D0, -90.0D0,
      &                                 'Enter central meridian P_GAM' )
                     XCENT3D = GETDBLE( -180.0D0, 180.0D0, P_GAM3D,
@@ -278,7 +243,7 @@ C.......   First:  Initialize the I/O API:
      &                                      'Enter UTM zone' ) )
                     P_BET3D = 0.0D0
                     P_GAM3D = 0.0D0
-                    XCENT3D = GETDBLE( -999999999.0D0, 999999999.0D0, 
+                    XCENT3D = GETDBLE( -999999999.0D0, 999999999.0D0,
      &                                 0.0D0,
      &                                 'Enter UTM offset XCENT' )
                     YCENT3D = GETDBLE( -999999999.0D0, 999999999.0D0,
@@ -287,13 +252,13 @@ C.......   First:  Initialize the I/O API:
 
                 ELSE
 
-                    CALL M3WARN( 'LATLON', 0, 0, 
+                    CALL M3WARN( PNAME, 0, 0,
      &              'Only Lat-Lon, Lambert, UTM, and Albers supported' )
                     IF ( GETYN( 'Try again?', .TRUE. ) ) THEN
                         GO TO  11
                     ELSE
-                        CALL M3EXIT( 'LATLON', 0, 0,
-     &                               'Program ended at user request', 
+                        CALL M3EXIT( PNAME, 0, 0,
+     &                               'Program ended at user request',
      &                               2 )
                     END IF
 
@@ -308,12 +273,12 @@ C.......   First:  Initialize the I/O API:
 
                 XCELL3D = GETDBLE( 0.0D0, 9.0D36, 54000.0D0,
      &                             'Enter X cell size XCELL (meters)' )
-                YCELL3D = GETDBLE( 0.0D0, 9.0D36, XCELL3D, 
+                YCELL3D = GETDBLE( 0.0D0, 9.0D36, XCELL3D,
      &                             'Enter Y cell size YCELL (meters)' )
                 XORIG3D = GETDBLE( -9.0D36, 9.0D36,
      &                             XCELL3D*( DBLE( NCOLS3D ) - 0.5D0 ),
      &                       'Enter SW corner X coord for (1,1)-cell' )
-                YORIG3D = GETDBLE( -9.0D36, 9.0D36, 
+                YORIG3D = GETDBLE( -9.0D36, 9.0D36,
      &                             YCELL3D*( DBLE( NROWS3D ) - 0.5D0 ),
      &                       'Enter SW corner Y coord for (1,1)-cell' )
 
@@ -366,10 +331,10 @@ C.......   LAT and LON, compute them, and write them to files GNAME and BNAME.
 
         IF ( GNAME .NE. NONE ) THEN
 
-            IF ( .NOT. OPEN3( GNAME, FSUNKN3, 'LATLON' ) ) THEN
+            IF ( .NOT. OPEN3( GNAME, FSUNKN3, PNAME ) ) THEN
                 MESG = 'Could not open file "' //
-     &                 GNAME( 1: TRIMLEN( GNAME ) ) // '" for output'
-                CALL M3EXIT( 'LATLON', 0, 0, MESG, 2 )
+     &                  TRIM( GNAME ) // '" for output'
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             CALL MAKEGRD( GNAME )	!  see below, in this file.
@@ -382,10 +347,10 @@ C.......   LAT and LON, compute them, and write them to files GNAME and BNAME.
             FDESC3D( 1 ) = 'Sample 1-layer boundary file:  ' //
      &                     'lats and lons'
 
-            IF ( .NOT. OPEN3( BNAME, FSUNKN3, 'LATLON' ) ) THEN
+            IF ( .NOT. OPEN3( BNAME, FSUNKN3, PNAME ) ) THEN
                 MESG = 'Could not open file "' //
-     &                 BNAME( 1: TRIMLEN( BNAME ) ) // '" for output'
-                CALL M3EXIT( 'LATLON', 0, 0, MESG, 2 )
+     &                 TRIM( BNAME ) // '" for output'
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             CALL MAKEBDY( BNAME )	!  see below, in this file.
@@ -395,60 +360,25 @@ C.......   LAT and LON, compute them, and write them to files GNAME and BNAME.
 
 C.......   Clean up and exit (M3EXIT calls SHUT3() automatically)
 
-        CALL M3EXIT( 'LATLON', 0, 0, 
+        CALL M3EXIT( PNAME, 0, 0,
      &               'Successful completion of program LATLON', 0 )
 
-C...........   Informational (LOG) message formats... 92xxx
 
-92000   FORMAT ( 5X, A )
-
-        END
+      CONTAINS  !!-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 
-C*************  subroutine MAKEGRD starts here  ***********************
-C
-C	This also serves as an example to show how to do
-C	dynamic memory allocation from within Fortran on
-C	both Crays and workstations
-C
-C***********************************************************************
 
-      SUBROUTINE  MAKEGRD( GNAME )
-
-      IMPLICIT NONE
-
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'      ! I/O API constants
-      INCLUDE 'FDESC3.EXT'      ! I/O API file description data structure
-      INCLUDE 'IODECL3.EXT'     ! I/O API function declarations
-
+        SUBROUTINE  MAKEGRD( GNAME )
 
 C...........   ARGUMENTS and their descriptions:
 
         CHARACTER*16    GNAME   !  name of output file
 
 
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        LOGICAL         SETLAM, LAM2LL, SETALB, ALB2LL
-        INTEGER         TRIMLEN
-        EXTERNAL        SETLAM, LAM2LL, SETALB, ALB2LL, TRIMLEN
-
-#if ! AUTO_ARRAYS
-        INTEGER         MALLOC
-#endif    /* ! AUTO_ARRAYS */
-
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 
         REAL    LAT( NCOLS3D, NROWS3D )
         REAL    LON( NCOLS3D, NROWS3D )
-
-#if ! AUTO_ARRAYS
-        INTEGER         SIZE
-        POINTER       ( P1, LAT )
-        POINTER       ( P2, LON )
-#endif    /* ! AUTO_ARRAYS */
 
         INTEGER         R, C            !  row, column counters
         INTEGER         ZONE            !  UTM zone
@@ -458,21 +388,6 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 
 C***********************************************************************
 C   begin body of subroutine  MAKEGRD
-
-#if ! AUTO_ARRAYS
-
-        SIZE = 4 * NCOLS3D * NROWS3D
-        P1   = MALLOC( SIZE )
-        IF( P1 .EQ. 0 ) 
-     &          CALL M3EXIT( 'LATLON/MAKEGRD', 0, 0, 
-     &                       'Memory allocation error for LAT.', 2 )
-
-        P2   = MALLOC( SIZE )
-        IF( P2 .EQ. 0 ) 
-     &          CALL M3EXIT( 'LATLON/MAKEGRD', 0, 0, 
-     &                       'Memory allocation error for LON.', 2 )
-
-#endif    /* ! AUTO_ARRAYS */
 
         X0 = XORIG3D - 0.5D0 * XCELL3D  !  to get to cell-centers
         Y0 = YORIG3D - 0.5D0 * YCELL3D  !             "     "
@@ -491,7 +406,7 @@ C   begin body of subroutine  MAKEGRD
             IF ( .NOT. SETLAM( SNGL( P_ALP3D ),       !  first, initialize
      &                         SNGL( P_BET3D ),       !  for LAM2LL()
      &                         SNGL( P_GAM3D ),
-     &                         SNGL( XCENT3D ), 
+     &                         SNGL( XCENT3D ),
      &                         SNGL( YCENT3D ) ) ) THEN
                 CALL M3EXIT( 'LATLON/MAKEGRD', 0, 0,
      &                       'Lambert projection setup error', 2 )
@@ -525,7 +440,7 @@ C   begin body of subroutine  MAKEGRD
             IF ( .NOT. SETALB( SNGL( P_ALP3D ),       !  first, initialize
      &                         SNGL( P_BET3D ),       !  for LAM2LL()
      &                         SNGL( P_GAM3D ),
-     &                         SNGL( XCENT3D ), 
+     &                         SNGL( XCENT3D ),
      &                         SNGL( YCENT3D ) ) ) THEN
                 CALL M3EXIT( 'LATLON/MAKEGRD', 0, 0,
      &                       'Albers projection setup error', 2 )
@@ -554,38 +469,31 @@ C.......   Write out results to file GNAME, then return:
 
         IF ( .NOT. WRITE3( GNAME, 'LAT', 0, 0, LAT ) ) THEN
             MESG = 'Error writing "LAT" to file "' //
-     &             GNAME( 1:TRIMLEN( GNAME ) ) // '"'
+     &             TRIM( GNAME ) // '"'
             CALL M3EXIT( 'LATLON/MAKEGRD', 0, 0, MESG, 2 )
         END IF
 
         IF ( .NOT. WRITE3( GNAME, 'LON', 0, 0, LON ) ) THEN
             MESG = 'Error writing "LON" to file "' //
-     &             GNAME( 1:TRIMLEN( GNAME ) ) // '"'
+     &             TRIM( GNAME ) // '"'
             CALL M3EXIT( 'LATLON/MAKEGRD', 0, 0, MESG, 2 )
         END IF
 
         RETURN
 
-        END
+        END SUBROUTINE  MAKEGRD
 
 
 
-C*************  subroutine MAKEBDY starts here  ***********************
-C
-C	This also serves as an example to show how to traverse the
-C	standard storage order for I/O API BNDARY3 data structures.
-C
-C***********************************************************************
+      !!*************  subroutine MAKEBDY starts here  ***********************
+      !!
+      !!  This also serves as an example to show how to traverse the
+      !!  standard storage order for I/O API BNDARY3 data structures.
+      !!***********************************************************************
 
       SUBROUTINE  MAKEBDY( BNAME )
 
-      IMPLICIT NONE
-
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'      ! I/O API constants
-      INCLUDE 'FDESC3.EXT'      ! I/O API file description data structure
-      INCLUDE 'IODECL3.EXT'     ! I/O API function declarations
+        IMPLICIT NONE
 
 
 C...........   ARGUMENTS and their descriptions:
@@ -593,26 +501,10 @@ C...........   ARGUMENTS and their descriptions:
         CHARACTER*16    BNAME   !  name of output file
 
 
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        LOGICAL         SETLAM, LAM2LL, SETALB, ALB2LL
-        INTEGER         TRIMLEN
-        EXTERNAL        SETLAM, LAM2LL, SETALB, ALB2LL, TRIMLEN
-
-#if ! AUTO_ARRAYS
-        INTEGER         SIZE
-        INTEGER         MALLOC
-#endif    /* ! AUTO_ARRAYS */
-
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 
         REAL    LAT( 2 * NTHIK3D * ( NCOLS3D + NROWS3D + 2 * NTHIK3D ) )
         REAL    LON( 2 * NTHIK3D * ( NCOLS3D + NROWS3D + 2 * NTHIK3D ) )
-
-#if ! AUTO_ARRAYS
-        POINTER       ( P1, LAT )
-        POINTER       ( P2, LON )
-#endif    /* ! AUTO_ARRAYS */
 
         INTEGER         R, C, K         !  row, column, bdy-cell counters
         INTEGER         ZONE            !  UTM zone
@@ -621,22 +513,6 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 
 
 C***********************************************************************
-C   begin body of subroutine  MAKEBDY
-
-#if ! AUTO_ARRAYS
-
-        SIZE = 8 * NTHIK3D * ( NCOLS3D + NROWS3D + 2 * NTHIK3D )
-        P1   = MALLOC( SIZE )
-        IF( P1 .EQ. 0 ) 
-     &          CALL M3EXIT( 'LATLON/MAKEBDY', 0, 0, 
-     &                       'Memory allocation error for LAT.', 2 )
-
-        P2   = MALLOC( SIZE )
-        IF( P2 .EQ. 0 ) 
-     &          CALL M3EXIT( 'LATLON/MAKEBDY', 0, 0, 
-     &                       'Memory allocation error for LON.', 2 )
-
-#endif    /* ! AUTO_ARRAYS */
 
         X0 = XORIG3D - 0.5D0 * XCELL3D  !  to get to cell-centers
         Y0 = YORIG3D - 0.5D0 * YCELL3D  !             "     "
@@ -683,7 +559,7 @@ C   begin body of subroutine  MAKEBDY
             IF ( .NOT. SETLAM( SNGL( P_ALP3D ),       !  first, initialize
      &                         SNGL( P_BET3D ),       !  for LAM2LL()
      &                         SNGL( P_GAM3D ),
-     &                         SNGL( XCENT3D ), 
+     &                         SNGL( XCENT3D ),
      &                         SNGL( YCENT3D ) ) ) THEN
                 CALL M3EXIT( 'LATLON/MAKEBDY', 0, 0,
      &                       'Lambert projection setup error', 2 )
@@ -785,7 +661,7 @@ C   begin body of subroutine  MAKEBDY
             IF ( .NOT. SETALB( SNGL( P_ALP3D ),       !  first, initialize
      &                         SNGL( P_BET3D ),       !  for ALB2LL()
      &                         SNGL( P_GAM3D ),
-     &                         SNGL( XCENT3D ), 
+     &                         SNGL( XCENT3D ),
      &                         SNGL( YCENT3D ) ) ) THEN
                 CALL M3EXIT( 'LATLON/MAKEBDY', 0, 0,
      &                       'Albers projection setup error', 2 )
@@ -852,17 +728,19 @@ C.......   Write out results to file BNAME, then return:
 
         IF ( .NOT. WRITE3( BNAME, 'LAT', 0, 0, LAT ) ) THEN
             MESG = 'Error writing "LAT" to file "' //
-     &             BNAME( 1:TRIMLEN( BNAME ) ) // '"'
+     &             TRIM( BNAME ) // '"'
             CALL M3EXIT( 'LATLON/MAKEBDY', 0, 0, MESG, 2 )
         END IF
 
         IF ( .NOT. WRITE3( BNAME, 'LON', 0, 0, LON ) ) THEN
             MESG = 'Error writing "LON" to file "' //
-     &             BNAME( 1:TRIMLEN( BNAME ) ) // '"'
+     &             TRIM( BNAME ) // '"'
             CALL M3EXIT( 'LATLON/MAKEBDY', 0, 0, MESG, 2 )
         END IF
 
         RETURN
 
-        END
+        END SUBROUTINE  MAKEBDY
 
+
+      END PROGRAM LATLON

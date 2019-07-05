@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/TIME2SEC.html,v 1.1.1.1 2001/12/05 20:25:40 coats Exp $ -->
+<!-- "$Id: TIME2SEC.html 138 2015-01-27 21:45:43Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> TIME2SEC() and time2secc() </TITLE>
 </HEAD>
@@ -15,14 +15,10 @@
 
 <H1>    TIME2SEC() and time2secc() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
     INTEGER FUNCTION  TIME2SEC( DTIME )
-        INTEGER   DTIME    	!  time interval H*MMSS
+        INTEGER, INTENT(IN   ) :: DTIME    	!  time interval H*MMSS
 </PRE><P> 
 
 <H2> C version:   </H2>
@@ -33,10 +29,12 @@ by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 <H2> Summary: </H2>
 
     Returns the number of seconds in the <A HREF = "DATETIME.html"> 
-    time interval </A> DTIME.  
-    DTIME may be positive or negative (in which latter case, 
-    its hour, minutes, and seconds fields are assumed to be
-    all negative or zero).
+    time interval</A> <CODE>DTIME</CODE>.   <CODE>DTIME</CODE> may be
+    positive or negative (in which latter case,  its hour, minutes, and
+    seconds fields are assumed to be all negative or zero).  <EM>Note
+    that the <CODE>DTIME</CODE> <CODE>H*MMSS</CODE>-encoding suffers
+    <CODE>INTEGER</CODE>-overflow for time periods exceeding
+    approximately 24.5 years.</EM>
     <P> 
 
     For Fortran-90 declarations and interface checking:    
@@ -54,14 +52,16 @@ by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
     <CODE>#include &quot;iodecl3.h&quot;</CODE> for C.
     <P> 
 
-    DTIME represented H*MMSS = 100 * ( 100 * HOURS + MINS ) + SECS <BR>
+    <CODE>DTIME</CODE> represented <CODE>
+    H*MMSS&nbsp;=&nbsp;100&nbsp;*&nbsp;(&nbsp;100&nbsp;*&nbsp;HOURS&nbsp;+&nbsp;MINS&nbsp;)&nbsp;+&nbsp;SECS</CODE> <BR>
     Either HOURS, MINS, SECS &gt;= 0, or HOURS, MINS, SECS &lt;= 0.
 <P> 
 
 <H2> Fortran Usage: </H2>
 <PRE>
     ...
-    INTEGER   TIME2SEC
+    USE M3UTILIO
+    ...
     INTEGER   SECS
     ...
     SECS = TIME2SEC( 12345 )

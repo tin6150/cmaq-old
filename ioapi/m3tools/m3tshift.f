@@ -2,10 +2,10 @@
         PROGRAM  M3TSHIFT
 
 C***********************************************************************
-C Version "@(#)$Header$ $Id: m3tshift.f 49 2007-07-06 16:20:50Z coats@borel $"
+C Version "$Id: m3tshift.f 79 2014-12-12 16:28:01Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr, and
-C (C) 2002-2007 Baron Advanced Meteorological Systems, LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
@@ -27,35 +27,21 @@ C       Prototype 1/1995 by CJC
 C       Version   5/1995 by CJC:  command line arguments
 C       Modified 10/1999 by CJC:  Fortran standards conformance
 C       Version  11/2001 by CJC for I/O API Version 2.1
+C       Version  02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C***********************************************************************
+
+      USE M3UTILIO
 
       IMPLICIT NONE
 
-C...........   INCLUDES:
+C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INCLUDE 'PARMS3.EXT'  !  I/O parameter definitions
-        INCLUDE 'FDESC3.EXT'  !  file header data structures
-        INCLUDE 'IODECL3.EXT' !  I/O definitions and declarations
+         INTEGER :: IARGC
 
 C...........   PARAMETERS and their descriptions:
 
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id:: m3tshift.f 49 2007-07-06 16:20:50Z coats@borel          $'
-     &  /
-
-
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        LOGICAL       GETYN
-        CHARACTER*16  PROMPTMFILE
-        INTEGER       GETNUM, IARGC, INDEX1,
-     &                SECSDIFF, SEC2TIME, TIME2SEC, TRIMLEN
-        REAL          GETREAL
-
-        EXTERNAL  GETNUM,   GETREAL,  GETYN,    INDEX1, PROMPTFFILE,
-     &            SECSDIFF, SEC2TIME, TIME2SEC, TRIMLEN
-
+        CHARACTER*16, PARAMETER :: PNAME = 'M3TSHIFT'
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -86,7 +72,7 @@ C.........................................................................
 C   begin body of program  M3TSHIFT
 
         LOGDEV = INIT3()
-        WRITE ( *,92000 )
+        WRITE ( *, '( 5X, A )' )
      &  ' ',
      &  'Program M3TSHIFT to copy a selected time period from a ',
      &  'Models-3 file to a different time period in a different',
@@ -99,47 +85,48 @@ C   begin body of program  M3TSHIFT
      &  ' ',
      &  'USAGE:  m3tshift [INFILE OUTFILE] ',
      &  '(and then answer the prompts).',
+     &' ',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
      &  ' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
-     &' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: m3tshift.f 79 2014-12-12 16:28:01Z coats                $',
      &' '
 
         ARGCNT = IARGC()
 
         IF ( ARGCNT .EQ. 1  .OR.  ARGCNT .GT. 2 ) THEN
-            CALL M3EXIT( 'M3XTRACT', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'usage:  m3tshift [INFILE OUTFILE]', 2 )
         END IF
 
         IF ( ARGCNT .EQ. 0 ) THEN       !  get names from user
 
             INAME = PROMPTMFILE( 'Enter logical name for  INPUT FILE',
-     &                           FSREAD3, 'INFILE', 'M3XTRACT' )
+     &                           FSREAD3, 'INFILE', PNAME )
 
-        ELSE		!  argcnt 2
+        ELSE        !  argcnt 2
 
             CALL GETARG( 1, ENVBUF )
             INAME = ENVBUF( 1:16 )
-            IF ( .NOT. OPEN3( INAME, FSREAD3, 'M3STAT' ) ) THEN
+            IF ( .NOT. OPEN3( INAME, FSREAD3, PNAME ) ) THEN
                 MESG = 'Could not open input file "'
-     &                 // INAME( 1:TRIMLEN( INAME ) ) // '"'
-                CALL M3EXIT( 'M3STAT', 0, 0, MESG, 2 )
+     &                 // TRIM( INAME ) // '"'
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             CALL GETARG( 2, ENVBUF )
@@ -150,8 +137,8 @@ C   begin body of program  M3TSHIFT
 
         IF ( .NOT. DESC3( INAME ) ) THEN
             MESG = 'Could not get description of input file "' //
-     &             INAME( 1:TRIMLEN( INAME ) ) // '"'
-            CALL M3EXIT( 'M3TSHIFT', 0, 0, MESG, 2 )
+     &             TRIM( INAME ) // '"'
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         IF ( FTYPE3D .EQ. CUSTOM3 ) THEN
@@ -169,9 +156,9 @@ C   begin body of program  M3TSHIFT
             SIZE = 1 + NROWS3D * ( 12 + NCOLS3D * NVARS3D )
         ELSE
             WRITE( MESG, 94011 )
-     &      'Input file "', INAME( 1:TRIMLEN( INAME ) ),
+     &      'Input file "', TRIM( INAME ),
      &      '" has unsupported type', FTYPE3D
-            CALL M3EXIT( 'M3TSHIFT', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         SDATE  = SDATE3D
@@ -213,7 +200,7 @@ C.......   Get starting date and time, and duration:
                 NSTEPS = 1
             END IF
             IF ( TSOUT .NE. TSTEP ) THEN
-                CALL M3WARN( 'M3TSHIFT', 0, 0,
+                CALL M3WARN( PNAME, 0, 0,
      &          'Input and output time steps are unequal.' )
             END IF
 
@@ -229,14 +216,14 @@ C.......   Re-use all but the starting date&time of the input-file description.
 
         IF ( ARGCNT .EQ. 0 ) THEN
             ONAME = PROMPTMFILE( 'Enter logical name for OUTPUT FILE',
-     &                           FSUNKN3, 'OUTFILE', 'M3TSHIFT' )
-        ELSE	!  argcnt = 2:
-            IF ( .NOT. OPEN3( ONAME, FSUNKN3, 'M3TSHIFT' ) ) THEN
+     &                           FSUNKN3, 'OUTFILE', PNAME )
+        ELSE    !  argcnt = 2:
+            IF ( .NOT. OPEN3( ONAME, FSUNKN3, PNAME ) ) THEN
                 MESG = 'Could not open output file "' //
-     &                 ONAME( 1:TRIMLEN( ONAME ) ) // '"'
-                CALL M3EXIT( 'M3TSHIFT', SDATE, STIME, MESG, 2 )
+     &                 TRIM( ONAME ) // '"'
+                CALL M3EXIT( PNAME, SDATE, STIME, MESG, 2 )
             END IF
-        END IF		!  if argcnt zero, or 2
+        END IF      !  if argcnt zero, or 2
 
 
 C.......   Process this period in the input file:
@@ -257,7 +244,7 @@ C.......   Process this period in the input file:
 322     CONTINUE        !  end loop on time steps
 
 
-        CALL M3EXIT( 'M3TSHIFT', 0, 0,
+        CALL M3EXIT( PNAME, 0, 0,
      &               'Program  M3TSHIFT  completed successfully', 0 )
 
 
@@ -265,11 +252,9 @@ C..............  FORMAT STATEMENTS:  ....................................
 
 C...........   Informational (LOG) message formats... 92xxx
 
-92000   FORMAT ( 5X , A )
-
 94010   FORMAT ( 100( A, :, 2X, I5, :, 2X ) )
 
 94011   FORMAT ( 3A, I5 )
 
-        END
+        END PROGRAM M3TSHIFT
 

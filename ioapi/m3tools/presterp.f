@@ -2,14 +2,14 @@
         PROGRAM PRESTERP
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: presterp.f 43 2014-09-12 14:06:19Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2002-2005 Baron Advanced Meteorological Systems. LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line  123
+C  program body starts at line  100
 C
 C  DESCRIPTION:
 C       Interpolate specified file from sigma levels to pressure levels,
@@ -20,45 +20,28 @@ C       3D input file having same input grid as PRES_*_3D
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
 C       GETNUM,   GETREAL,  GETYN,    INDEX1, PROMPTMFILE,
-C       SECSDIFF, SEC2TIME, TIME2SEC, TRIMLEN
+C       SECSDIFF, SEC2TIME, TIME2SEC
 C
 C  REVISION  HISTORY:
 C       Prototype 7/4/99 by CJC
 C       Version  11/2001 by CJC for I/O API Version 2.1
 C       Version  11/2005 by CJC:  eliminate unused vbles
+C       Version  02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C***********************************************************************
+
+      USE M3UTILIO
 
       IMPLICIT NONE
 
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'      ! I/O API constants
-      INCLUDE 'FDESC3.EXT'      ! I/O API file description data structure
-      INCLUDE 'IODECL3.EXT'     ! I/O API function declarations
-
-
 C...........   PARAMETERS and their descriptions:
 
-        CHARACTER*16	BLANK16
-        PARAMETER     ( BLANK16 = ' ' )
-
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id:: presterp.f 49 2007-07-06 16:20:50Z coats@borel          $'
-     &  /
-
+        CHARACTER*16, PARAMETER :: BLANK16 = ' '
+        CHARACTER*16, PARAMETER :: PNAME   = 'PRESTERP'
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        LOGICAL       GETYN
-        CHARACTER*16  PROMPTMFILE
-        INTEGER       GETNUM, IARGC, INDEX1, SECSDIFF, SEC2TIME,
-     &                TIME2SEC, TRIMLEN
-        REAL          GETREAL
-
-        EXTERNAL  GETNUM,   GETREAL,  GETYN,    INDEX1, PROMPTMFILE,
-     &            SECSDIFF, SEC2TIME, TIME2SEC, TRIMLEN
-
+        INTEGER :: IARGC
 
 C...........   LOCAL VARIABLES and their descriptions:
 
@@ -68,11 +51,10 @@ C...........   LOCAL VARIABLES and their descriptions:
 
         INTEGER         STATUS
         LOGICAL         EFLAG, AFLAG
-        LOGICAL         PFLAG( 3 )
-        DATA            PFLAG / 3 * .FALSE. /
+        LOGICAL ::      PFLAG( 3 ) = .FALSE.
 
         CHARACTER*16    INAME   !  logical name of the input data file
-        CHARACTER*16    PNAME   !  logical name of the input pressure file
+        CHARACTER*16    GNAME   !  logical name of the input pressure file
         CHARACTER*16    FNAME   !  logical name of the output file
 
         INTEGER         NCOLS   !  grid dimensions, from file headers
@@ -82,8 +64,8 @@ C...........   LOCAL VARIABLES and their descriptions:
         INTEGER         VGTYP   !  vertical coord type
         REAL            VGTOP
 
-        INTEGER         PLAYS   !  number of    pressure levels from PNAME
-        REAL            PRESF( MXLAYS3 + 1 ) !  pressure levels from PNAME
+        INTEGER         PLAYS   !  number of    pressure levels from GNAME
+        REAL            PRESF( MXLAYS3 + 1 ) !  pressure levels from GNAME
 
         REAL*8          P_ALP      ! first, second, third map
         REAL*8          P_BET      ! projection descriptive
@@ -110,13 +92,6 @@ C...........   LOCAL VARIABLES and their descriptions:
 
         INTEGER         ITYPE( MXVARS3 )        !  interpolation type
         REAL            BADV( MXVARS3 ), VV     !  bad-value token
-
-C...........   STATEMENT FUNCTION:  Floating point "unequal"
-
-        REAL*8          XX, YY
-        LOGICAL         DBLERR
-        DBLERR( XX, YY ) =
-     &      ( (XX - YY)**2 .GT. 1.0E-10*( XX**2 + YY**2 + 1.0E-5 ) )
 
 
 C***********************************************************************
@@ -153,29 +128,30 @@ C   begin body of program PRESTERP
      &  'NOTE:  If you specify the interpolation-type interactively ',
      &  '(at the prompt), you will specify it separately for each ',
      &  'variable, rather than for all of them at once.',
+     &' ',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
      &  ' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html  Comments and',
-     &'questions are welcome and can be sent to',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
-     &'    coats@baronams.com',
+     &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.',
-     &'    920 Main Campus Drive, Suite 101',
-     &'    Raleigh, NC 27606',
-     &' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: presterp.f 43 2014-09-12 14:06:19Z coats                $',
      &' '
 
         IF ( .NOT.GETYN( 'Continue with program?', .TRUE. ) ) THEN
-            CALL M3EXIT( 'PRESTERP', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Terminated at user request', 2 )
         END IF
 
@@ -184,18 +160,18 @@ C   begin body of program PRESTERP
 
             CALL GETARG( 1, ENVBUF )
             INAME = ENVBUF( 1:16 )
-            IF ( .NOT. OPEN3( INAME, FSREAD3, 'PRESTERP' ) ) THEN
+            IF ( .NOT. OPEN3( INAME, FSREAD3, PNAME ) ) THEN
                 MESG = 'Could not open input file "'
-     &                    // INAME( 1:TRIMLEN( INAME ) ) // '"'
-                CALL M3EXIT( 'PRESTERP', 0, 0, MESG, 2 )
+     &                    // TRIM( INAME ) // '"'
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             CALL GETARG( 2, ENVBUF )
-            PNAME = ENVBUF( 1:16 )
-            IF ( .NOT. OPEN3( PNAME, FSREAD3, 'PRESTERP' ) ) THEN
+            GNAME = ENVBUF( 1:16 )
+            IF ( .NOT. OPEN3( GNAME, FSREAD3, PNAME ) ) THEN
                 MESG = 'Could not open input file "'
-     &                    // PNAME( 1:TRIMLEN( PNAME ) ) // '"'
-                CALL M3EXIT( 'PRESTERP', 0, 0, MESG, 2 )
+     &                    // TRIM( GNAME ) // '"'
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             IF ( ARGCNT .EQ. 4 ) THEN
@@ -211,9 +187,8 @@ C   begin body of program PRESTERP
                     T = 3
                     PFLAG( 3 ) = .TRUE.
                 ELSE
-                    MESG = 'Unknown interpolation type "'
-     &                    // ENVBUF( 1:TRIMLEN( ENVBUF ) ) // '"'
-                    CALL M3EXIT( 'PRESTERP', 0, 0, MESG, 2 )
+                    MESG = 'Unknown interpolation type ' // ENVBUF
+                    CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                 END IF
                 DO  V = 1, MXVARS3
                     ITYPE( V ) = T
@@ -223,22 +198,22 @@ C   begin body of program PRESTERP
         ELSE IF ( ARGCNT .EQ. 0 ) THEN
 
             INAME = PROMPTMFILE( 'Enter logical name for INPUT FILE',
-     &                           FSREAD3, 'AFILE', 'PRESTERP' )
+     &                           FSREAD3, 'AFILE', PNAME )
 
-            PNAME = PROMPTMFILE( '            ... for PRESSURE FILE',
-     &                           FSREAD3, 'PFILE', 'PRESTERP' )
+            GNAME = PROMPTMFILE( '            ... for PRESSURE FILE',
+     &                           FSREAD3, 'PFILE', PNAME )
 
         ELSE
-            CALL M3EXIT( 'PRESTERP', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &      'USAGE:  presterp [INFILE PRESFILE OUTFILE]', 2 )
         END IF
 
 
         !!  Get input file descriptions and check file headers.
 
-        IF ( .NOT. DESC3( PNAME ) ) THEN
-            MESG = 'Could not get description for "' // PNAME
-            CALL M3EXIT( 'PRESTERP', 0, 0,MESG, 2 )
+        IF ( .NOT. DESC3( GNAME ) ) THEN
+            MESG = 'Could not get description for "' // GNAME
+            CALL M3EXIT( PNAME, 0, 0,MESG, 2 )
         END IF
         NCOLS = NCOLS3D
         NROWS = NROWS3D
@@ -260,61 +235,30 @@ C   begin body of program PRESTERP
 
         IF ( .NOT. DESC3( INAME ) ) THEN
             MESG = 'Could not get description for "' // INAME
-            CALL M3EXIT( 'PRESTERP', 0, 0,MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0,MESG, 2 )
+        ELSE IF ( .NOT.FILCHK3( INAME,  GRDDED3,
+     &                  NCOLS, NROWS, NLAYS3D, NTHIK3D ) ) THEN
+            MESG = 'Inconsistent dimensions  for ' // INAME
+            EFLAG = .TRUE.
+            CALL M3MESG( MESG )
+        ELSE IF ( .NOT.GRDCHK3( INAME,
+     &                  P_ALP, P_BET, P_GAM, XCENT, YCENT,
+     &                  XORIG, YORIG, XCELL, YCELL,
+     &                  NLAYS3D, VGTYP3D, VGTOP3D, VGLVS3D ) ) THEN
+            MESG = 'Inconsistent coord/grid  for ' // INAME
+            EFLAG = .TRUE.
+            CALL M3MESG( MESG )
         END IF
+
         JDATE  = SDATE3D
         JTIME  = STIME3D
         TSTEP  = TSTEP3D
         NSTEPS = MXREC3D
         NLAYS  = NLAYS3D
 
-        IF ( NCOLS .NE. NCOLS3D ) THEN
-            CALL M3EXIT( 'PRESTERP', 0, 0, 'NCOLS mismatch', 2 )
-        END IF
-
-        IF ( NROWS .NE. NROWS3D ) THEN
-            CALL M3EXIT( 'PRESTERP', 0, 0, 'NROWS mismatch', 2 )
-        END IF
-
-        IF ( DBLERR( P_ALP, P_ALP3D ) ) THEN
-            CALL M3EXIT( 'PRESTERP', 0, 0, 'P_ALP mismatch', 2 )
-        END IF
-
-        IF ( DBLERR( P_BET, P_BET3D ) ) THEN
-            CALL M3EXIT( 'PRESTERP', 0, 0, 'P_BET mismatch', 2 )
-        END IF
-
-        IF ( DBLERR( P_GAM, P_GAM3D ) ) THEN
-            CALL M3EXIT( 'PRESTERP', 0, 0, 'P_GAM mismatch', 2 )
-        END IF
-
-        IF ( DBLERR( XCENT, XCENT3D ) ) THEN
-            CALL M3EXIT( 'PRESTERP', 0, 0, 'XCENT mismatch', 2 )
-        END IF
-
-        IF ( DBLERR( YCENT, YCENT3D ) ) THEN
-            CALL M3EXIT( 'PRESTERP', 0, 0, 'YCENT mismatch', 2 )
-        END IF
-
-        IF ( DBLERR( XORIG, XORIG3D ) ) THEN
-            CALL M3EXIT( 'PRESTERP', 0, 0, 'XORIG mismatch', 2 )
-        END IF
-
-        IF ( DBLERR( YORIG, YORIG3D ) ) THEN
-            CALL M3EXIT( 'PRESTERP', 0, 0, 'YORIG mismatch', 2 )
-        END IF
-
-        IF ( DBLERR( XCELL, XCELL3D ) ) THEN
-            CALL M3EXIT( 'PRESTERP', 0, 0, 'XCELL mismatch', 2 )
-        END IF
-
-        IF ( DBLERR( YCELL, YCELL3D ) ) THEN
-            CALL M3EXIT( 'PRESTERP', 0, 0, 'YCELL mismatch', 2 )
-        END IF
-
 
         !!  Create output file  Reuse description for INAME, except for
-        !!  pressure levels obtained from PNAME.
+        !!  pressure levels obtained from GNAME.
 
         VGTYP3D = VGTYP
         VGTOP3D = VGTOP
@@ -327,16 +271,16 @@ C   begin body of program PRESTERP
 
             CALL GETARG( 3, ENVBUF )
             FNAME = ENVBUF( 1:16 )
-            IF ( .NOT. OPEN3( FNAME, FSUNKN3, 'PRESTERP' ) ) THEN
+            IF ( .NOT. OPEN3( FNAME, FSUNKN3, PNAME ) ) THEN
                 MESG = 'Could not open input file "'
-     &                    // FNAME( 1:TRIMLEN( FNAME ) ) // '"'
-                CALL M3EXIT( 'PRESTERP', 0, 0, MESG, 2 )
+     &                    // TRIM( FNAME ) // '"'
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
         ELSE
 
             FNAME = PROMPTMFILE( 'Enter logical name for OUTPUT FILE',
-     &                           FSUNKN3, 'OFILE', 'PRESTERP' )
+     &                           FSUNKN3, 'OFILE', PNAME )
 
         END IF
 
@@ -361,12 +305,12 @@ C   begin body of program PRESTERP
             VV = BADVAL3
             DO  V = 1, NVARS3D
                 MESG = 'Enter interpolation type for "' //
-     &                  VNAME3D(V)( 1:TRIMLEN( VNAME3D(V) ) ) // '"'
+     &                  TRIM( VNAME3D(V) ) // '"'
                 T = GETNUM( 1, 3, 1, MESG )
                 ITYPE( V ) = T
                 PFLAG( T ) = .TRUE.
                 MESG = 'Enter BELOW-GROUND value for "' //
-     &                  VNAME3D(V)( 1:TRIMLEN( VNAME3D(V) ) ) // '"'
+     &                  TRIM( VNAME3D(V) ) // '"'
                 VV = GETREAL( BADVAL3, -BADVAL3, 0.0, MESG )
                 BADV( V ) = VV
             END DO
@@ -389,7 +333,7 @@ C   begin body of program PRESTERP
         IF ( STATUS .NE. 0 ) THEN
             WRITE( MESG, '( A, I10 )' )
      &      'Allocation failed:  STAT=', STATUS
-            CALL M3EXIT( 'PRESTERP', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
 
@@ -400,39 +344,39 @@ C   begin body of program PRESTERP
 
             EFLAG = .FALSE.
 
-            IF ( .NOT. READ3( PNAME, 'PDEX', ALLAYS3, JDATE, JTIME,
+            IF ( .NOT. READ3( GNAME, 'PDEX', ALLAYS3, JDATE, JTIME,
      &                        PDEX ) ) THEN
                 MESG = 'Could not read PDEX from ' // PNAME
-                CALL M3WARN( 'PRESTERP', 0, 0, MESG )
+                CALL M3WARN( PNAME, 0, 0, MESG )
                 EFLAG = .TRUE.
                 AFLAG = .TRUE.
             END IF
 
             IF ( PFLAG( 1 ) ) THEN
-                IF ( .NOT. READ3( PNAME, 'CLIN', ALLAYS3,
+                IF ( .NOT. READ3( GNAME, 'CLIN', ALLAYS3,
      &                            JDATE, JTIME, PLIN ) ) THEN
-                    MESG = 'Could not read PLIN from ' // PNAME
-                    CALL M3WARN( 'PRESTERP', 0, 0, MESG )
+                    MESG = 'Could not read PLIN from ' // GNAME
+                    CALL M3WARN( PNAME, 0, 0, MESG )
                     EFLAG = .TRUE.
                     AFLAG = .TRUE.
                 END IF
             END IF
 
             IF ( PFLAG( 2 ) ) THEN
-                IF ( .NOT. READ3( PNAME, 'CLOG', ALLAYS3,
+                IF ( .NOT. READ3( GNAME, 'CLOG', ALLAYS3,
      &                            JDATE, JTIME, PLOG ) ) THEN
-                    MESG = 'Could not read PLOG from ' // PNAME
-                    CALL M3WARN( 'PRESTERP', 0, 0, MESG )
+                    MESG = 'Could not read PLOG from ' // GNAME
+                    CALL M3WARN( PNAME, 0, 0, MESG )
                     EFLAG = .TRUE.
                     AFLAG = .TRUE.
                 END IF
             END IF
 
             IF ( PFLAG( 3 ) ) THEN
-                IF ( .NOT. READ3( PNAME, 'CPOW', ALLAYS3,
+                IF ( .NOT. READ3( GNAME, 'CPOW', ALLAYS3,
      &                            JDATE, JTIME, PPOW ) ) THEN
-                    MESG = 'Could not read PPOW from ' // PNAME
-                    CALL M3WARN( 'PRESTERP', 0, 0, MESG )
+                    MESG = 'Could not read PPOW from ' // GNAME
+                    CALL M3WARN( PNAME, 0, 0, MESG )
                     EFLAG = .TRUE.
                     AFLAG = .TRUE.
                 END IF
@@ -445,8 +389,8 @@ C   begin body of program PRESTERP
                 IF ( .NOT. READ3( INAME, VNAME3D( V ), ALLAYS3,
      &                            JDATE, JTIME, VSIG ) ) THEN
                     MESG = 'Could not read "' // VNAME3D( V ) //
-     &                     '" from ' // PNAME
-                    CALL M3WARN( 'PRESTERP', 0, 0, MESG )
+     &                     '" from ' // INAME
+                    CALL M3WARN( PNAME, 0, 0, MESG )
                     AFLAG = .TRUE.
                     CYCLE
                 END IF
@@ -466,7 +410,7 @@ C   begin body of program PRESTERP
      &                            JDATE, JTIME, VPRS ) ) THEN
                     MESG = 'Could not write "' // VNAME3D( V ) //
      &                     '" to ' // FNAME
-                    CALL M3WARN( 'PRESTERP', 0, 0, MESG )
+                    CALL M3WARN( PNAME, 0, 0, MESG )
                     AFLAG = .TRUE.
                 END IF
 
@@ -476,7 +420,7 @@ C   begin body of program PRESTERP
 
         END DO          !  end loop on timesteps T
 
-        CALL M3EXIT( 'PRESTERP', 0, 0,
+        CALL M3EXIT( PNAME, 0, 0,
      &               'Successful completion of program PRESTERP', 0 )
 
 !..........................   FORMAT STATEMENTS  ....................

@@ -1,11 +1,11 @@
 
-        SUBROUTINE  M3MSG2( MESSAGE )
+        SUBROUTINE M3MSG2( MESSAGE )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: m3msg2.F 45 2014-09-12 20:05:29Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2007  Baron Advanced Meteorological Systems
+C (C) 2003-2010  Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
@@ -55,7 +55,9 @@ C       Modified 4/2004 by CJC:  absorbtion of M3MESG() into  M3MSG2()
 C       as an overlapping ENTRY.
 C
 C       Modified 12/2007 by CJC:  mollify Intel "ifort" by turning this
-C       back into a set of subroutines.  
+C       back into a set of subroutines. 
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1 
 C***********************************************************************
 
       IMPLICIT NONE
@@ -73,16 +75,13 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)   MESSAGE
+        CHARACTER*(*), INTENT(IN   ) :: MESSAGE
 
                  
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER         INITLOG3
-        INTEGER         TRIMLEN !  string length, exclusive of trailing blanks
-
-        EXTERNAL        INITLOG3, TRIMLEN
-        EXTERNAL        INITBLK3        !!  initialize STATE3 commons
+        INTEGER, EXTERNAL :: INITLOG3
+        EXTERNAL          :: INITBLK3        !!  block data to initialize STATE3 commons
 
 
 C.......   Scratch LOCAL VARIABLES
@@ -101,7 +100,7 @@ C   begin body of subroutine  M3MSG2
 
 11      CONTINUE        !  target of "GO TO" in entry M3MESG()
 
-        L = TRIMLEN( MESSAGE )
+        L = LEN_TRIM( MESSAGE )
 
 !$OMP CRITICAL( S_LOGDEV )
 
@@ -131,13 +130,13 @@ C   begin body of subroutine  M3MSG2
 !$OMP END CRITICAL( S_LOGDEV )
 
         RETURN
-        END
+        END  SUBROUTINE M3MSG2
 
 
 C-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 C   begin subroutine  M3MESG
 
-        SUBROUTINE  M3MESG( MESSAGE )
+        SUBROUTINE M3MESG( MESSAGE )
 
         IMPLICIT NONE
 
@@ -154,26 +153,16 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)   MESSAGE
+        CHARACTER*(*), INTENT(IN   ) :: MESSAGE
 
                  
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER         INITLOG3
-        INTEGER         TRIMLEN !  string length, exclusive of trailing blanks
-
-        EXTERNAL        INITLOG3, TRIMLEN
-        EXTERNAL        INITBLK3        !!  initialize STATE3 commons
-
-
-C.......   Scratch LOCAL VARIABLES
-
-        INTEGER		L
+        INTEGER, EXTERNAL :: INITLOG3
+        EXTERNAL          :: INITBLK3        !!  block data to initialize STATE3 commons
 
 C......................................................................
 C   begin body of subroutine  M3MESG
-
-        L = TRIMLEN( MESSAGE )
 
 !$OMP CRITICAL( S_LOGDEV )
 
@@ -192,13 +181,13 @@ C   begin body of subroutine  M3MESG
                 LOGDEV = INITLOG3( 'M3MSG2/M3MESG' )
             END IF          !!  if logdev < 0 (initialization required)
 
-            WRITE( LOGDEV,'( 5X, A )' ) MESSAGE( 1:L )
+            WRITE( LOGDEV,'( 5X, A )' ) TRIM( MESSAGE )
 	    CALL FLUSH( LOGDEV )
 
 !$OMP END CRITICAL( S_LOGDEV )
 
         RETURN
-        END
+        END SUBROUTINE M3MESG
 
 
 C-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -221,18 +210,15 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)   MESSAGE
-        CHARACTER*(*)   ANSWER
-        INTEGER         ISTAT
+        CHARACTER*(*), INTENT(IN   ) :: MESSAGE
+        CHARACTER*(*), INTENT(  OUT) :: ANSWER
+        INTEGER      , INTENT(  OUT) :: ISTAT
                  
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        LOGICAL         ENVYN   !  get YES/NO environment variable
-        INTEGER         INITLOG3
-        INTEGER         TRIMLEN !  string length, exclusive of trailing blanks
-
-        EXTERNAL        ENVYN, INITLOG3, TRIMLEN
-        EXTERNAL        INITBLK3        !!  initialize STATE3 commons
+        LOGICAL, EXTERNAL :: ENVYN   !  get YES/NO environment variable
+        INTEGER, EXTERNAL :: INITLOG3
+        EXTERNAL          :: INITBLK3        !!  BLOCK DATA to initialize STATE3 commons
 
 
 C.......   Scratch LOCAL VARIABLES
@@ -243,7 +229,7 @@ C.......   Scratch LOCAL VARIABLES
 C......................................................................
 C   begin body of subroutine  M3PROMPT
 
-        L = TRIMLEN( MESSAGE )
+        L = LEN_TRIM( MESSAGE )
 
 !$OMP   CRITICAL( S_LOGDEV )
 
@@ -251,7 +237,7 @@ C   begin body of subroutine  M3PROMPT
                 LOGDEV = INITLOG3( 'M3MSG2/M3PROMPT' )
             END IF          !!  if logdev < 0 (initialization required)
 
-            WRITE( LOGDEV,'( 5X, A, $ )' ) MESSAGE( 1:L )
+            WRITE( LOGDEV,'( 5X, A, $ )' ) TRIM( MESSAGE )
 	    CALL FLUSH( LOGDEV )
             ANSWER = ' '
             READ  ( *, '( A )', IOSTAT=ISTAT )  ANSWER
@@ -262,11 +248,11 @@ C   begin body of subroutine  M3PROMPT
             CALL M3EXIT( 'M3PROMPT',0,0,'END-OF-FILE encountered', 1 )
         ELSE IF ( ISTAT .EQ. 0 ) THEN
             L = INDEX( ANSWER, '!' )
-            IF ( L .GT. 0 ) ANSWER( L : LEN( ANSWER ) ) = ' '
+            IF ( L .GT. 0 ) ANSWER = ' '
         END IF
 
         RETURN
-        END
+        END  SUBROUTINE M3PROMPT
 
 
 C-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -289,18 +275,14 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         NMESG
-        CHARACTER*(*)   MSGS( NMESG )
+        INTEGER      , INTENT(IN   ) :: NMESG
+        CHARACTER*(*), INTENT(IN   ) :: MSGS( NMESG )
                  
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        LOGICAL         ENVYN   !  get YES/NO environment variable
-        INTEGER         INITLOG3
-        INTEGER         TRIMLEN !  string length, exclusive of trailing blanks
-
-        EXTERNAL        ENVYN, INITLOG3, TRIMLEN
-        EXTERNAL        INITBLK3        !!  initialize STATE3 commons
-
+        LOGICAL, EXTERNAL :: ENVYN   !  get YES/NO environment variable
+        INTEGER, EXTERNAL :: INITLOG3
+        EXTERNAL          :: INITBLK3        !!  BLOCK DATA to initialize STATE3 commons
 
 C.......   Scratch LOCAL VARIABLES
 
@@ -316,16 +298,14 @@ C   begin body of subroutine  M3PARAG
             END IF          !!  if logdev < 0 (initialization required)
 
             DO L = 1, NMESG
-                M = TRIMLEN( MSGS( L ) )
-                WRITE( LOGDEV,'( 5X, A )' ) MSGS( L )( 1:M )
+                WRITE( LOGDEV,'( 5X, A )' ) TRIM( MSGS( L ) )
             END DO
 
 #ifdef IOAPI_STDOUT
 
             IF ( LOGDEV .NE. 6 ) THEN
                 DO L = 1, NMESG
-                    M = TRIMLEN( MSGS( L ) )
-                    WRITE( 6,'( 5X, A )' ) MSGS( L )( 1:M )
+                    WRITE( 6,'( 5X, A )' ) TRIM( MSGS( L ) )
                 END DO
             END IF		!  if logdev is not pointing at standard output
 #endif
@@ -335,7 +315,7 @@ C   begin body of subroutine  M3PARAG
 !$OMP   END CRITICAL( S_LOGDEV )
 
         RETURN
-        END
+        END  SUBROUTINE M3PARAG
 
 C-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 C   begin subroutine  M3FLUSH
@@ -345,7 +325,7 @@ C   begin subroutine  M3FLUSH
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER IDEV    !  fortran unit to be flushed
+        INTEGER, INTENT(IN   ) :: IDEV    !  fortran unit to be flushed
 
 C......................................................................
 C   begin body of subroutine  M3flush
@@ -357,7 +337,7 @@ C   begin body of subroutine  M3flush
 !$OMP END CRITICAL( S_LOGDEV )
 
         RETURN
-        END
+        END SUBROUTINE M3FLUSH
 
 
 C-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -367,9 +347,25 @@ C   begin conditional subroutine  FLUSH
 
         SUBROUTINE FLUSH( IDEV )
             IMPLICIT NONE
-            INTEGER IDEV
+            INTEGER, INTENT(IN   ) :: IDEV
             !!  present version:  do nothing
             RETURN
-        END
+        END SUBROUTINE FLUSH
 
 #endif
+
+
+!!C-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!!C   begin conditional subroutine  IARGC
+!!
+!!#ifdef GFORTRAN
+!!
+!!        INTEGER FUNCTION IARGC(  )
+!!            IMPLICIT NONE
+!!            INTEGER, EXTERNAL :: GFORTRAN_IARGC
+!!            IARGC = GFORTRAN_IARGC()
+!!            !!  present version:  do nothing
+!!            RETURN
+!!        END
+!!
+!!#endif

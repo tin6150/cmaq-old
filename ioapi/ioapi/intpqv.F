@@ -1,15 +1,15 @@
 C.........................................................................
-C Version "@(#)$Header$"
+C Version "$Id: intpqv.F 45 2014-09-12 20:05:29Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
 C (C) 2003-2004 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  INTPQV  function body starts at line   76
-C  VIR2BUF function body starts at line  176
+C  INTPQV  function body starts at line   75
+C  VIR2BUF function body starts at line  175
 C
-C  FUNCTION:  
+C  FUNCTION:
 C       For virtual files, initialize buffers maintained by "bufint3.c"
 C       and compute interpolation coefficients P, Q
 C
@@ -17,8 +17,7 @@ C  RETURN VALUE:
 C       TRUE iff the operation succeeds (and the data is available)
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
-C       BUFCRE3, CURRSTEP, SECSDIFF, TIME2SEC
-C       VIR2BUF
+C       CURRSTEP, SECSDIFF, TIME2SEC, VIR2BUF
 C
 C  REVISION  HISTORY:
 C       Created  5/1999 by CJC and ALT for coupling-mode operation
@@ -28,6 +27,7 @@ C       INTPQV() replaces INTERP3V; works with main INTERP3/INTERPX
 C       driver to initialize "bufint3.c" buffers, and then do calls
 C       to BUFINT*() from there instead of redundantly from here.
 C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C.........................................................................
 
 #ifdef IOAPICPL
@@ -49,17 +49,15 @@ C...........   ARGUMENTS and their descriptions:
       INTEGER       VID         !  variable subscript for STATE3 arrays
       INTEGER       JDATE       !  date, formatted YYYYDDD
       INTEGER       JTIME       !  time, formatted HHMMSS
-      REAL        P, Q        !  fractions used for interpolation.
+      REAL          P, Q        !  fractions used for interpolation.
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-      LOGICAL       CURRSTEP    !  finds start of timestep
-      INTEGER       SECSDIFF    !  computes date&time differences
-      INTEGER       TIME2SEC    !  converts time to seconds
-      INTEGER       VIR2BUF
-
-      EXTERNAL      CURRSTEP, SECSDIFF, TIME2SEC, VIR2BUF
+      LOGICAL, EXTERNAL :: CURRSTEP    !  finds start of timestep
+      INTEGER, EXTERNAL :: SECSDIFF    !  computes date&time differences
+      INTEGER, EXTERNAL :: TIME2SEC    !  converts time to seconds
+      INTEGER, EXTERNAL :: VIR2BUF
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -76,13 +74,13 @@ C   begin body of function  INTERP3
       TSTEP = TSTEP3( FID )
 
       IF ( .NOT. CURRSTEP( JDATE, JTIME,
-     &                     SDATE3( FID ), STIME3( FID ), TSTEP, 
+     &                     SDATE3( FID ), STIME3( FID ), TSTEP,
      &                     PDATE, PTIME ) ) THEN
           CALL M3WARN('INTPQV', JDATE, JTIME, 'CURRSTEP ERROR')
           INTPQV = .FALSE.
           RETURN
       END IF
-      
+
       IRET = 1
 
       IF ( TSTEP .EQ. 0 ) THEN
@@ -101,7 +99,7 @@ C   begin body of function  INTERP3
          DTJP = SECSDIFF( PDATE, PTIME, JDATE, JTIME )
 
          Q = FLOAT( DTJP ) / FLOAT( DT ) !  Interpolation coefficients
-         P = 1.0 - Q            
+         P = 1.0 - Q
 
          FDATE = PDATE
          FTIME = PTIME
@@ -169,7 +167,7 @@ C   begin body of function  INTERP3
 
       RETURN
 
-      END
+      END FUNCTION INTPQV
 
 
 C*********************************************************************
@@ -239,6 +237,6 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         VIR2BUF = RET
 
         RETURN
-        END
+        END FUNCTION VIR2BUF
 
 #endif

@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/GETSTR.html,v 1.1.1.1 2001/12/05 20:25:29 coats Exp $ -->
+<!-- "$Id: GETSTR.html 83 2014-12-29 14:31:32Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> GETSTR() </TITLE>
 </HEAD>
@@ -14,16 +14,12 @@
       MARGINWIDTH="15">
 <H1>    GETSTR() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
     SUBROUTINE GETSTR( PROMPT , DEFAULT, RESPONSE )
-        CHARACTER*(*)   PROMPT   ! Prompt for user
-        CHARACTER*(*)   DEFAULT  ! Default value
-        CHARACTER*(*)   RESPONSE ! Return value
+        CHARACTER*(*), INTENT(IN   ) :: PROMPT   ! Prompt for user
+        CHARACTER*(*), INTENT(IN   ) :: DEFAULT  ! Default value
+        CHARACTER*(*), INTENT(IN   ) :: RESPONSE ! Return value
 </PRE><P>    
 
 <H2> NO C version: </H2>

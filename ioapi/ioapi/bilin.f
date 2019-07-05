@@ -1,15 +1,16 @@
 
-C.........................................................................
-C Version "@(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/bilin.f,v 1.2 2000/11/28 21:22:31 smith_w Exp $"
-C EDSS/Models-3 I/O API.  Copyright (C) 1992-1999 MCNC
+        SUBROUTINE BILIN( M, N, P, IX, AX, V, C )
+
+C***********************************************************************
+C Version "$Id: bilin.f 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 Baron Advanced Meteorological Systems, and
+C (C) 2014 UNC Institute for the Environment.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-
-        SUBROUTINE  BILIN( M, N, P, IX, AX, V, C )
-
-C***********************************************************************
-C  subroutine body starts at line  74
+C  subroutine body starts at line  75
 C
 C  FUNCTION:  apply a 4-band sparse matrix to an array ("layered vector")
 C
@@ -46,21 +47,21 @@ C
 C  SUBROUTINES AND FUNCTIONS CALLED:  none
 C
 C  REVISION  HISTORY:
-C       prototype 8/99 by CJC
-C
+C       prototype 8/1999 by CJC
+C       Version   9/2014 by CJC:  modifications for OpenMP parallel
 C***********************************************************************
 
       IMPLICIT NONE
 
 C...........   ARGUMENTS and their descriptions:
-        
-        INTEGER         M               ! length of input  vector
-        INTEGER         N               ! length of output vector
-        INTEGER         P               ! number of layers
-        INTEGER         IX( 4,N )       ! index array
-        REAL            AX( 4,N )       ! 4-band coeff matrix
-        REAL            V( M,P )        ! P-layered input  vector
-        REAL            C( N,P )        ! P-layered output vector
+
+        INTEGER, INTENT(IN   ) :: M               ! length of input  vector
+        INTEGER, INTENT(IN   ) :: N               ! length of output vector
+        INTEGER, INTENT(IN   ) :: P               ! number of layers
+        INTEGER, INTENT(IN   ) :: IX( 4,N )       ! index array
+        REAL   , INTENT(IN   ) :: AX( 4,N )       ! 4-band coeff matrix
+        REAL   , INTENT(IN   ) :: V( M,P )        ! P-layered input  vector
+        REAL   , INTENT(  OUT) :: C( N,P )        ! P-layered output vector
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -71,22 +72,52 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 C***********************************************************************
 C   begin body of subroutine  BILIN
 
-        DO  L = 1, P
-        DO  R = 1, N
-            
-            J1 = IX( 1,R )
-            J2 = IX( 2,R )
-            J3 = IX( 3,R )
-            J4 = IX( 4,R )
+        IF ( L .EQ. 1 ) THEN        !! parallelize on R
 
-            C( R,L ) = AX( 1,R ) * V( J1,L )  +
-     &                 AX( 2,R ) * V( J2,L )  +
-     &                 AX( 3,R ) * V( J3,L )  +
-     &                 AX( 4,R ) * V( J4,L )
-        
-        END DO
-        END DO
+!$OMP       PARALLEL DO
+!$OMP&        DEFAULT( NONE ),
+!$OMP&         SHARED( P, N, IX, AX, V, C ),
+!$OMP&        PRIVATE( R, J1, J2, J3, J4 )
+
+            DO  R = 1, N
+
+                J1 = IX( 1,R )
+                J2 = IX( 2,R )
+                J3 = IX( 3,R )
+                J4 = IX( 4,R )
+
+                C( R,1 ) = AX( 1,R ) * V( J1,1 )  +
+     &                     AX( 2,R ) * V( J2,1 )  +
+     &                     AX( 3,R ) * V( J3,1 )  +
+     &                     AX( 4,R ) * V( J4,1 )
+
+            END DO
+
+        ELSE        !!  L > 1:  parallelize on L
+
+!$OMP       PARALLEL DO
+!$OMP&        DEFAULT( NONE ),
+!$OMP&         SHARED( P, N, IX, AX, V, C ),
+!$OMP&        PRIVATE( L, R, J1, J2, J3, J4 )
+
+            DO  L = 1, P
+            DO  R = 1, N
+
+                J1 = IX( 1,R )
+                J2 = IX( 2,R )
+                J3 = IX( 3,R )
+                J4 = IX( 4,R )
+
+                C( R,L ) = AX( 1,R ) * V( J1,L )  +
+     &                     AX( 2,R ) * V( J2,L )  +
+     &                     AX( 3,R ) * V( J3,L )  +
+     &                     AX( 4,R ) * V( J4,L )
+
+            END DO
+            END DO
+
+        END IF
 
         RETURN
-        END
+        END SUBROUTINE BILIN
 

@@ -1,10 +1,15 @@
-# @(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/Makeinclude.Linux2_x86,v 1.2 2000/11/28 21:56:44 smith_w Exp $
+# VERSION "$Id: Makeinclude.Linux2_x86lf95 1 2014-03-14 20:22:54Z coats $"
+#
+#  Flags for Lahey "lf95" / "gcc'
+
 AR   = ar
 CC   = gcc
 FC   = lf95
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
+
+MODI = -I       ## Module-include-directory command
 
 MFLAGS    = 
 

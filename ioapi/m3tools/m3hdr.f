@@ -2,14 +2,14 @@
       PROGRAM M3HDR
 
 C***********************************************************************
-C Version "@(#)$Header$ $Id: m3hdr.f 49 2007-07-06 16:20:50Z coats@borel $"
+C Version "$Id: m3hdr.f 43 2014-09-12 14:06:19Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr, and
-C (C) 2002-2007 Baron Advanced Meteorological Systems, LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line  96
+C  program body starts at line  91
 C
 C  DESCRIPTION:
 C       display header information from M3IO files
@@ -20,18 +20,17 @@ C  SUBROUTINES AND FUNCTIONS CALLED:
 C       I/O API
 C
 C  REVISION  HISTORY:
-C       Adapted 5/2003 by Carlie J. Coats, Jr., BAMS, from M3CPLE
+C       Adapted 05/2003 by Carlie J. Coats, Jr., BAMS, from M3CPLE
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C***********************************************************************
 
       USE M3UTILIO
-
       IMPLICIT NONE
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-      INTEGER IARGC
-      EXTERNAL IARGC,GETARG
-
+      INTEGER :: IARGC
 
 C...........   PARAMETERS and their descriptions:
 
@@ -73,12 +72,7 @@ C...........   PARAMETERS and their descriptions:
         CHARACTER*24, PARAMETER :: BLANK = ' '
         CHARACTER*16, PARAMETER :: BAR16 = '----------------'
         CHARACTER*64, PARAMETER :: BAR =
-     &'----------------------------------------------------------------'
-
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id:: m3hdr.f 49 2007-07-06 16:20:50Z coats@borel             $'
-     &  /
+     &'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-'
 
 
 C...........   LOCAL VARIABLES and their descriptions:
@@ -92,7 +86,7 @@ C...........   LOCAL VARIABLES and their descriptions:
 
 
 C***********************************************************************
-C   begin body of program M3HDR
+C   begin body of program M4CPLE
 
         LDEV = INIT3()
         WRITE( *, '( 5X, A )' )
@@ -108,24 +102,25 @@ C   begin body of program M3HDR
      &'THE PROGRAM WILL PROMPT YOU for file name, if it is not',
      &'supplied on the command line',
      &' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: m3hdr.f 43 2014-09-12 14:06:19Z coats                   $',
      &' '
 
         NARG  = IARGC()
@@ -152,7 +147,7 @@ C   begin body of program M3HDR
             FNAME = ENAME
         END IF
 
-        IF (.NOT.OPEN3(FNAME, FSREAD3, PNAME)) THEN
+        IF (.NOT.OPEN3(FNAME, FSREAD3, PNAME) ) THEN
 
            CALL M3EXIT( PNAME, 0, 0, 'Could not open file', 2 )
 

@@ -4,14 +4,14 @@
      &                                CDATE, CTIME )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: currstep.f 45 2014-09-12 20:05:29Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2008 Baron Advanced Meteorological Systems
+C (C) 2003-2010 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  subroutine body starts at line  62
+C  subroutine body starts at line  61
 C
 C  FUNCTION:  Compute the date&time CDATE:CTIME for the time step in 
 C             the time step sequence starting at SDATE:STIME and having
@@ -40,15 +40,14 @@ C***********************************************************************
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER       SDATE, STIME    !  starting d&t for the sequence
-        INTEGER       TSTEP           !  time step for the sequence
-        INTEGER       JDATE, JTIME    !  d&t requested
-        INTEGER       CDATE, CTIME    !  d&t for timestep of JDATE:JTIME
+        INTEGER, INTENT(IN   ) :: SDATE, STIME    !  starting d&t for the sequence
+        INTEGER, INTENT(IN   ) :: TSTEP           !  time step for the sequence
+        INTEGER, INTENT(IN   ) :: JDATE, JTIME    !  d&t requested
+        INTEGER, INTENT(  OUT) :: CDATE, CTIME    !  d&t for timestep of JDATE:JTIME
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER       CURREC
-        EXTERNAL      CURREC
+        INTEGER, EXTERNAL :: CURREC
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -66,5 +65,5 @@ C   begin body of subroutine  CURRSTEP
         CURRSTEP = ( IREC .GT. 0 )
         RETURN
 
-        END
+        END FUNCTION CURRSTEP
 

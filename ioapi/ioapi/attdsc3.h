@@ -1,9 +1,15 @@
 
 /************************************************************************
   INCLUDE FILE  attdsc.h
+  VERSION "$Id: attdsc3.h 1 2014-03-14 20:22:54Z coats $"
 
-    VERSION "@(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/attdsc3.h,v 1.5 2000/12/13 20:57:16 smith_w Exp $"
-    EDSS/Models-3 I/O API.  Copyright (C) 1992-2002 MCNC
+EDSS/Models-3 I/O API.
+
+COPYRIGHT
+    (C) 1992-2002 MCNC,
+    (C) 1992-2002,2005-2013  Carlie J. Coats, Jr., and
+    (C) 2003-2010 Baron AAdvanced Meteorological Systems, LLC (BAMS)
+
     Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
     See file "LGPL.txt" for conditions of use.
 

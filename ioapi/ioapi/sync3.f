@@ -2,14 +2,14 @@
       LOGICAL FUNCTION SYNC3( FNAME )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: sync3.f 45 2014-09-12 20:05:29Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003 Baron Advanced Meteorological Systems
+C (C) 2003-2010 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  function body starts at line  67
+C  function body starts at line  66
 C
 C  FUNCTION:
 C       Performs disk synchronization for file FNAME
@@ -27,6 +27,8 @@ C       Modified 7/2003 by CJC:  bugfix -- clean up critical sections
 C       associated with INIT3()
 C
 C       Modified 7/2007 by CJC:  bugfix -- format at line 120
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
@@ -40,16 +42,13 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)   FNAME           !  logical file name
+        CHARACTER*(*), INTENT(IN   ) :: FNAME           !  logical file name
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER         INIT3      !  initialize I/O API
-        INTEGER         INDEX1     !  look up names in name tables
-        INTEGER         TRIMLEN    !  trimmed string length
-
-        EXTERNAL        INIT3, INDEX1, TRIMLEN
+        INTEGER, EXTERNAL :: INIT3      !  initialize I/O API
+        INTEGER, EXTERNAL :: INDEX1     !  look up names in name tables
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -80,12 +79,12 @@ C.......   Check that Models-3 I/O has been initialized:
 C...........   Check length of name arguments; copy into length=16 buffers
 
         EFLAG = .FALSE.
-        IF ( TRIMLEN( FNAME ) .GT. NAMLEN3 ) THEN
+        IF ( LEN_TRIM( FNAME ) .GT. NAMLEN3 ) THEN
             EFLAG = .TRUE.
             MESG  = 'File "' // FNAME // '"'
             CALL M3MSG2( MESG )
             WRITE( MESG, '( A , I10 )' )
-     &          'Max file name length 16; actual:', TRIMLEN( FNAME )
+     &          'Max file name length 16; actual:', LEN_TRIM( FNAME )
             CALL M3MSG2( MESG )
         END IF          !  if len( fname ) > 16
 
@@ -130,7 +129,7 @@ C...........   Check length of name arguments; copy into length=16 buffers
 
         RETURN
 
-        END
+        END FUNCTION SYNC3
 
 
         

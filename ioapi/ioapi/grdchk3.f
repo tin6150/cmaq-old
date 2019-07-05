@@ -6,13 +6,13 @@
      &                            NLAYS, VGTYP, VGTOP, VGLEV )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: grdchk3.f 1 2014-03-14 20:22:54Z coats $"
 C EDSS/Models-3 I/O API.
-C Copyright (C) (C) 2005 Baron Advanced Meteorological Systems
+C Copyright (C) (C) 2005-2013 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  function body starts at line 87
+C  function body starts at line 92
 C
 C  FUNCTION:
 C       Checks FDESC3 coordinate and grid description variables
@@ -35,6 +35,8 @@ C       concatenation in this context.
 C
 C       Version  5/2006:  corrected comment after declaration of VGTYP
 C       at line 61.  Reported by Jerry Condrey.
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
         IMPLICIT NONE
@@ -47,20 +49,20 @@ C***********************************************************************
 
         !!........  Arguments:
 
-        CHARACTER*(*)   FNAME
-        REAL*8          P_ALP      ! first, second, third map
-        REAL*8          P_BET      ! projection descriptive
-        REAL*8          P_GAM      ! parameters.
-        REAL*8          XCENT      ! lon for coord-system X=0
-        REAL*8          YCENT      ! lat for coord-system Y=0
-        REAL*8          XORIG      ! X-coordinate origin of grid (map units)
-        REAL*8          YORIG      ! Y-coordinate origin of grid
-        REAL*8          XCELL      ! X-coordinate cell dimension
-        REAL*8          YCELL      ! Y-coordinate cell dimension
-        INTEGER         NLAYS      ! number of layers
-        INTEGER         VGTYP      ! vertical coordinate type
-        REAL            VGTOP
-        REAL            VGLEV( * )
+        CHARACTER*(*), INTENT(IN   ) :: FNAME
+        REAL*8       , INTENT(IN   ) :: P_ALP      ! first, second, third map
+        REAL*8       , INTENT(IN   ) :: P_BET      ! projection descriptive
+        REAL*8       , INTENT(IN   ) :: P_GAM      ! parameters.
+        REAL*8       , INTENT(IN   ) :: XCENT      ! lon for coord-system X=0
+        REAL*8       , INTENT(IN   ) :: YCENT      ! lat for coord-system Y=0
+        REAL*8       , INTENT(IN   ) :: XORIG      ! X-coordinate origin of grid (map units)
+        REAL*8       , INTENT(IN   ) :: YORIG      ! Y-coordinate origin of grid
+        REAL*8       , INTENT(IN   ) :: XCELL      ! X-coordinate cell dimension
+        REAL*8       , INTENT(IN   ) :: YCELL      ! Y-coordinate cell dimension
+        INTEGER      , INTENT(IN   ) :: NLAYS      ! number of layers
+        INTEGER      , INTENT(IN   ) :: VGTYP      ! vertical coordinate type
+        REAL         , INTENT(IN   ) :: VGTOP
+        REAL         , INTENT(IN   ) :: VGLEV( * )
 
 
         !!........  Local Variables:
@@ -178,4 +180,4 @@ C***********************************************************************
         GRDCHK3 = ( .NOT.EFLAG )
 
         RETURN
-        END
+        END FUNCTION GRDCHK3

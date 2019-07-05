@@ -1,9 +1,10 @@
 
 !.........................................................................
-! Version "@(#)$Header$"
+! Version "$Id: NOTICE.EXT 1 2014-03-14 20:22:54Z coats $"
 !    EDSS/Models-3 I/O API.
-!    Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-!    copyright (C) 2002-2006 Baron Advanced Meteorological Systems, LLC
+!   Copyright (C) 1992-2002 MCNC,
+!   (C) 1992-2002,2005-2013 Carlie J. Coats, Jr., and 
+!   (C) 2003-2011 Baron Advanced Meteorological Systems, LLC.
 !
 !    Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 !

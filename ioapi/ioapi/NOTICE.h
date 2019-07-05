@@ -1,9 +1,11 @@
 /**  
-C    VERSION "@(#)$Header$"
-C    EDSS/Models-3 I/O API.
-C    Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C    copyright (C) 2002-2006 Baron Advanced Meteorological Systems, LLC.
-C
+C   VERSION "$Id: NOTICE.h 1 2014-03-14 20:22:54Z coats $"
+C   EDSS/Models-3 I/O API.
+c
+C   COPYRIGHT (C) 1992-2002 MCNC,
+C       (C) 1992-2002,2005-2013  Carlie J. Coats, Jr., and
+C       (C) 2003-2010 Baron AAdvanced Meteorological Systems, LLC (BAMS)
+c
 C    Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C    See file "LGPL.txt" for conditions of use.
 C

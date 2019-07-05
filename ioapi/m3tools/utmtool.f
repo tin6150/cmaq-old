@@ -2,72 +2,34 @@
         PROGRAM UTMTOOL
 
 C***********************************************************************
-C Version "@(#)$Header$"
-C EDSS/Models-3 M3TOOLS. 
+C Version "$Id: utmtool.f 44 2014-09-12 18:03:16Z coats $"
+C EDSS/Models-3 M3TOOLS.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr, and
 C (C) 2002-2007 Baron Advanced Meteorological Systems, LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line  150
+C  program body starts at line  113
 C
 C  DESCRIPTION:
 C       Perform coordinate conversions and grid-related computations
-C	for Lat-Lon, Lambert, and UTM coordinate systems.
+C       for Lat-Lon, Lambert, and UTM coordinate systems.
 C
 C  PRECONDITIONS REQUIRED:
-C	"setenv GRIDDESC <pathname>" for using Lambert projections by name.
+C       "setenv GRIDDESC <pathname>" for using Lambert projections by name.
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
-C	GETMENU, GETNUM, GETREAL, GETSTR, GETYN, LAMBERT
+C       GETMENU, GETNUM, GETREAL, GETSTR, GETYN, LAMBERT
 C
 C  REVISION  HISTORY:
-C	Augmented 6/11/96 by CJC to support Lambert operations.
+C       Augmented 6/11/96 by CJC to support Lambert operations.
 C       Augmented 11/2000 by CJC to support POL, TRM, and EQM
-C       Augmented 10/2009 by CJC to support ALB
+C       Version   02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C***********************************************************************
 
+      USE M3UTILIO
       IMPLICIT NONE
-
-
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'      ! I/O API constants
-      INCLUDE 'FDESC3.EXT'      ! I/O API file description data structure
-      INCLUDE 'IODECL3.EXT'     ! I/O API function declarations
-
-
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        INTEGER         GETMENU
-        INTEGER         GETNUM
-        REAL            GETREAL
-        LOGICAL         GETYN
-        LOGICAL         LAMBERT, POLSTE,  TRMERC,  EQMERC,  SETLAM
-        LOGICAL         SETPOL,  SETTRM,  SETEQM,  LL2LAM,  LAM2LL
-        LOGICAL         UTM2LAM, LAM2UTM, LL2POL,  POL2LL,  POL2LAM
-        LOGICAL         LAM2POL, UTM2POL, POL2UTM, TRM2LL,  LL2TRM
-        LOGICAL         TRM2LAM, LAM2TRM, TRM2UTM, UTM2TRM, TRM2POL
-        LOGICAL         POL2TRM, EQM2LL,  LL2EQM,  EQM2LAM, LAM2EQM
-        LOGICAL         EQM2UTM, UTM2EQM, EQM2TRM, TRM2EQM, EQM2POL
-        LOGICAL         POL2EQM, ALBERS,  SETALB,  ALB2LL,  LL2ALB
-
-        EXTERNAL        GETMENU, GETNUM, GETREAL, GETYN, 
-     &                  LAMBERT, POLSTE,  TRMERC,  EQMERC,  SETLAM, 
-     &                  SETPOL,  SETTRM,  SETEQM,  LL2LAM,  LAM2LL, 
-     &                  UTM2LAM, LAM2UTM, LL2POL,  POL2LL,  POL2LAM, 
-     &                  LAM2POL, UTM2POL, POL2UTM, TRM2LL,  LL2TRM, 
-     &                  TRM2LAM, LAM2TRM, TRM2UTM, UTM2TRM, TRM2POL, 
-     &                  POL2TRM, EQM2LL,  LL2EQM,  EQM2LAM, LAM2EQM, 
-     &                  EQM2UTM, UTM2EQM, EQM2TRM, TRM2EQM, EQM2POL, 
-     &                  POL2EQM
-     
-C...........   PARAMETERS and their descriptions:
-
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id::                                                          $'
-     &  /
 
 
 C...........   LOCAL VARIABLES and their descriptions:
@@ -88,74 +50,69 @@ C...........   LOCAL VARIABLES and their descriptions:
         DATA            X / -90.0 /
         DATA            Y /  40.0 /
 
-        CHARACTER*16    LAMNAME, POLNAME, TRMNAME, EQMNAME, ALBNAME
-        DATA            LAMNAME, POLNAME, TRMNAME, EQMNAME, ALBNAME
-     &            / 5*CMISS3 /
+        CHARACTER*16    LAMNAME, POLNAME, TRMNAME, EQMNAME
+        DATA            LAMNAME, POLNAME, TRMNAME, EQMNAME / 4*CMISS3 /
 
-        CHARACTER*60    MENU( 48 )
-        DATA            MENU /
-     &        'Initialize new LAMBERT projection  by name',       !  mode = 1
-     &        'Initialize new POLar Stereographic by name (POL)', !  mode = 2
-     &        'Initialize new TRansverse Mercator by name (TRM)', !  mode = 3
-     &        'Initialize new EQuatorial Mercator by name (EQM)', !  mode = 4
-     &        'Initialize new Albers Equal Area   by name (ALB)', !  mode = 5
-     &        'Define a new LAMBERT projection  by angles',       !  mode = 6
-     &        'Define a new Polar Stereographic by angles',       !  mode = 7
-     &        'Define a new Transverse Mercator by angles',       !  mode = 8
-     &        'Define a new Equatorial Mercator by angles',       !  mode = 9
-     &        'Define a new Albers Equal Area   by angles',       !  mode =10
-     &        'Convert from LAT-LON to UTM',                      !  mode =11
-     &        'Convert from UTM     to LAT-LON',                  !  mode =12
-     &        'Convert from UAM/EPS to LAT-LON',                  !  mode =13
-     &        'Convert from LAMBERT to UTM',                      !  mode =14
-     &        'Convert from UTM     to LAMBERT',                  !  mode =15
-     &        'Convert from LAMBERT to LAT-LON',                  !  mode =16
-     &        'Convert from LAT-LON to LAMBERT',                  !  mode =17
-     &        'Convert from POL     to LAT-LON',                  !  mode =18
-     &        'Convert from LAT-LON to POL',                      !  mode =19
-     &        'Convert from POL     to UTM',                      !  mode =20
-     &        'Convert from UTM     to POL',                      !  mode =21
-     &        'Convert from POL     to LAMBERT',                  !  mode =22
-     &        'Convert from LAMBERT to POL',                      !  mode =23
-     &        'Convert from TRM     to LAT-LON',                  !  mode =24
-     &        'Convert from LAT-LON to TRM',                      !  mode =25
-     &        'Convert from TRM     to UTM',                      !  mode =26
-     &        'Convert from UTM     to TRM',                      !  mode =27
-     &        'Convert from TRM     to LAMBERT',                  !  mode =28
-     &        'Convert from LAMBERT to TRM',                      !  mode =29
-     &        'Convert from TRM     to POL',                      !  mode =30
-     &        'Convert from POL     to TRM',                      !  mode =31
-     &        'Convert from EQM     to LAT-LON',                  !  mode =32
-     &        'Convert from LAT-LON to EQM',                      !  mode =33
-     &        'Convert from EQM     to UTM',                      !  mode =34
-     &        'Convert from UTM     to EQM',                      !  mode =35
-     &        'Convert from EQM     to LAMBERT',                  !  mode =36
-     &        'Convert from LAMBERT to EQM',                      !  mode =37
-     &        'Convert from EQM     to POL',                      !  mode =38
-     &        'Convert from POL     to EQM',                      !  mode =39
-     &        'Convert from EQM     to TRM',                      !  mode =40
-     &        'Convert from TRM     to EQM',                      !  mode =41
-     &        'Convert from LAT-LON to ALB',                      !  mode =42
-     &        'Convert from ALB     to LAT-LON',                  !  mode =43
-     &        'Get LAT-LON grid corners from UTM specs',          !  mode =44
-     &        'Get UTM grid corners from LAT-LON specs',          !  mode =45
-     &        'Get LAT-LON grid corners from LAMBERT specs',      !  mode =46
-     &        'Get LAMBERT grid corners from LAT-LON specs',      !  mode =47
-     &        'Quit the program' /                                !  mode =48
+        CHARACTER*60, PARAMETER :: MENU( 44 ) =
+     &    (/  'Initialize new LAMBERT projection  by name       ',    !!   mode = 1
+     &        'Initialize new POLar Stereographic by name (POL) ',    !!   mode = 2
+     &        'Initialize new TRansverse Mercator by name (TRM) ',    !!   mode = 3
+     &        'Initialize new EQuatorial Mercator by name (EQM) ',    !!   mode = 4
+     &        'Define a new LAMBERT projection  by angles       ',    !!   mode = 5
+     &        'Define a new Polar Stereographic by angles       ',    !!   mode = 6
+     &        'Define a new Transverse Mercator by angles       ',    !!   mode = 7
+     &        'Define a new Equatorial Mercator by angles       ',    !!   mode = 8
+     &        'Convert from LAT-LON to UTM                      ',    !!   mode = 9
+     &        'Convert from UTM     to LAT-LON                  ',    !!   mode =10
+     &        'Convert from UAM/EPS to LAT-LON                  ',    !!   mode =11
+     &        'Convert from LAMBERT to UTM                      ',    !!   mode =12
+     &        'Convert from UTM     to LAMBERT                  ',    !!   mode =13
+     &        'Convert from LAMBERT to LAT-LON                  ',    !!   mode =14
+     &        'Convert from LAT-LON to LAMBERT                  ',    !!   mode =15
+     &        'Convert from POL     to LAT-LON                  ',    !!   mode =16
+     &        'Convert from LAT-LON to POL                      ',    !!   mode =17
+     &        'Convert from POL     to UTM                      ',    !!   mode =18
+     &        'Convert from UTM     to POL                      ',    !!   mode =19
+     &        'Convert from POL     to LAMBERT                  ',    !!   mode =20
+     &        'Convert from LAMBERT to POL                      ',    !!   mode =21
+     &        'Convert from TRM     to LAT-LON                  ',    !!   mode =22
+     &        'Convert from LAT-LON to TRM                      ',    !!   mode =23
+     &        'Convert from TRM     to UTM                      ',    !!   mode =24
+     &        'Convert from UTM     to TRM                      ',    !!   mode =25
+     &        'Convert from TRM     to LAMBERT                  ',    !!   mode =26
+     &        'Convert from LAMBERT to TRM                      ',    !!   mode =27
+     &        'Convert from TRM     to POL                      ',    !!   mode =28
+     &        'Convert from POL     to TRM                      ',    !!   mode =29
+     &        'Convert from EQM     to LAT-LON                  ',    !!   mode =30
+     &        'Convert from LAT-LON to EQM                      ',    !!   mode =31
+     &        'Convert from EQM     to UTM                      ',    !!   mode =32
+     &        'Convert from UTM     to EQM                      ',    !!   mode =33
+     &        'Convert from EQM     to LAMBERT                  ',    !!   mode =34
+     &        'Convert from LAMBERT to EQM                      ',    !!   mode =35
+     &        'Convert from EQM     to POL                      ',    !!   mode =36
+     &        'Convert from POL     to EQM                      ',    !!   mode =37
+     &        'Convert from EQM     to TRM                      ',    !!   mode =38
+     &        'Convert from TRM     to EQM                      ',    !!   mode =39
+     &        'Get LAT-LON grid corners from UTM specs          ',    !!   mode =30
+     &        'Get UTM grid corners from LAT-LON specs          ',    !!   mode =41
+     &        'Get LAT-LON grid corners from LAMBERT specs      ',    !!   mode =42
+     &        'Get LAMBERT grid corners from LAT-LON specs      ',    !!   mode =43
+     &        'Quit the program                                 '  /) !!   mode =44
 
-        CHARACTER*60    PROMPT
-        DATA            PROMPT / 'What do you want to do next?' /
+        CHARACTER*60, PARAMETER :: PROMPT =
+     &                  'What do you want to do next?'
 
-        LOGICAL         LAMSET, POLSET, TRMSET, EQMSET, ALBSET
-        DATA            LAMSET, POLSET, TRMSET, EQMSET, ALBSET
-     &         / 5*.FALSE. /
+        LOGICAL         LAMSET, POLSET, TRMSET, EQMSET
+        DATA            LAMSET, POLSET, TRMSET, EQMSET / 4*.FALSE. /
 
 
 C***********************************************************************
 C   begin body of program UTMTOOL
 
         LOGDEV = INIT3()
-        WRITE( *,92000 ) ' ', ' ',
+        WRITE( *,92000 ) ' ',
+     &'NOTICE:  Superseded BY "m3tools" program "projtool"',
+     &' ',
      &'Program UTMTOOL to provide coordinate conversion back and',
      &'forth among LAT-LON, UTM, LAMBERT, POLAR STEREOGRAPHIC,',
      &'TRANSVERSE MERCATOR, and EQUATORIAL MERCATOR coordinate',
@@ -163,7 +120,7 @@ C   begin body of program UTMTOOL
      &' ',
      &'Note that according to the standard, UTM coordinates should',
      &'be specified in _meters_ instead of the UAM/EPS bastardized ',
-     &'system which claims to be UTM but in fact uses *kilo*meters;', 
+     &'system which claims to be UTM but in fact uses *kilo*meters;',
      &'the latter is a distinct (partially-supported) system. ',
      &' ',
      &'Longitudes are specified in _signed_degrees_ (so that for',
@@ -176,25 +133,25 @@ C   begin body of program UTMTOOL
      &'corners of a LAT-LON based grid, work one corner at a time',
      &'using the coordinate conversion facilities). ',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html  Comments and',
-     &'questions are welcome and can be sent to',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
      &' ',
-     &'    coats@baronams.com',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
-     &'    Carlie J. Coats, Jr.',
-     &'    920 Main Campus Drive, Suite 101',
-     &'    Raleigh, NC 27606',
+     &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER, 
-     &' ',
-     &'Program release tag: $Name$', 
+     &'$Id:: utmtool.f 44 2014-09-12 18:03:16Z coats                 $',
      &' '
 
         IF ( .NOT. GETYN( 'Continue with program?', .TRUE. ) )
@@ -212,7 +169,7 @@ C   begin body of program UTMTOOL
 
 111     CONTINUE
 
-            MODE = GETMENU( 48, MODE, PROMPT, MENU )
+            MODE = GETMENU( 44, MODE, PROMPT, MENU )
 
 
             IF ( MODE .EQ. 1 ) THEN        ! new Lambert by name
@@ -225,7 +182,7 @@ C   begin body of program UTMTOOL
                 LAMSET = LAMBERT( LAMNAME, A, B, C, X, Y )
 
                 IF ( .NOT. LAMSET ) THEN
-                    CALL M3WARN( 'UTMTOOL', 0, 0, 
+                    CALL M3WARN( 'UTMTOOL', 0, 0,
      &              'Error getting projection; please try again' )
                 END IF
 
@@ -240,12 +197,12 @@ C   begin body of program UTMTOOL
                 POLSET = POLSTE( POLNAME, A, B, C, X, Y )
 
                 IF ( .NOT. POLSET ) THEN
-                    CALL M3WARN( 'UTMTOOL', 0, 0, 
+                    CALL M3WARN( 'UTMTOOL', 0, 0,
      &              'Error getting projection; please try again' )
                 END IF
 
 
-            ELSE IF ( MODE .EQ. 3 ) THEN        ! new TRM by name
+            ELSE IF ( MODE .EQ. 3 ) THEN        ! new POL by name
 
 
                 CALL GETSTR( 'Enter Transverse Mercator proj name',
@@ -255,7 +212,7 @@ C   begin body of program UTMTOOL
                 TRMSET = TRMERC( TRMNAME, A, B, C, X, Y )
 
                 IF ( .NOT. TRMSET ) THEN
-                    CALL M3WARN( 'UTMTOOL', 0, 0, 
+                    CALL M3WARN( 'UTMTOOL', 0, 0,
      &              'Error getting projection; please try again' )
                 END IF
 
@@ -270,27 +227,12 @@ C   begin body of program UTMTOOL
                 EQMSET = EQMERC( EQMNAME, A, B, C, X, Y )
 
                 IF ( .NOT. EQMSET ) THEN
-                    CALL M3WARN( 'UTMTOOL', 0, 0, 
+                    CALL M3WARN( 'UTMTOOL', 0, 0,
      &              'Error getting projection; please try again' )
                 END IF
 
 
-            ELSE IF ( MODE .EQ. 5 ) THEN        ! new Albers by name
-
-
-                CALL GETSTR( 'Enter Albers projection name',
-     &                       '<dummy>',
-     &                       EQMNAME )
-
-                ALBSET = ALBERS( ALBNAME, A, B, C, X, Y )
-
-                IF ( .NOT. ALBSET ) THEN
-                    CALL M3WARN( 'UTMTOOL', 0, 0, 
-     &              'Error getting projection; please try again' )
-                END IF
-
-
-            ELSE IF ( MODE .EQ. 6 ) THEN        ! new Lambert by angles
+            ELSE IF ( MODE .EQ. 5 ) THEN        ! new Lambert by angles
 
 
                 WRITE( *,92000 )
@@ -324,12 +266,12 @@ C   begin body of program UTMTOOL
                 LAMSET = SETLAM( A, B, C, X, Y )
 
                 IF ( .NOT. LAMSET ) THEN
-                    CALL M3WARN( 'UTMTOOL', 0, 0, 
+                    CALL M3WARN( 'UTMTOOL', 0, 0,
      &              'Error getting projection; please try again' )
                 END IF
 
 
-            ELSE IF ( MODE .EQ. 7 ) THEN        ! new POL by angles
+            ELSE IF ( MODE .EQ. 6 ) THEN        ! new POL by angles
 
 
                 WRITE( *,92000 )
@@ -360,12 +302,12 @@ C   begin body of program UTMTOOL
                 POLSET = SETPOL( A, B, C, X, Y )
 
                 IF ( .NOT. POLSET ) THEN
-                    CALL M3WARN( 'UTMTOOL', 0, 0, 
+                    CALL M3WARN( 'UTMTOOL', 0, 0,
      &              'Error getting projection; please try again' )
                 END IF
 
 
-            ELSE IF ( MODE .EQ. 8 ) THEN        ! new TRM by angles
+            ELSE IF ( MODE .EQ. 7 ) THEN        ! new TRM by angles
 
 
                 WRITE( *,92000 )
@@ -395,12 +337,12 @@ C   begin body of program UTMTOOL
                 TRMSET = SETTRM( A, B, C, X, Y )
 
                 IF ( .NOT. TRMSET ) THEN
-                    CALL M3WARN( 'UTMTOOL', 0, 0, 
+                    CALL M3WARN( 'UTMTOOL', 0, 0,
      &              'Error getting projection; please try again' )
                 END IF
 
 
-            ELSE IF ( MODE .EQ. 9 ) THEN        ! new EQM by angles
+            ELSE IF ( MODE .EQ. 8 ) THEN        ! new EQM by angles
 
 
                 WRITE( *,92000 )
@@ -429,51 +371,12 @@ C   begin body of program UTMTOOL
                 EQMSET = SETEQM( A, B, C, X, Y )
 
                 IF ( .NOT. EQMSET ) THEN
-                    CALL M3WARN( 'UTMTOOL', 0, 0, 
+                    CALL M3WARN( 'UTMTOOL', 0, 0,
      &              'Error getting projection; please try again' )
                 END IF
 
 
-            ELSE IF ( MODE .EQ. 10 ) THEN        ! new Lambert by angles
-
-
-                WRITE( *,92000 )
-     &          ' ',
-     &          'Albers Equal Area projection coordinate systems are',
-     &          'definedby two secant (or tangent) latitudes',
-     &          'ALPHA <= BETA a central meridian GAMMA, and the',
-     &          'longitude XCENT and latitude YCENT of the coordinate',
-     &          'origin (where Cartesian coordinates X=Y=0).',
-     &          ' '
-                A = GETREAL( -90.0, 90.0, A,
-     &                        'Enter first  secant latitude ALPHA' )
-
-                B = GETREAL(  -90.0, 90.0, MAX( A,B ),
-     &                        'Enter second secant latitude  BETA' )
-
-                C = GETREAL( -180.0, 180.0, C,
-     &                        'Enter central longitude      GAMMA' )
-
-                X = GETREAL( -180.0, 180.0, C,
-     &                        'Enter origin longitude       XCENT' )
-
-
-                IF ( Y .LT. A  .OR.  Y .GT. B ) THEN
-                    Y = 0.5 * ( A + B )
-                END IF
-
-                Y = GETREAL( -90.0, 90.0, Y,
-     &                        'Enter origin  latitude       YCENT' )
-
-                ALBSET = SETALB( A, B, C, X, Y )
-
-                IF ( .NOT. ALBSET ) THEN
-                    CALL M3WARN( 'UTMTOOL', 0, 0, 
-     &              'Error getting projection; please try again' )
-                END IF
-
-
-            ELSE IF ( MODE .EQ. 11 ) THEN             !  convert from LL to UTM
+            ELSE IF ( MODE .EQ. 9 ) THEN             !  convert from LL to UTM
 
 
                 LAT = GETREAL( -90.0, 90.0, LAT,
@@ -489,11 +392,11 @@ C   begin body of program UTMTOOL
                 CALL LL2UTM( LON, LAT, ZONE, XX, YY )
 
                 WRITE( *,92010 )
-     &              'Location LAT=', LAT, ' : LON=', LON, ' (deg)',  
+     &              'Location LAT=', LAT, ' : LON=', LON, ' (deg)',
      &              '           X=', XX,  ' :   Y=', YY, ' (meters)'
 
 
-            ELSE IF ( MODE .EQ. 12 ) THEN        ! convert from UTM to LL
+            ELSE IF ( MODE .EQ. 10 ) THEN        ! convert from UTM to LL
 
 
                 XX = GETREAL( BADVAL3, -BADVAL3, XX,
@@ -512,7 +415,7 @@ C   begin body of program UTMTOOL
      &              '       LON=', LON, ' : LAT=', LAT, ' (degrees)'
 
 
-            ELSE IF ( MODE .EQ. 13 ) THEN        ! convert from EPS to LL
+            ELSE IF ( MODE .EQ. 11 ) THEN        ! convert from EPS to LL
 
 
                 XX = GETREAL( BADVAL3, -BADVAL3, XX,
@@ -531,7 +434,7 @@ C   begin body of program UTMTOOL
      &              '       LON=', LON, ' : LAT=', LAT, ' (degrees)'
 
 
-            ELSE IF ( MODE .EQ. 14 ) THEN        ! LAMBERT to UTM
+            ELSE IF ( MODE .EQ. 12 ) THEN        ! LAMBERT to UTM
 
 
                 IF ( LAMSET ) THEN
@@ -566,7 +469,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if lamset or not
 
 
-            ELSE IF ( MODE .EQ. 15 ) THEN        ! UTM to LAMBERT
+            ELSE IF ( MODE .EQ. 13 ) THEN        ! UTM to LAMBERT
 
 
                 IF ( LAMSET ) THEN
@@ -602,7 +505,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if lamset or not
 
 
-            ELSE IF ( MODE .EQ. 16 ) THEN        ! LAMBERT to LAT-LON
+            ELSE IF ( MODE .EQ. 14 ) THEN        ! LAMBERT to LAT-LON
 
 
                 IF ( LAMSET ) THEN
@@ -634,7 +537,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if lamset or not
 
 
-            ELSE IF ( MODE .EQ. 17 ) THEN        ! LAT-LON to LAMBERT
+            ELSE IF ( MODE .EQ. 15 ) THEN        ! LAT-LON to LAMBERT
 
 
                 IF ( LAMSET ) THEN
@@ -667,7 +570,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if lamset or not
 
 
-            ELSE IF ( MODE .EQ. 18 ) THEN        ! POL to LL
+            ELSE IF ( MODE .EQ. 16 ) THEN        ! POL to LL
 
 
                 IF ( POLSET ) THEN
@@ -693,17 +596,17 @@ C   begin body of program UTMTOOL
                     END IF      !  if ll2lam succeeded, or not
 
                 ELSE
-                
+
                     IF ( .NOT. POLSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'POL projection not initialized; ' // 
+     &                  'POL projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
 
                 END IF          !  if lamset and POLset,  or not
 
 
-            ELSE IF ( MODE .EQ. 19 ) THEN        ! LL to POL
+            ELSE IF ( MODE .EQ. 17 ) THEN        ! LL to POL
 
 
                 IF ( POLSET ) THEN
@@ -731,7 +634,7 @@ C   begin body of program UTMTOOL
 
                     IF ( .NOT. POLSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'POL projection not initialized; ' // 
+     &                  'POL projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
 
@@ -739,7 +642,7 @@ C   begin body of program UTMTOOL
 
 
 
-            ELSE IF ( MODE .EQ. 20 ) THEN        ! POL to UTM
+            ELSE IF ( MODE .EQ. 18 ) THEN        ! POL to UTM
 
 
                 IF ( POLSET ) THEN
@@ -774,7 +677,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if POLset or not
 
 
-            ELSE IF ( MODE .EQ. 21 ) THEN        ! UTM to POL
+            ELSE IF ( MODE .EQ. 19 ) THEN        ! UTM to POL
 
 
                 IF ( POLSET ) THEN
@@ -810,7 +713,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if lamset or not
 
 
-            ELSE IF ( MODE .EQ. 22 ) THEN        ! POL to LAMBERT
+            ELSE IF ( MODE .EQ. 20 ) THEN        ! POL to LAMBERT
 
 
                 IF ( LAMSET .AND. POLSET ) THEN
@@ -836,22 +739,22 @@ C   begin body of program UTMTOOL
                     END IF      !  if ll2lam succeeded, or not
 
                 ELSE
-                
+
                     IF ( .NOT. LAMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'Lambert projection not initialized; ' // 
+     &                  'Lambert projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
                     IF ( .NOT. POLSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'POL projection not initialized; ' // 
+     &                  'POL projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
 
                 END IF          !  if lamset and POLset,  or not
 
 
-            ELSE IF ( MODE .EQ. 23 ) THEN        ! LAMBERT to POL
+            ELSE IF ( MODE .EQ. 21 ) THEN        ! LAMBERT to POL
 
 
                 IF ( LAMSET .AND. POLSET ) THEN
@@ -879,20 +782,20 @@ C   begin body of program UTMTOOL
 
                     IF ( .NOT. LAMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'Lambert projection not initialized; ' // 
+     &                  'Lambert projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
 
                     IF ( .NOT. POLSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'POL projection not initialized; ' // 
+     &                  'POL projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
 
                 END IF          !  if lamset or not
 
 
-            ELSE IF ( MODE .EQ. 24 ) THEN        ! TRM to LAT-LON
+            ELSE IF ( MODE .EQ. 21 ) THEN        ! TRM to LAT-LON
 
 
                 IF ( TRMSET ) THEN
@@ -924,7 +827,43 @@ C   begin body of program UTMTOOL
                 END IF          !  if TRMset or not
 
 
-            ELSE IF ( MODE .EQ. 25 ) THEN        ! LAT-LON to TRM
+            ELSE IF ( MODE .EQ. 22 ) THEN        ! TRM to LL
+
+
+                IF ( TRMSET ) THEN
+
+                    XX = GETREAL( BADVAL3, -BADVAL3, XX,
+     &                            'Enter TRM coords X (meters)' )
+
+                    YY = GETREAL( BADVAL3, -BADVAL3, YY,
+     &                            'Enter TRM coords  Y (meters)' )
+
+
+                    IF ( TRM2LL( XX, YY, X, Y ) ) THEN
+
+                        WRITE( *,92010 )
+     &                  'TRM coord X=', XX, ' :  Y=', YY,  ' (meters)',
+     &                  'LL  coord X=',  X, ' :  Y=',  Y,  ' (degrees)'
+
+                    ELSE
+
+                        CALL M3WARN( 'UTMTOOL', 0, 0,
+     &              'Error converting to Lat-Lon; please try again' )
+
+                    END IF      !  if trm2ll succeeded, or not
+
+                ELSE
+
+                    IF ( .NOT. TRMSET ) THEN
+                        CALL M3WARN( 'UTMTOOL', 0, 0,
+     &                  'TRM projection not initialized; ' //
+     &                  'please try again' )
+                    END IF          !  if lamset or not
+
+                END IF          !  if lamset and POLset,  or not
+
+
+            ELSE IF ( MODE .EQ. 23 ) THEN        ! LAT-LON to TRM
 
 
                 IF ( TRMSET ) THEN
@@ -957,7 +896,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if TRMset or not
 
 
-            ELSE IF ( MODE .EQ. 26 ) THEN        ! TRM to UTM
+            ELSE IF ( MODE .EQ. 24 ) THEN        ! TRM to UTM
 
 
                 IF ( TRMSET ) THEN
@@ -992,7 +931,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if TRMset or not
 
 
-            ELSE IF ( MODE .EQ. 27 ) THEN        ! UTM to TRM
+            ELSE IF ( MODE .EQ. 25 ) THEN        ! UTM to TRM
 
 
                 IF ( TRMSET ) THEN
@@ -1028,7 +967,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if lamset or not
 
 
-            ELSE IF ( MODE .EQ. 28 ) THEN        ! TRM to LAMBERT
+            ELSE IF ( MODE .EQ. 26 ) THEN        ! TRM to LAMBERT
 
 
                 IF ( LAMSET .AND. TRMSET ) THEN
@@ -1054,22 +993,22 @@ C   begin body of program UTMTOOL
                     END IF      !  if ll2lam succeeded, or not
 
                 ELSE
-                
+
                     IF ( .NOT. LAMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'Lambert projection not initialized; ' // 
+     &                  'Lambert projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
                     IF ( .NOT. TRMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'TRM projection not initialized; ' // 
+     &                  'TRM projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
 
                 END IF          !  if lamset and trmset,  or not
 
 
-            ELSE IF ( MODE .EQ. 29 ) THEN        ! LAMBERT to TRM
+            ELSE IF ( MODE .EQ. 27 ) THEN        ! LAMBERT to TRM
 
 
                 IF ( LAMSET .AND. TRMSET ) THEN
@@ -1097,20 +1036,20 @@ C   begin body of program UTMTOOL
 
                     IF ( .NOT. LAMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'Lambert projection not initialized; ' // 
+     &                  'Lambert projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
 
                     IF ( .NOT. TRMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'TRM projection not initialized; ' // 
+     &                  'TRM projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
 
                 END IF          !  if lamset or not
 
 
-            ELSE IF ( MODE .EQ. 30 ) THEN        ! TRM to POL
+            ELSE IF ( MODE .EQ. 28 ) THEN        ! TRM to POL
 
 
                 IF ( POLSET .AND. TRMSET ) THEN
@@ -1136,22 +1075,22 @@ C   begin body of program UTMTOOL
                     END IF      !  if ll2lam succeeded, or not
 
                 ELSE
-                
+
                     IF ( .NOT. POLSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'Lambert projection not initialized; ' // 
+     &                  'Lambert projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if POLSET or not
                     IF ( .NOT. TRMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'TRM projection not initialized; ' // 
+     &                  'TRM projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if POLSET or not
 
                 END IF          !  if POLSET and trmset,  or not
 
 
-            ELSE IF ( MODE .EQ. 31 ) THEN        ! POL to TRM
+            ELSE IF ( MODE .EQ. 29 ) THEN        ! POL to TRM
 
 
                 IF ( POLSET .AND. TRMSET ) THEN
@@ -1179,20 +1118,20 @@ C   begin body of program UTMTOOL
 
                     IF ( .NOT. POLSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'POLar projection not initialized; ' // 
+     &                  'POLar projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if POLSET or not
 
                     IF ( .NOT. TRMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'TRM projection not initialized; ' // 
+     &                  'TRM projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if POLSET or not
 
                 END IF          !  if POLSET or not
 
 
-            ELSE IF ( MODE .EQ. 32 ) THEN        ! EQM to LAT-LON
+            ELSE IF ( MODE .EQ. 30 ) THEN        ! EQM to LAT-LON
 
 
                 IF ( EQMSET ) THEN
@@ -1224,7 +1163,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if EQMset or not
 
 
-            ELSE IF ( MODE .EQ. 33 ) THEN        ! LAT-LON to EQM
+            ELSE IF ( MODE .EQ. 31 ) THEN        ! LAT-LON to EQM
 
 
                 IF ( EQMSET ) THEN
@@ -1257,7 +1196,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if EQMset or not
 
 
-            ELSE IF ( MODE .EQ. 34 ) THEN        ! EQM to UTM
+            ELSE IF ( MODE .EQ. 32 ) THEN        ! EQM to UTM
 
 
                 IF ( EQMSET ) THEN
@@ -1292,7 +1231,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if EQMset or not
 
 
-            ELSE IF ( MODE .EQ. 35 ) THEN        ! UTM to EQM
+            ELSE IF ( MODE .EQ. 33 ) THEN        ! UTM to EQM
 
 
                 IF ( EQMSET ) THEN
@@ -1328,7 +1267,7 @@ C   begin body of program UTMTOOL
                 END IF          !  if lamset or not
 
 
-            ELSE IF ( MODE .EQ. 36 ) THEN        ! EQM to LAMBERT
+            ELSE IF ( MODE .EQ. 34 ) THEN        ! EQM to LAMBERT
 
 
                 IF ( LAMSET .AND. EQMSET ) THEN
@@ -1354,22 +1293,22 @@ C   begin body of program UTMTOOL
                     END IF      !  if ll2lam succeeded, or not
 
                 ELSE
-                
+
                     IF ( .NOT. LAMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'Lambert projection not initialized; ' // 
+     &                  'Lambert projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
                     IF ( .NOT. EQMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'EQM projection not initialized; ' // 
+     &                  'EQM projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
 
                 END IF          !  if lamset and trmset,  or not
 
 
-            ELSE IF ( MODE .EQ. 37 ) THEN        ! LAMBERT to EQM
+            ELSE IF ( MODE .EQ. 35 ) THEN        ! LAMBERT to EQM
 
 
                 IF ( LAMSET .AND. EQMSET ) THEN
@@ -1397,20 +1336,20 @@ C   begin body of program UTMTOOL
 
                     IF ( .NOT. LAMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'Lambert projection not initialized; ' // 
+     &                  'Lambert projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
 
                     IF ( .NOT. EQMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'EQM projection not initialized; ' // 
+     &                  'EQM projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if lamset or not
 
                 END IF          !  if lamset or not
 
 
-            ELSE IF ( MODE .EQ. 38 ) THEN        ! EQM to POL
+            ELSE IF ( MODE .EQ. 36 ) THEN        ! EQM to POL
 
 
                 IF ( POLSET .AND. EQMSET ) THEN
@@ -1436,22 +1375,22 @@ C   begin body of program UTMTOOL
                     END IF      !  if ll2lam succeeded, or not
 
                 ELSE
-                
+
                     IF ( .NOT. POLSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'Lambert projection not initialized; ' // 
+     &                  'Lambert projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if POLSET or not
                     IF ( .NOT. EQMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'EQM projection not initialized; ' // 
+     &                  'EQM projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if POLSET or not
 
                 END IF          !  if POLSET and trmset,  or not
 
 
-            ELSE IF ( MODE .EQ. 39 ) THEN        ! POL to EQM
+            ELSE IF ( MODE .EQ. 37 ) THEN        ! POL to EQM
 
 
                 IF ( POLSET .AND. EQMSET ) THEN
@@ -1479,20 +1418,20 @@ C   begin body of program UTMTOOL
 
                     IF ( .NOT. POLSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'POLar projection not initialized; ' // 
+     &                  'POLar projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if POLSET or not
 
                     IF ( .NOT. EQMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'EQM projection not initialized; ' // 
+     &                  'EQM projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if POLSET or not
 
                 END IF          !  if POLSET or not
 
 
-            ELSE IF ( MODE .EQ. 40 ) THEN        ! EQM to TRM
+            ELSE IF ( MODE .EQ. 38 ) THEN        ! EQM to TRM
 
 
                 IF ( TRMSET .AND. EQMSET ) THEN
@@ -1518,22 +1457,22 @@ C   begin body of program UTMTOOL
                     END IF      !  if ll2lam succeeded, or not
 
                 ELSE
-                
+
                     IF ( .NOT. TRMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'Lambert projection not initialized; ' // 
+     &                  'Lambert projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if TRMSET or not
                     IF ( .NOT. EQMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'EQM projection not initialized; ' // 
+     &                  'EQM projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if TRMSET or not
 
                 END IF          !  if eqmSET and trmset,  or not
 
 
-            ELSE IF ( MODE .EQ. 41 ) THEN        ! TRM to EQM
+            ELSE IF ( MODE .EQ. 39 ) THEN        ! TRM to EQM
 
 
                 IF ( TRMSET .AND. EQMSET ) THEN
@@ -1561,85 +1500,20 @@ C   begin body of program UTMTOOL
 
                     IF ( .NOT. TRMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'TRM projection not initialized; ' // 
+     &                  'TRM projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if TRMSET or not
 
                     IF ( .NOT. EQMSET ) THEN
                         CALL M3WARN( 'UTMTOOL', 0, 0,
-     &                  'EQM projection not initialized; ' // 
+     &                  'EQM projection not initialized; ' //
      &                  'please try again' )
                     END IF          !  if EQMSET or not
 
                 END IF          !  if TRMSET and EQMSET, or not
 
 
-            ELSE IF ( MODE .EQ. 42 ) THEN        ! LAT-LON to ALBERS
-
-
-                IF ( ALBSET ) THEN
-
-                    XX = GETREAL( BADVAL3, -BADVAL3, XX,
-     &                            'Enter input Longitude X (degrees)' )
-
-                    YY = GETREAL( BADVAL3, -BADVAL3, YY,
-     &                            'Enter input Latitude  Y (degrees)' )
-
-
-                    IF ( LL2LAM( XX, YY, X, Y ) ) THEN
-
-                        WRITE( *,92010 )
-     &                  'LAT-LON X=', XX, ' :  Y=', YY,  ' (degrees)',
-     &                  'Albers  X=',  X, ' :  Y=',  Y,  ' (meters)'
-
-                    ELSE
-
-                        CALL M3WARN( 'UTMTOOL', 0, 0,
-     &              'Error converting to Albers; please try again' )
-
-                    END IF      !  if ll2lam succeeded, or not
-
-                ELSE
-
-                    CALL M3WARN( 'UTMTOOL', 0, 0,
-     &          'Lambert projection not initialized; please try again' )
-
-                END IF          !  if lamset or not
-
-
-            ELSE IF ( MODE .EQ. 43 ) THEN        ! ALBERS to LAT-LON
-
-
-                IF ( ALBSET ) THEN
-
-                    XX = GETREAL( BADVAL3, -BADVAL3, XX,
-     &                            'Enter input Albers  X  (meters)' )
-
-                    YY = GETREAL( BADVAL3, -BADVAL3, YY,
-     &                            'Enter input Albers  Y  (meters)' )
-
-                    IF ( LAM2LL( XX, YY, X, Y ) ) THEN
-
-                        WRITE( *,92010 )
-     &                  'Albers  X=', XX, ' :  Y=', YY,  ' (meters)',
-     &                  'LAT-LON X=',  X, ' :  Y=',  Y,  ' (degrees)'
-
-                    ELSE
-
-                        CALL M3WARN( 'UTMTOOL', 0, 0,
-     &              'Error converting to LAT-LON; please try again' )
-
-                    END IF      !  if lam2ll succeeded, or not
-
-                ELSE
-
-                    CALL M3WARN( 'UTMTOOL', 0, 0,
-     &          'Albers projection not initialized; please try again')
-
-                END IF          !  if lamset or not
-
-
-            ELSE IF ( MODE .EQ. 44 ) THEN     ! get LL grid corners from UTM
+            ELSE IF ( MODE .EQ. 40 ) THEN     ! get LL grid corners from UTM
 
 
                 XLL = GETREAL( BADVAL3, -BADVAL3, XX,
@@ -1690,7 +1564,7 @@ C   begin body of program UTMTOOL
      &              '        LON=', LON, ' : LAT=', LAT, ' (degrees)'
 
 
-            ELSE IF ( MODE .EQ. 45 ) THEN        ! get UTM grid corners from LL
+            ELSE IF ( MODE .EQ. 41 ) THEN        ! get UTM grid corners from LL
 
 
                 LON = GETREAL( BADVAL3, -BADVAL3, XX,
@@ -1743,7 +1617,7 @@ C   begin body of program UTMTOOL
      &              '        LON=', LON, ' : LAT=', LAT, ' (degrees)'
 
 
-            ELSE IF ( MODE .EQ. 46 ) THEN        ! get LL corners from LAMBERT
+            ELSE IF ( MODE .EQ. 42 ) THEN        ! get LL corners from LAMBERT
 
 
                 IF ( .NOT. LAMSET ) THEN
@@ -1813,7 +1687,7 @@ C   begin body of program UTMTOOL
                 WRITE( *,92000 ) ' '
 
 
-            ELSE IF ( MODE .EQ. 47 ) THEN        ! get Lambert corners from LL
+            ELSE IF ( MODE .EQ. 43 ) THEN        ! get Lambert corners from LL
 
 
                 IF ( .NOT. LAMSET ) THEN
@@ -1891,7 +1765,7 @@ C   begin body of program UTMTOOL
                 WRITE( *,92000 ) ' '
 
 
-            ELSE IF ( MODE .EQ. 48 ) THEN    ! ...then quit:
+            ELSE IF ( MODE .EQ. 44 ) THEN    ! ...then quit:
 
                 GO TO 999       !  to program shut-down
 
@@ -1906,7 +1780,7 @@ C   begin body of program UTMTOOL
 
 
 999     CONTINUE
-        CALL M3EXIT( 'UTMTOOL', 0, 0, 
+        CALL M3EXIT( 'UTMTOOL', 0, 0,
      &             'Successful completion of program UTMTOOL', 0 )
 
 C******************  FORMAT  STATEMENTS   ******************************
@@ -1915,12 +1789,12 @@ C...........   Informational (LOG) message formats... 92xxx
 
 92000   FORMAT ( 5X , A )
 
-92010   FORMAT ( /5X , A, F15.4, A, F15.4, A, 
+92010   FORMAT ( /5X , A, F15.4, A, F15.4, A,
      &           /5X , A, F15.4, A, F15.4, A, / )
 
 92020   FORMAT (  5X , A, F15.4, A, F15.4, A,
      &           /5X , A, F15.4, A, F15.4, A )
 
 
-        END
+        END PROGRAM UTMTOOL
 

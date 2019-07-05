@@ -1,17 +1,17 @@
 
-C.........................................................................
-C Version "@(#)$Header$"
+        LOGICAL FUNCTION GETYN ( PROMPT , DEFAULT )
+
+C******************************************************************
+C Version "$Id: getyn.f 161 2015-02-23 23:31:27Z coats $"
 C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003 Baron Advanced Meteorological Systems
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (c) 2004-2007 Baron Advanced Meteorological Systems,
+C (c) 2007-2013 Carlie J. Coats, Jr., and (C) 2014 UNC Institute
+C for the Environment.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-
-        LOGICAL FUNCTION  GETYN ( PROMPT , DEFAULT )
-
-C******************************************************************
-C  function body begins at line 91
+C  function body begins at line 87
 C
 C  FUNCTION:
 C
@@ -46,48 +46,40 @@ C       Modified 1/1997 by CJC:  logs result
 C       Modified 4/2002 by CJC:  now accepts T, t, F, f, .TRUE., .FALSE., etc.
 C       Revised  6/2003 by CJC:  factor through M3PROMPT to ensure flush()
 C       of PROMPT for IRIX F90v7.4  
-C
-C  ARGUMENT LIST DESCRIPTION:
-C
-C    Input arguments:
-C
-C         PROMPT    prompt for user
-C         DEFAULT   default return value
-C
-C    Output arguments: none
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
+C       Modified 02/2014 by CJC: Fix MH violation of coding-standards:
+C       check status IOS from  ENVYN()!!
 C
 C**********************************************************************
 
+        IMPLICIT NONE
 
 C.......   Arguments:
 
-        CHARACTER*(*)   PROMPT
-        LOGICAL         DEFAULT
+        CHARACTER*(*), INTENT(IN   ) :: PROMPT      !!  prompt for user
+        LOGICAL      , INTENT(IN   ) :: DEFAULT     !!  default return value
 
 
 C.......   External functions:
 
-        LOGICAL         ENVYN
-        INTEGER         TRIMLEN
-        EXTERNAL        ENVYN, TRIMLEN
+        LOGICAL, EXTERNAL :: ENVYN
 
 
 C.......   Parameter:  maximum number of attempts allowed to the user
 
-        INTEGER         MAX
-        PARAMETER     ( MAX = 5 )
+        INTEGER, PARAMETER :: MAX = 5
 
 
 C.......   Local Variables:
 
         INTEGER         LENGTH , COUNT , IOS
         CHARACTER*80    ANSWER
-        CHARACTER*80    MESG
-        LOGICAL         PROMPTON
+        CHARACTER*256   MESG
 
-        LOGICAL         FIRSTIME
-        DATA            FIRSTIME / .TRUE. /
-        SAVE            FIRSTIME, PROMPTON
+        LOGICAL, SAVE :: PROMPTON
+        LOGICAL, SAVE :: FIRSTIME = .TRUE.
+
+        CHARACTER*16, PARAMETER :: PNAME = 'GETYN'
 
 
 C*********************   begin  GETYN   *******************************
@@ -97,10 +89,13 @@ C*********************   begin  GETYN   *******************************
             PROMPTON = ENVYN( 'PROMPTFLAG', 'Prompt for input flag',
      &                      .TRUE., IOS )
             FIRSTIME = .FALSE.
+            IF ( IOS .GT. 0 ) THEN
+                CALL M3EXIT( PNAME,0,0,'Bad env vble "PROMPTFLAG"', 2 )
+            END IF
  
         END IF
 
-        LENGTH  =  TRIMLEN( PROMPT )
+        LENGTH  =  LEN_TRIM( PROMPT )
 
         IF( .NOT. PROMPTON ) THEN
             GETYN = DEFAULT
@@ -200,5 +195,5 @@ C.....  Continue only if PROMPTON is true
             CALL M3MSG2( MESG )
             GO TO  11
 
-        END
+        END FUNCTION GETYN 
 

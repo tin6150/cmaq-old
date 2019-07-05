@@ -2,23 +2,21 @@
         MODULE M3UTILIO
 
         !!-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-        !! Version "%W% %P% %G% %U% $Id$"
-        !! Copyright (c) 2003-2005 Baron Advanced Meteorological Systems and
-        !! (c) 2005-2011 Carlie J. Coats, Jr.
-        !! Distributed under the GNU GENERAL PUBLIC LICENSE version 2
-        !! See file "GPL.txt" for conditions of use.
+        !! Version "$Id: m3utilio.f 178 2015-03-02 16:35:15Z coats $"
+        !! Copyright (c) 2004-2013 Baron Advanced Meteorological Systems,
+        !! (c) 2007-2013 Carlie J. Coats, Jr., and
+        !! (C) 2014 UNC Institute for the Environment.
+        !! Distributed under the GNU LESSER PUBLIC LICENSE version 2.1
+        !! See file "LGPL.txt" for conditions of use.
         !!...................................................................
         !!  DESCRIPTION:
         !!      Models-3 I/O API declarations and INTERFACE blocks.
         !!      Additional utility routines:
         !!          SPLITLINE: Split LINE into fields FIELD( N )
-        !!          FIXFIELD:  Convert "missing" = "-9" fields and 
+        !!          FIXFIELD:  Convert "missing" = "-9" fields and
         !!                     leading blanks in FIELD to all-zeros
         !!          KEYVAL:    retrieve value of REAL KEY from FDESC3D fields
-        !!          KEYSTR:    retrieve value of char-string KEY...
-        !!          GRDCHK3:   Checks FDESC3 coordinate and grid description
-        !!                     variables against description arguments
-        !!          INDEXINT1: Look up integer key in unsorted list
+        !!          KEYSTR:    retrieve value of char-string KEY.
         !!
         !!  PRECONDITIONS:
         !!      Consistency of INTERFACE blocks with I/O API sources.
@@ -26,7 +24,13 @@
         !!  REVISION  HISTORY:
         !!      Prototype 11/2004 by Carlie J. Coats, Jr., BAMS,
         !!      for WRF/sub-grid SMOKE development.
-        !!      Version 2/2011 by CJC:  fix mis-spelled CURRSTEP() declaration
+        !!      Version  01/2013:  new routine LASTTIME(); consistency with v3.1
+        !!      Version  03/2014:  Generic (INTEGER(4 | 8) SORTIC().
+        !!      Generic ENVLIST(), FINDKEY(), LOCATE(), SORTI()
+        !!      Version  05/2014:  bugfix in SORTI()
+        !!      Version  06/2014:  Add SORTIN4(), SORTIN8() interfaces to SORTI()
+        !!      Version  08/2014:  Add FINDL1() ... FINDL4, LOCATL1() ... LOCATL4(),
+        !!      SORTL1() ...SORTL4() interfaces to FINDKEY(), LOCAT(), SORTI()
         !!-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
             IMPLICIT NONE
@@ -35,90 +39,106 @@
             INCLUDE 'FDESC3.EXT'        !  I/O API file headers
             INCLUDE 'IODECL3.EXT'       !  I/O API function declarations
 
+            CHARACTER*72, PRIVATE, SAVE :: ID =
+     &'$Id:: m3utilio.f 178 2015-03-02 16:35:15Z coats                $'
+
 
             !!........  PUBLIC Routines:
 
-            PUBLIC  SPLITLINE, FIXFIELD,
-     &              KEYVAL, KEYSTR, INDEXINT1, LASTTIME, LCM
+            PUBLIC  FIXFIELD, KEYVAL, KEYSTR, LASTTIME, LCM
 
 
             !!........  INTERFACE Blocks:
             !!
             !!    BILIN, BMATVEC, CURREC, DAYMON, DMATVEC, DT2STR, ENVDBLE,
-            !!    ENVINT, ENVREAL, ENVSTR, ENVYN, FINDC, FIND1,
-            !!    FIND2, FIND3, FIND4, FINDR1, FINDR2, FINDR3, FINDR4,
-            !!    GCD, GETDATE, GETDBLE, GETDFILE, GETEFILE, GETFFILE, 
+            !!    ENVLIST, ENVINT, ENVREAL, ENVSTR, ENVYN, FINDKEY, FINDC,
+            !!    FIND1, FIND2, FIND3, FIND4, FINDL1, FINDL2, FINDL3, FINDL4, 
+            !!    FINDR1, FINDR2, FINDR3, FINDR4,
+            !!    GCD, GETDATE, GETDBLE, GETDFILE, GETEFILE, GETFFILE,
             !!    GETMENU, GETNUM, GETREAL, GETSTR, GETYN, HHMMSS,
-            !!    INDEX1, IINDEXINT1, NTLIST, ISDST, JSTEP3, JULIAN, LBLANK,
-            !!    LOCAT1, LOCAT2, LOCAT3, LOCAT4, LOCATC, LOCATR1, LOCATR2,
-            !!    LOCATR3, LOCATR4, M3EXIT, M3FLUSH, M3MESG, M3MSG2, M3PARAG,
-            !!    M3PROMPT, M3WARN,
-            !!    MMDDYY, NEXTIME, PMATVEC, POLY, PROMPTDFILE, PROMPTFFILE,
-            !!    PROMPTMFILE, REALIST, SETENVVAR, SORTIC, SORTI1, SORTI2,
-            !!    SORTI3, SORTI4, SORTR1, SORTR2, SORTR3, SORTR4, STR2DBLE,
+            !!    INDEX1, INDEXINT1, INTLIST, ISDST, JSTEP3, JULIAN, LBLANK,
+            !!    LOCATE, LOCAT1, LOCAT2, LOCAT3, LOCAT4, LOCATC, 
+            !!    LOCATL1, LOCATL2, LOCATL3, LOCATR4, LOCATL1, LOCATR2, LOCATR3, LOCATR4, 
+            !!    M3EXIT, M3FLUSH, M3MESG, M3MSG2, M3PARAG,
+            !!    M3PROMPT, M3WARN, MMDDYY, NEXTIME, PMATVEC, POLY,
+            !!    PROMPTDFILE, PROMPTFFILE, PROMPTMFILE, REALIST, SETENVVAR,
+            !!    SORTIC, SORTI, SORTI1, SORTI2, SORTI3, SORTI4,
+            !!    SORTL1, SORTL2, SORTL3, SORTL4, SORTR1, SORTR2, SORTR3, SORTR4,
+            !!    SPLITLINE, STR2DBLE,
             !!    STR2INT, STR2REAL, STRLIST, SEC2TIME, SECSDIFF,
             !!    TIME2SEC, UNGRIDB, UNGRIDI, WKDAY, YEAR4, YR2DAY
 
             INTERFACE
                 SUBROUTINE  BILIN( M, N, P, IX, AX, V, C )
-                INTEGER         M               ! length of input  vector
-                INTEGER         N               ! length of output vector
-                INTEGER         P               ! number of layers
-                INTEGER         IX( 4,N )       ! index array
-                REAL            AX( 4,N )       ! 4-band coeff matrix
-                REAL            V( M,P )        ! P-layered input  vector
-                REAL            C( N,P )        ! P-layered output vector
+                INTEGER, INTENT(IN   ) :: M               ! length of input  vector
+                INTEGER, INTENT(IN   ) :: N               ! length of output vector
+                INTEGER, INTENT(IN   ) :: P               ! number of layers
+                INTEGER, INTENT(IN   ) :: IX( 4,N )       ! index array
+                REAL   , INTENT(IN   ) :: AX( 4,N )       ! 4-band coeff matrix
+                REAL   , INTENT(IN   ) :: V( M,P )        ! P-layered input  vector
+                REAL   , INTENT(  OUT) :: C( N,P )        ! P-layered output vector
                 END SUBROUTINE  BILIN
             END INTERFACE
 
             INTERFACE
                 SUBROUTINE  BMATVEC( M, N, P, IX, AX, V, C )
-                INTEGER         M               ! length of input  vector
-                INTEGER         N               ! length of output vector
-                INTEGER         P               ! number of layers
-                INTEGER         IX( 4,N )       ! index array
-                REAL            AX( 4,N )       ! 4-band coeff matrix
-                REAL            V( M,P )        ! P-layered input  vector
-                REAL            C( P,N )        ! P-layered output vector
+                INTEGER, INTENT(IN   ) :: M               ! length of input  vector
+                INTEGER, INTENT(IN   ) :: N               ! length of output vector
+                INTEGER, INTENT(IN   ) :: P               ! number of layers
+                INTEGER, INTENT(IN   ) :: IX( 4,N )       ! index array
+                REAL   , INTENT(IN   ) :: AX( 4,N )       ! 4-band coeff matrix
+                REAL   , INTENT(IN   ) :: V( M,P )        ! P-layered input  vector
+                REAL   , INTENT(  OUT) :: C( P,N )        ! P-layered output vector
                 END SUBROUTINE  BMATVEC
             END INTERFACE
 
             INTERFACE
-                INTEGER FUNCTION CURREC ( JDATE, JTIME, 
-     &                                    SDATE, STIME, TSTEP, 
+                LOGICAL FUNCTION CHKBUF3( FDUM )
+                INTEGER, INTENT(  OUT) :: FDUM            !  prevents excessive optimization
+                END FUNCTION CHKBUF3
+            END INTERFACE
+
+            INTERFACE
+                CHARACTER*2 FUNCTION CRLF()
+                END FUNCTION CRLF
+            END INTERFACE
+
+            INTERFACE
+                INTEGER FUNCTION CURREC ( JDATE, JTIME,
+     &                                    SDATE, STIME, TSTEP,
      &                                    CDATE, CTIME )
-                INTEGER       SDATE, STIME    !  starting d&t for the sequence
-                INTEGER       TSTEP           !  time step for the sequence
-                INTEGER       JDATE, JTIME    !  d&t requested
-                INTEGER       CDATE, CTIME    !  d&t for timestep of JDATE:JTIME
+                INTEGER, INTENT(IN   ) :: SDATE, STIME    !  starting d&t for the sequence
+                INTEGER, INTENT(IN   ) :: TSTEP           !  time step for the sequence
+                INTEGER, INTENT(IN   ) :: JDATE, JTIME    !  d&t requested
+                INTEGER, INTENT(  OUT) :: CDATE, CTIME    !  d&t for timestep of JDATE:JTIME
                 END FUNCTION CURREC
             END INTERFACE
 
             INTERFACE
-                LOGICAL FUNCTION CURRSTEP ( JDATE, JTIME, 
-     &                                      SDATE, STIME, TSTEP, 
+                LOGICAL FUNCTION CURRSTEP ( JDATE, JTIME,
+     &                                      SDATE, STIME, TSTEP,
      &                                      CDATE, CTIME )
-                INTEGER       SDATE, STIME    !  starting d&t for the sequence
-                INTEGER       TSTEP           !  time step for the sequence
-                INTEGER       JDATE, JTIME    !  d&t requested
-                INTEGER       CDATE, CTIME    !  d&t for timestep of JDATE:JTIME
+                INTEGER, INTENT(IN   ) :: SDATE, STIME    !  starting d&t for the sequence
+                INTEGER, INTENT(IN   ) :: TSTEP           !  time step for the sequence
+                INTEGER, INTENT(IN   ) :: JDATE, JTIME    !  d&t requested
+                INTEGER, INTENT(  OUT) :: CDATE, CTIME    !  d&t for timestep of JDATE:JTIME
                 END FUNCTION CURRSTEP
             END INTERFACE
 
             INTERFACE
                 SUBROUTINE DAYMON( JDATE, MNTH, MDAY )
-                INTEGER	JDATE	!  Julian date, format YYYYDDD = 1000*Year + Day
-                INTEGER MNTH    !  month (1...12)
-                INTEGER MDAY    !  day-of-month (1...28,29,30,31)
+                INTEGER, INTENT(IN   ) :: JDATE	!  Julian date, format YYYYDDD = 1000*Year + Day
+                INTEGER, INTENT(  OUT) :: MNTH    !  month (1...12)
+                INTEGER, INTENT(  OUT) :: MDAY    !  day-of-month (1...28,29,30,31)
                 END SUBROUTINE  DAYMON
             END INTERFACE
 
             INTERFACE
                 SUBROUTINE  DMATVEC( N, A, V, C )
-                INTEGER		N		! length of input vector
-                REAL 		A( N )		! diagonal coeff matrix
-                REAL		V( N )		! input  vector
-                REAL		C( N )		! output vector
+                INTEGER, INTENT(IN   ) :: N		! length of input vector
+                REAL   , INTENT(IN   ) :: A( N )		! diagonal coeff matrix
+                REAL   , INTENT(IN   ) :: V( N )		! input  vector
+                REAL   , INTENT(  OUT) :: C( N )		! output vector
                 END SUBROUTINE  DMATVEC
             END INTERFACE
 
@@ -126,21 +146,21 @@
                 LOGICAL FUNCTION  DSCGRID( GNAME, CNAME,
      &              CTYPE, P_ALP, P_BET, P_GAM, XCENT, YCENT,
      &              XORIG, YORIG, XCELL, YCELL, NCOLS, NROWS, NTHIK )
-                CHARACTER*(*) GNAME	!  grid  sys name
-                CHARACTER*(*) CNAME	!  coord sys name
-                INTEGER       CTYPE	!  coord sys type
-                REAL*8        P_ALP	!  first, second, third map
-                REAL*8        P_BET	!  projection descriptive
-                REAL*8        P_GAM	!  parameters
-                REAL*8        XCENT	!  lon for coord-system X=0
-                REAL*8        YCENT	!  lat for coord-system Y=0
-                REAL*8        XORIG	!  X-coordinate origin of grid (map units)
-                REAL*8        YORIG	!  Y-coordinate origin of grid
-                REAL*8        XCELL	!  X-coordinate cell dimension
-                REAL*8        YCELL	!  Y-coordinate cell dimension
-                INTEGER       NCOLS	!  number of grid columns
-                INTEGER       NROWS	!  number of grid rows
-                INTEGER       NTHIK	!  BOUNDARY:  perimeter thickness (cells)
+                CHARACTER*(*), INTENT(IN   ) :: GNAME	!  grid  sys name
+                CHARACTER*(*), INTENT(  OUT) :: CNAME	!  coord sys name
+                INTEGER,       INTENT(  OUT) :: CTYPE	!  coord sys type
+                REAL*8 ,       INTENT(  OUT) :: P_ALP	!  first, second, third map
+                REAL*8 ,       INTENT(  OUT) :: P_BET	!  projection descriptive
+                REAL*8 ,       INTENT(  OUT) :: P_GAM	!  parameters
+                REAL*8 ,       INTENT(  OUT) :: XCENT	!  lon for coord-system X=0
+                REAL*8 ,       INTENT(  OUT) :: YCENT	!  lat for coord-system Y=0
+                REAL*8 ,       INTENT(  OUT) :: XORIG	!  X-coordinate origin of grid (map units)
+                REAL*8 ,       INTENT(  OUT) :: YORIG	!  Y-coordinate origin of grid
+                REAL*8 ,       INTENT(  OUT) :: XCELL	!  X-coordinate cell dimension
+                REAL*8 ,       INTENT(  OUT) :: YCELL	!  Y-coordinate cell dimension
+                INTEGER,       INTENT(  OUT) :: NCOLS	!  number of grid columns
+                INTEGER,       INTENT(  OUT) :: NROWS	!  number of grid rows
+                INTEGER,       INTENT(  OUT) :: NTHIK	!  BOUNDARY:  perimeter thickness (cells)
                 END FUNCTION  DSCGRID
             END INTERFACE
 
@@ -148,280 +168,333 @@
                 LOGICAL FUNCTION DSCOORD( CNAME, CTYPE,
      &                                    P_ALP, P_BET, P_GAM,
      &                                    XCENT, YCENT )
-                CHARACTER*(*) CNAME	!  coord sys name
-                INTEGER       CTYPE	!  coord sys type
-                REAL*8        P_ALP	!  first, second, third map
-                REAL*8        P_BET	!  projection descriptive
-                REAL*8        P_GAM	!  parameters
-                REAL*8        XCENT	!  lon for coord-system X=0
-                REAL*8        YCENT	!  lat for coord-system Y=0
-                END FUNCTIONDSCOORD
+                CHARACTER*(*), INTENT(IN   ) :: CNAME	!  coord sys name
+                INTEGER      , INTENT(  OUT) :: CTYPE	!  coord sys type
+                REAL*8       , INTENT(  OUT) :: P_ALP	!  first, second, third map
+                REAL*8       , INTENT(  OUT) :: P_BET	!  projection descriptive
+                REAL*8       , INTENT(  OUT) :: P_GAM	!  parameters
+                REAL*8       , INTENT(  OUT) :: XCENT	!  lon for coord-system X=0
+                REAL*8       , INTENT(  OUT) :: YCENT	!  lat for coord-system Y=0
+                END FUNCTION DSCOORD
             END INTERFACE
 
             INTERFACE
                 CHARACTER(LEN=24) FUNCTION  DT2STR( JDATE , JTIME )
-                INTEGER         JDATE   !  Julian date, coded YYYYDDD
-                INTEGER         JTIME   !  time, coded HHMMSS
+                INTEGER, INTENT(IN   ) :: JDATE   !  Julian date, coded YYYYDDD
+                INTEGER, INTENT(IN   ) :: JTIME   !  time, coded HHMMSS
                 END FUNCTION  DT2STR
             END INTERFACE
 
+            INTERFACE ENVLIST
+
+                LOGICAL FUNCTION INTLIST( ENAME, EDESC,
+     &                                    NMAX, NCNT, LIST )
+                CHARACTER*(*), INTENT(IN   ) :: ENAME   !  environment variable for the list
+                CHARACTER*(*), INTENT(IN   ) :: EDESC   !  environment variable description
+                INTEGER      , INTENT(IN   ) :: NMAX    !  dimension for list
+                INTEGER      , INTENT(  OUT) :: NCNT    !  actual number of entries in list
+                INTEGER      , INTENT(  OUT) :: LIST( NMAX )    ! array of values found
+                END FUNCTION INTLIST
+
+                LOGICAL FUNCTION REALIST( ENAME, EDESC,
+     &                                    NMAX, NCNT, LIST )
+                CHARACTER*(*), INTENT(IN   ) :: ENAME   ! environment variable for the list
+                CHARACTER*(*), INTENT(IN   ) :: EDESC   ! environment variable description
+                INTEGER      , INTENT(IN   ) :: NMAX    ! dimension for list
+                INTEGER      , INTENT(  OUT) :: NCNT    ! actual number of entries in list
+                REAL         , INTENT(  OUT) :: LIST( NMAX )    ! array of values found
+                END FUNCTION REALIST
+
+                LOGICAL FUNCTION STRLIST( ENAME, EDESC,
+     &                                    NMAX, NCNT, LIST )
+                CHARACTER*(*), INTENT(IN   ) :: ENAME           !  environment variable for the list
+                CHARACTER*(*), INTENT(IN   ) :: EDESC           !  environment variable description
+                INTEGER      , INTENT(IN   ) :: NMAX            !  dimension for list
+                INTEGER      , INTENT(  OUT) :: NCNT            !  actual number of entries in list
+                CHARACTER*(*), INTENT(  OUT) :: LIST( NMAX )    ! array of values found
+                END FUNCTION STRLIST
+
+            END INTERFACE       !!  envlist()
+
+            INTERFACE
+                REAL*8 FUNCTION ENVDBLE( LNAME, DESC, DEFAULT, STAT )
+                CHARACTER*(*), INTENT(IN   ) :: LNAME
+                CHARACTER*(*), INTENT(IN   ) :: DESC
+                REAL*8       , INTENT(IN   ) :: DEFAULT
+                INTEGER      , INTENT(  OUT) :: STAT
+                END FUNCTION ENVDBLE
+            END INTERFACE                       !  ENVDBLE
+
             INTERFACE
                 INTEGER FUNCTION ENVINT( LNAME, DESC, DEFAULT, STAT )
-                CHARACTER*(*)   LNAME
-                CHARACTER*(*)   DESC
-                INTEGER         DEFAULT
-                INTEGER         STAT
+                CHARACTER*(*), INTENT(IN   ) :: LNAME
+                CHARACTER*(*), INTENT(IN   ) :: DESC
+                INTEGER      , INTENT(IN   ) :: DEFAULT
+                INTEGER      , INTENT(  OUT) :: STAT
                 END FUNCTION ENVINT
             END INTERFACE
 
             INTERFACE
                 REAL FUNCTION ENVREAL( LNAME, DESC, DEFAULT, STAT )
-                CHARACTER*(*)   LNAME
-                CHARACTER*(*)   DESC
-                REAL            DEFAULT
-                INTEGER         STAT
+                CHARACTER*(*), INTENT(IN   ) :: LNAME
+                CHARACTER*(*), INTENT(IN   ) :: DESC
+                REAL         , INTENT(IN   ) :: DEFAULT
+                INTEGER      , INTENT(  OUT) :: STAT
                 END FUNCTION ENVREAL
             END INTERFACE
 
             INTERFACE
-                REAL*8 FUNCTION ENVDBLE( LNAME, DESC, DEFAULT, STAT )
-                CHARACTER*(*)   LNAME
-                CHARACTER*(*)   DESC
-                REAL*8          DEFAULT
-                INTEGER         STAT
-                END FUNCTION ENVDBLE
-            END INTERFACE                       !  ENVDBLE
-
-            INTERFACE
                 SUBROUTINE ENVSTR( LNAME, DESC, DEFAULT, EQNAME, STAT )
-                CHARACTER*(*)   LNAME
-                CHARACTER*(*)   DESC
-                CHARACTER*(*)   DEFAULT
-                CHARACTER*(*)   EQNAME
-                INTEGER         STAT
+                CHARACTER*(*), INTENT(IN   ) :: LNAME
+                CHARACTER*(*), INTENT(IN   ) :: DESC
+                CHARACTER*(*), INTENT(IN   ) :: DEFAULT
+                CHARACTER*(*), INTENT(  OUT) :: EQNAME
+                INTEGER      , INTENT(  OUT) :: STAT
                 END SUBROUTINE ENVSTR
             END INTERFACE
 
             INTERFACE
                 LOGICAL FUNCTION ENVYN( LNAME, DESC, DEFAULT, STAT )
-                CHARACTER*(*)   LNAME
-                CHARACTER*(*)   DESC
-                LOGICAL         DEFAULT
-                INTEGER         STAT
+                CHARACTER*(*), INTENT(IN   ) :: LNAME
+                CHARACTER*(*), INTENT(IN   ) :: DESC
+                LOGICAL      , INTENT(IN   ) :: DEFAULT
+                INTEGER      , INTENT(  OUT) :: STAT
                 END FUNCTION ENVYN
             END INTERFACE
 
-            INTERFACE
+            INTERFACE FINDKEY
                 INTEGER FUNCTION FINDC( KEY, N, LIST )
-                CHARACTER*(*)  KEY           !  key
-                INTEGER        N             !  table size
-                CHARACTER*(*)  LIST( N )     !  table to search for KEY
+                CHARACTER*(*), INTENT(IN   ) :: KEY           !  key
+                INTEGER      , INTENT(IN   ) :: N             !  table size
+                CHARACTER*(*), INTENT(IN   ) :: LIST( N )     !  table to search for KEY
                 END FUNCTION FINDC
-            END INTERFACE
 
-            INTERFACE
                 INTEGER FUNCTION FIND1( K, N, LIST )
-                INTEGER  K             !  first  key
-                INTEGER  N             !  table size
-                INTEGER  LIST( N )     !  table to search for K
+                INTEGER, INTENT(IN   ) :: K             !  first  key
+                INTEGER, INTENT(IN   ) :: N             !  table size
+                INTEGER, INTENT(IN   ) :: LIST( N )     !  table to search for K
                 END FUNCTION FIND1
-            END INTERFACE
 
-            INTERFACE
                 INTEGER FUNCTION FIND2( K1, K2, N, LIST1, LIST2 )
-                INTEGER  K1             !  first  key
-                INTEGER  K2             !  second key
-                INTEGER  N              !  table size
-                INTEGER  LIST1( N )     !  table to search for K1
-                INTEGER  LIST2( N )     !  table to search for K2
+                INTEGER, INTENT(IN   ) :: K1             !  first  key
+                INTEGER, INTENT(IN   ) :: K2             !  second key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                INTEGER, INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                INTEGER, INTENT(IN   ) :: LIST2( N )     !  table to search for K2
                 END FUNCTION FIND2
-            END INTERFACE
 
-            INTERFACE
                 INTEGER FUNCTION FIND3( K1, K2, K3,
      &                                  N, LIST1, LIST2, LIST3 )
-                INTEGER  K1             !  first  key
-                INTEGER  K2             !  second key
-                INTEGER  K3             !  third  key
-                INTEGER  N              !  table size
-                INTEGER  LIST1( N )     !  table to search for K1
-                INTEGER  LIST2( N )     !  table to search for K2
-                INTEGER  LIST3( N )     !  table to search for K3
+                INTEGER, INTENT(IN   ) :: K1             !  first  key
+                INTEGER, INTENT(IN   ) :: K2             !  second key
+                INTEGER, INTENT(IN   ) :: K3             !  third  key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                INTEGER, INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                INTEGER, INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                INTEGER, INTENT(IN   ) :: LIST3( N )     !  table to search for K3
                 END FUNCTION FIND3
-            END INTERFACE
 
-            INTERFACE
-                INTEGER FUNCTION FIND4( K1, K2, K3, K4, 
+                INTEGER FUNCTION FIND4( K1, K2, K3, K4,
      &                                  N, LIST1, LIST2, LIST3, LIST4 )
-                INTEGER  K1             !  first  key
-                INTEGER  K2             !  second key
-                INTEGER  K3             !  third  key
-                INTEGER  K4             !  third  key
-                INTEGER  N              !  table size
-                INTEGER  LIST1( N )     !  table to search for K1
-                INTEGER  LIST2( N )     !  table to search for K2
-                INTEGER  LIST3( N )     !  table to search for K3
-                INTEGER  LIST4( N )     !  table to search for K4
+                INTEGER, INTENT(IN   ) :: K1             !  first  key
+                INTEGER, INTENT(IN   ) :: K2             !  second key
+                INTEGER, INTENT(IN   ) :: K3             !  third  key
+                INTEGER, INTENT(IN   ) :: K4             !  third  key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                INTEGER, INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                INTEGER, INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                INTEGER, INTENT(IN   ) :: LIST3( N )     !  table to search for K3
+                INTEGER, INTENT(IN   ) :: LIST4( N )     !  table to search for K4
                 END FUNCTION FIND4
-            END INTERFACE
 
-            INTERFACE
+                INTEGER FUNCTION FINDL1( K, N, LIST )
+                INTEGER(8), INTENT(IN   ) :: K             !  first  key
+                INTEGER   , INTENT(IN   ) :: N             !  table size
+                INTEGER(8), INTENT(IN   ) :: LIST( N )     !  table to search for K
+                END FUNCTION FINDL1
+
+                INTEGER(8) FUNCTION FINDL2( K1, K2, N, LIST1, LIST2 )
+                INTEGER(8), INTENT(IN   ) :: K1             !  first  key
+                INTEGER(8), INTENT(IN   ) :: K2             !  second key
+                INTEGER   , INTENT(IN   ) :: N              !  table size
+                INTEGER(8), INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                INTEGER(8), INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                END FUNCTION FINDL2
+
+                INTEGER(8) FUNCTION FINDL3( K1, K2, K3,
+     &                                  N, LIST1, LIST2, LIST3 )
+                INTEGER(8), INTENT(IN   ) :: K1             !  first  key
+                INTEGER(8), INTENT(IN   ) :: K2             !  second key
+                INTEGER(8), INTENT(IN   ) :: K3             !  third  key
+                INTEGER   , INTENT(IN   ) :: N              !  table size
+                INTEGER(8), INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                INTEGER(8), INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                INTEGER(8), INTENT(IN   ) :: LIST3( N )     !  table to search for K3
+                END FUNCTION FINDL3
+
+                INTEGER(8) FUNCTION FINDL4( K1, K2, K3, K4,
+     &                                  N, LIST1, LIST2, LIST3, LIST4 )
+                INTEGER(8), INTENT(IN   ) :: K1             !  first  key
+                INTEGER(8), INTENT(IN   ) :: K2             !  second key
+                INTEGER(8), INTENT(IN   ) :: K3             !  third  key
+                INTEGER(8), INTENT(IN   ) :: K4             !  third  key
+                INTEGER   , INTENT(IN   ) :: N              !  table size
+                INTEGER(8), INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                INTEGER(8), INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                INTEGER(8), INTENT(IN   ) :: LIST3( N )     !  table to search for K3
+                INTEGER(8), INTENT(IN   ) :: LIST4( N )     !  table to search for K4
+                END FUNCTION FINDL4
+
                 INTEGER FUNCTION FINDR1( K, N, LIST )
-                REAL     K             !  first  key
-                INTEGER  N             !  table size
-                REAL     LIST( N )     !  table to search for K
+                REAL   , INTENT(IN   ) :: K             !  first  key
+                INTEGER, INTENT(IN   ) :: N             !  table size
+                REAL   , INTENT(IN   ) :: LIST( N )     !  table to search for K
                 END FUNCTION FINDR1
-            END INTERFACE
 
-            INTERFACE
                 INTEGER FUNCTION FINDR2( K1, K2, N, LIST1, LIST2 )
-                REAL     K1             !  first  key
-                REAL     K2             !  second key
-                INTEGER  N              !  table size
-                REAL     LIST1( N )     !  table to search for K1
-                REAL     LIST2( N )     !  table to search for K2
+                REAL   , INTENT(IN   ) :: K1             !  first  key
+                REAL   , INTENT(IN   ) :: K2             !  second key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                REAL   , INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                REAL   , INTENT(IN   ) :: LIST2( N )     !  table to search for K2
                 END FUNCTION FINDR2
-            END INTERFACE
 
-            INTERFACE
                 INTEGER FUNCTION FINDR3( K1, K2, K3,
      &                                   N, LIST1, LIST2, LIST3 )
-                REAL     K1             !  first  key
-                REAL     K2             !  second key
-                REAL     K3             !  third  key
-                INTEGER  N              !  table size
-                REAL     LIST1( N )     !  table to search for K1
-                REAL     LIST2( N )     !  table to search for K2
-                REAL     LIST3( N )     !  table to search for K3
+                REAL   , INTENT(IN   ) :: K1             !  first  key
+                REAL   , INTENT(IN   ) :: K2             !  second key
+                REAL   , INTENT(IN   ) :: K3             !  third  key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                REAL   , INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                REAL   , INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                REAL   , INTENT(IN   ) :: LIST3( N )     !  table to search for K3
                 END FUNCTION FINDR3
-            END INTERFACE
 
-            INTERFACE
                 INTEGER FUNCTION FINDR4( K1, K2, K3, K4,
      &                                   N, LIST1, LIST2, LIST3, LIST4 )
-                REAL     K1             !  first  key
-                REAL     K2             !  second key
-                REAL     K3             !  third  key
-                REAL     K4             !  third  key
-                INTEGER  N              !  table size
-                REAL     LIST1( N )     !  table to search for K1
-                REAL     LIST2( N )     !  table to search for K2
-                REAL     LIST3( N )     !  table to search for K3
-                REAL     LIST4( N )     !  table to search for K4
+                REAL   , INTENT(IN   ) :: K1             !  first  key
+                REAL   , INTENT(IN   ) :: K2             !  second key
+                REAL   , INTENT(IN   ) :: K3             !  third  key
+                REAL   , INTENT(IN   ) :: K4             !  third  key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                REAL   , INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                REAL   , INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                REAL   , INTENT(IN   ) :: LIST3( N )     !  table to search for K3
+                REAL   , INTENT(IN   ) :: LIST4( N )     !  table to search for K4
                 END FUNCTION FINDR4
-            END INTERFACE
+
+            END INTERFACE       !!  findkey()
 
             INTERFACE
                 INTEGER  FUNCTION GCD( P , Q )
-                    INTEGER         P , Q
+                    INTEGER, INTENT(IN   ) :: P , Q
                 END FUNCTION GCD
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION GETDATE ( DEFAULT , PROMPT )
-                INTEGER         DEFAULT         !  Default return date, YYYYDDD
-                CHARACTER*(*)   PROMPT          !  Prompt for user
+                INTEGER      , INTENT(IN   ) :: DEFAULT         !  Default return date, YYYYDDD
+                CHARACTER*(*), INTENT(IN   ) :: PROMPT          !  Prompt for user
                 END FUNCTION GETDATE
             END INTERFACE
 
             INTERFACE
                 REAL*8 FUNCTION GETDBLE( LO, HI, DEFAULT, PROMPT )
-                REAL*8          LO , HI
-                REAL*8          DEFAULT
-                CHARACTER*(*)   PROMPT
+                REAL*8       , INTENT(IN   ) :: LO , HI
+                REAL*8       , INTENT(IN   ) :: DEFAULT
+                CHARACTER*(*), INTENT(IN   ) :: PROMPT
                 END FUNCTION GETDBLE
-            END INTERFACE                       ! GETDBLE 
+            END INTERFACE                       ! GETDBLE
 
             INTERFACE
                 INTEGER FUNCTION GETDFILE( LNAME, RDONLY,
      &                                     FMTFLAG, RECLEN, CALLER )
-                CHARACTER*(*) LNAME          !  logical file name
-                LOGICAL       RDONLY         !  TRUE iff file is input-only
-                LOGICAL       FMTFLAG        !  TRUE iff file should be formatted
-                INTEGER       RECLEN         !  record length for direct access
-                CHARACTER*(*) CALLER         !  caller-name for logging
+                CHARACTER*(*), INTENT(IN   ) :: LNAME          !  logical file name
+                LOGICAL      , INTENT(IN   ) :: RDONLY         !  TRUE iff file is input-only
+                LOGICAL      , INTENT(IN   ) :: FMTFLAG        !  TRUE iff file should be formatted
+                INTEGER      , INTENT(IN   ) :: RECLEN         !  record length for direct access
+                CHARACTER*(*), INTENT(IN   ) :: CALLER         !  caller-name for logging
                 END FUNCTION GETDFILE
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION GETEFILE( LNAME,
      &                                     RDONLY, FMTFLAG, CALLER )
-                CHARACTER*(*) LNAME          !  logical file name
-                LOGICAL       RDONLY         !  TRUE iff file is input-only
-                LOGICAL       FMTFLAG        !  TRUE iff file should be formatted
-                CHARACTER*(*) CALLER         !  caller-name for logging
+                CHARACTER*(*), INTENT(IN   ) :: LNAME          !  logical file name
+                LOGICAL      , INTENT(IN   ) :: RDONLY         !  TRUE iff file is input-only
+                LOGICAL      , INTENT(IN   ) :: FMTFLAG        !  TRUE iff file should be formatted
+                CHARACTER*(*), INTENT(IN   ) :: CALLER         !  caller-name for logging
                 END FUNCTION GETEFILE
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION GETFFILE( LNAME, RDONLY, FMTFLAG,
      &                                     RECLEN, CALLER )
-                CHARACTER*(*) LNAME          !  logical file name
-                LOGICAL       RDONLY         !  TRUE iff file is input-only
-                LOGICAL       FMTFLAG        !  TRUE iff file should be formatted
-                INTEGER       RECLEN         !  record length
-                CHARACTER*(*) CALLER         !  caller-name for logging
+                CHARACTER*(*), INTENT(IN   ) :: LNAME          !  logical file name
+                LOGICAL      , INTENT(IN   ) :: RDONLY         !  TRUE iff file is input-only
+                LOGICAL      , INTENT(IN   ) :: FMTFLAG        !  TRUE iff file should be formatted
+                INTEGER      , INTENT(IN   ) :: RECLEN         !  record length
+                CHARACTER*(*), INTENT(IN   ) :: CALLER         !  caller-name for logging
                 END FUNCTION GETFFILE
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION GETMENU( ITEMCNT, DEFAULT,
      &                                    PROMPT, CHOICES )
-                INTEGER         ITEMCNT         !  number of choices
-                INTEGER         DEFAULT         !  default response
-                CHARACTER*(*)   PROMPT          !  prompt string
-                CHARACTER*(*)   CHOICES ( * )   !  array of choice strings
+                INTEGER      , INTENT(IN   ) :: ITEMCNT         !  number of choices
+                INTEGER      , INTENT(IN   ) :: DEFAULT         !  default response
+                CHARACTER*(*), INTENT(IN   ) :: PROMPT          !  prompt string
+                CHARACTER*(*), INTENT(IN   ) :: CHOICES ( * )   !  array of choice strings
                 END FUNCTION GETMENU
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION GETNUM ( LO , HI , DEFAULT , PROMPT )
-                INTEGER         LO , HI
-                INTEGER         DEFAULT
-                CHARACTER*(*)   PROMPT
+                INTEGER      , INTENT(IN   ) :: LO, HI, DEFAULT
+                CHARACTER*(*), INTENT(IN   ) :: PROMPT
                 END FUNCTION GETNUM
             END INTERFACE
 
             INTERFACE
                 REAL   FUNCTION GETREAL ( LO , HI , DEFAULT , PROMPT )
-                REAL            LO , HI
-                REAL     	DEFAULT
-                CHARACTER*(*)   PROMPT
+                REAL         , INTENT(IN   ) :: LO , HI , DEFAULT
+                CHARACTER*(*), INTENT(IN   ) :: PROMPT
                 END FUNCTION GETREAL
             END INTERFACE                       !  GETREAL
 
             INTERFACE
                 SUBROUTINE GETSTR ( PROMPT, DEFAULT, RESPONSE )
-                CHARACTER*(*)   PROMPT, DEFAULT, RESPONSE
+                CHARACTER*(*), INTENT(IN   ) :: PROMPT, DEFAULT
+                CHARACTER*(*), INTENT(  OUT) :: RESPONSE
                 END SUBROUTINE GETSTR
             END INTERFACE
 
             INTERFACE
                 LOGICAL FUNCTION  GETYN ( PROMPT , DEFAULT )
-                CHARACTER*(*)   PROMPT
-                LOGICAL         DEFAULT
+                CHARACTER*(*), INTENT(IN   ) :: PROMPT
+                LOGICAL      , INTENT(IN   ) :: DEFAULT
                 END FUNCTION  GETYN
             END INTERFACE
 
             INTERFACE
-                LOGICAL FUNCTION GRDCHK3( FNAME, 
+                LOGICAL FUNCTION GRDCHK3( FNAME,
      &                                P_ALP, P_BET, P_GAM, XCENT, YCENT,
      &                                XORIG, YORIG, XCELL, YCELL,
      &                                NLAYS, VGTYP, VGTOP, VGLEV )
-                CHARACTER(*)    FNAME
-                REAL*8          P_ALP      ! first, second, third map
-                REAL*8          P_BET      ! projection descriptive
-                REAL*8          P_GAM      ! parameters.
-                REAL*8          XCENT      ! lon for coord-system X=0
-                REAL*8          YCENT      ! lat for coord-system Y=0
-                REAL*8          XORIG      ! X-coordinate origin of grid (map units)
-                REAL*8          YORIG      ! Y-coordinate origin of grid
-                REAL*8          XCELL      ! X-coordinate cell dimension
-                REAL*8          YCELL      ! Y-coordinate cell dimension
-                INTEGER         NLAYS      ! number of layers
-                INTEGER         VGTYP      ! grid type:  1=LAT-LON, 2=UTM, ...
-                REAL            VGTOP
-                REAL            VGLEV( * )
+                CHARACTER*(*), INTENT(IN   ) :: FNAME
+                REAL*8       , INTENT(IN   ) :: P_ALP      ! first, second, third map
+                REAL*8       , INTENT(IN   ) :: P_BET      ! projection descriptive
+                REAL*8       , INTENT(IN   ) :: P_GAM      ! parameters.
+                REAL*8       , INTENT(IN   ) :: XCENT      ! lon for coord-system X=0
+                REAL*8       , INTENT(IN   ) :: YCENT      ! lat for coord-system Y=0
+                REAL*8       , INTENT(IN   ) :: XORIG      ! X-coordinate origin of grid (map units)
+                REAL*8       , INTENT(IN   ) :: YORIG      ! Y-coordinate origin of grid
+                REAL*8       , INTENT(IN   ) :: XCELL      ! X-coordinate cell dimension
+                REAL*8       , INTENT(IN   ) :: YCELL      ! Y-coordinate cell dimension
+                INTEGER      , INTENT(IN   ) :: NLAYS      ! number of layers
+                INTEGER      , INTENT(IN   ) :: VGTYP      ! vertical coordinate type
+                REAL         , INTENT(IN   ) :: VGTOP
+                REAL         , INTENT(IN   ) :: VGLEV( * )
                 END FUNCTION GRDCHK3
             END INTERFACE
 
@@ -442,61 +515,54 @@
 
             INTERFACE
                 CHARACTER(LEN=10) FUNCTION  HHMMSS( JTIME )
-                INTEGER       JTIME   !  Julian time, coded YYYYDDD
-                END FUNCTION  HHMMSS 
+                INTEGER, INTENT(IN   ) :: JTIME   !  Julian time, coded YYYYDDD
+                END FUNCTION  HHMMSS
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION INDEX1( NAME, N, NLIST )
-                CHARACTER*(*) NAME        !  Character string being searched for
-                INTEGER       N           !  Length of array to be searched
-                CHARACTER*(*) NLIST(*)    !  array to be searched
+                CHARACTER*(*), INTENT(IN   ) :: NAME        !  Character string being searched for
+                INTEGER      , INTENT(IN   ) :: N           !  Length of array to be searched
+                CHARACTER*(*), INTENT(IN   ) :: NLIST(*)    !  array to be searched
                 END FUNCTION INDEX1
             END INTERFACE
 
-
             INTERFACE
                 INTEGER FUNCTION INDEXINT1( IKEY, N, NLIST )
-                INTEGER       IKEY        !  integer being searched for
-                INTEGER       N           !  Length of array to be searched
-                INTEGER       NLIST(*)    !  array to be searched
+                INTEGER, INTENT(IN   ) :: IKEY        !  integer being searched for
+                INTEGER, INTENT(IN   ) :: N           !  Length of array to be searched
+                INTEGER, INTENT(IN   ) :: NLIST(*)    !  array to be searched
                 END FUNCTION INDEXINT1
             END INTERFACE
 
             INTERFACE
-                LOGICAL FUNCTION INTLIST( ENAME, EDESC,
-     &                                    NMAX, NCNT, LIST )
-                CHARACTER*(*)   ENAME   !  in:  environment variable for the list
-                CHARACTER*(*)   EDESC   !  in:  environment variable description
-                INTEGER         NMAX    !  in:  dimension for list
-                INTEGER         NCNT    ! out:  actual number of entries in list
-                INTEGER         LIST( NMAX )    ! out:  array of values found    
-                END FUNCTION INTLIST
-            END INTERFACE
-
-            INTERFACE
                 LOGICAL FUNCTION ISDSTIME( JDATE )
-                INTEGER         JDATE   !  Julian date, coded YYYYDDD
+                INTEGER, INTENT( IN ) :: JDATE   !  Julian date, coded YYYYDDD
                 END FUNCTION ISDSTIME
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION JSTEP3( JDATE, JTIME,
      &                                   SDATE, STIME, TSTEP )
-                INTEGER         JDATE   !  requested date YYYYDDD
-                INTEGER         JTIME   !  requested time HHMMSS
-                INTEGER         SDATE   !  starting date  YYYYDDD
-                INTEGER         STIME   !  starting time  HHMMSS
-                INTEGER         TSTEP   !  time step      H*MMSS
+                INTEGER, INTENT(IN   ) :: JDATE   !  requested date YYYYDDD
+                INTEGER, INTENT(IN   ) :: JTIME   !  requested time HHMMSS
+                INTEGER, INTENT(IN   ) :: SDATE   !  starting date  YYYYDDD
+                INTEGER, INTENT(IN   ) :: STIME   !  starting time  HHMMSS
+                INTEGER, INTENT(IN   ) :: TSTEP   !  time step      H*MMSS
                 END FUNCTION JSTEP3
             END INTERFACE
 
              INTERFACE
                 INTEGER FUNCTION JULIAN( YEAR, MNTH, MDAY )
-                INTEGER   YEAR            ! year YYYY
-                INTEGER   MNTH            ! month 1...12
-                INTEGER   MDAY            ! day-of-month 1...28,29,30,31
+                INTEGER, INTENT(IN   ) :: YEAR            ! year YYYY
+                INTEGER, INTENT(IN   ) :: MNTH            ! month 1...12
+                INTEGER, INTENT(IN   ) :: MDAY            ! day-of-month 1...28,29,30,31
                 END FUNCTION JULIAN
+            END INTERFACE
+
+             INTERFACE
+                INTEGER FUNCTION JUNIT()
+                END FUNCTION JUNIT
             END INTERFACE
 
             INTERFACE
@@ -505,240 +571,285 @@
                 END FUNCTION LBLANK
             END INTERFACE
 
-           INTERFACE
+           INTERFACE LOCATE
+
                 INTEGER FUNCTION LOCAT1( K1, N, LIST1 )
-                INTEGER  K1             !  first  key
-                INTEGER  N              !  table size
-                INTEGER  LIST1( N )     !  table to search for K1
+                INTEGER, INTENT(IN   ) :: K1             !  first  key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                INTEGER, INTENT(IN   ) :: LIST1( N )     !  table to search for K1
                 END FUNCTION LOCAT1
-            END INTERFACE
 
-            INTERFACE
                 INTEGER FUNCTION LOCAT2( K1, K2, N, LIST1, LIST2 )
-                INTEGER  K1             !  first  key
-                INTEGER  K2             !  second key
-                INTEGER  N              !  table size
-                INTEGER  LIST1( N )     !  table to search for K1
-                INTEGER  LIST2( N )     !  table to search for K2
+                INTEGER, INTENT(IN   ) :: K1             !  first  key
+                INTEGER, INTENT(IN   ) :: K2             !  second key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                INTEGER, INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                INTEGER, INTENT(IN   ) :: LIST2( N )     !  table to search for K2
                 END FUNCTION LOCAT2
-            END INTERFACE
 
-            INTERFACE
-                INTEGER FUNCTION LOCAT3( K1, K2, K3, N, 
+                INTEGER FUNCTION LOCAT3( K1, K2, K3, N,
      &                                   LIST1, LIST2, LIST3, LIST4 )
-                INTEGER  K1             !  first  key
-                INTEGER  K2             !  second key
-                INTEGER  K3             !  third  key
-                INTEGER  N              !  table size
-                INTEGER  LIST1( N )     !  table to search for K1
-                INTEGER  LIST2( N )     !  table to search for K2
-                INTEGER  LIST3( N )     !  table to search for K3
+                INTEGER, INTENT(IN   ) :: K1             !  first  key
+                INTEGER, INTENT(IN   ) :: K2             !  second key
+                INTEGER, INTENT(IN   ) :: K3             !  third  key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                INTEGER, INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                INTEGER, INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                INTEGER, INTENT(IN   ) :: LIST3( N )     !  table to search for K3
                 END FUNCTION LOCAT3
-            END INTERFACE
 
-            INTERFACE
-                INTEGER FUNCTION LOCAT4( K1, K2, K3, K4, N, 
+                INTEGER FUNCTION LOCAT4( K1, K2, K3, K4, N,
      &                                   LIST1, LIST2, LIST3, LIST4 )
-                INTEGER  K1             !  first  key
-                INTEGER  K2             !  second key
-                INTEGER  K3             !  third  key
-                INTEGER  K4             !  fourth key
-                INTEGER  N              !  table size
-                INTEGER  LIST1( N )     !  table to search for K1
-                INTEGER  LIST2( N )     !  table to search for K2
-                INTEGER  LIST3( N )     !  table to search for K3
-                INTEGER  LIST4( N )     !  table to search for K4
+                INTEGER, INTENT(IN   ) :: K1             !  first  key
+                INTEGER, INTENT(IN   ) :: K2             !  second key
+                INTEGER, INTENT(IN   ) :: K3             !  third  key
+                INTEGER, INTENT(IN   ) :: K4             !  fourth key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                INTEGER, INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                INTEGER, INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                INTEGER, INTENT(IN   ) :: LIST3( N )     !  table to search for K3
+                INTEGER, INTENT(IN   ) :: LIST4( N )     !  table to search for K4
                 END FUNCTION LOCAT4
-            END INTERFACE
 
-            INTERFACE
+                INTEGER(8) FUNCTION LOCATL1( K1, N, LIST1 )
+                INTEGER(8), INTENT(IN   ) :: K1             !  first  key
+                INTEGER   , INTENT(IN   ) :: N              !  table size
+                INTEGER(8), INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                END FUNCTION LOCATL1
+
+                INTEGER(8) FUNCTION LOCATL2( K1, K2, N, LIST1, LIST2 )
+                INTEGER(8), INTENT(IN   ) :: K1             !  first  key
+                INTEGER(8), INTENT(IN   ) :: K2             !  second key
+                INTEGER   , INTENT(IN   ) :: N              !  table size
+                INTEGER(8), INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                INTEGER(8), INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                END FUNCTION LOCATL2
+
+                INTEGER(8) FUNCTION LOCATL3( K1, K2, K3, N,
+     &                                   LIST1, LIST2, LIST3, LIST4 )
+                INTEGER(8), INTENT(IN   ) :: K1             !  first  key
+                INTEGER(8), INTENT(IN   ) :: K2             !  second key
+                INTEGER(8), INTENT(IN   ) :: K3             !  third  key
+                INTEGER   , INTENT(IN   ) :: N              !  table size
+                INTEGER(8), INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                INTEGER(8), INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                INTEGER(8), INTENT(IN   ) :: LIST3( N )     !  table to search for K3
+                END FUNCTION LOCATL3
+
+                INTEGER(8) FUNCTION LOCATL4( K1, K2, K3, K4, N,
+     &                                   LIST1, LIST2, LIST3, LIST4 )
+                INTEGER(8), INTENT(IN   ) :: K1             !  first  key
+                INTEGER(8), INTENT(IN   ) :: K2             !  second key
+                INTEGER(8), INTENT(IN   ) :: K3             !  third  key
+                INTEGER(8), INTENT(IN   ) :: K4             !  fourth key
+                INTEGER   , INTENT(IN   ) :: N              !  table size
+                INTEGER(8), INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                INTEGER(8), INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                INTEGER(8), INTENT(IN   ) :: LIST3( N )     !  table to search for K3
+                INTEGER(8), INTENT(IN   ) :: LIST4( N )     !  table to search for K4
+                END FUNCTION LOCATL4
+
                 INTEGER FUNCTION LOCATC( KEY, N, LIST )
-                CHARACTER*(*)   KEY            !  first  key
-                INTEGER         N              !  table size
-                CHARACTER*(*)   LIST( N )      !  table to search for KEY
+                CHARACTER*(*), INTENT(IN   ) :: KEY            !  first  key
+                INTEGER      , INTENT(IN   ) :: N              !  table size
+                CHARACTER*(*), INTENT(IN   ) :: LIST( N )      !  table to search for KEY
                 END FUNCTION LOCATC
-            END INTERFACE
 
-            INTERFACE
                 INTEGER FUNCTION LOCATR1( K1, N, LIST1 )
-                REAL     K1             !  first  key
-                INTEGER  N              !  table size
-                REAL     LIST1( N )     !  table to search for K1
+                REAL   , INTENT(IN   ) :: K1             !  first  key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                REAL   , INTENT(IN   ) :: LIST1( N )     !  table to search for K1
                 END FUNCTION LOCATR1
-            END INTERFACE
 
-            INTERFACE
                 INTEGER FUNCTION LOCATR2( K1, K2, N, LIST1, LIST2 )
-                REAL     K1             !  first  key
-                REAL     K2             !  second key
-                INTEGER  N              !  table size
-                REAL     LIST1( N )     !  table to search for K1
-                REAL     LIST2( N )     !  table to search for K2
+                REAL   , INTENT(IN   ) :: K1             !  first  key
+                REAL   , INTENT(IN   ) :: K2             !  second key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                REAL   , INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                REAL   , INTENT(IN   ) :: LIST2( N )     !  table to search for K2
                 END FUNCTION LOCATR2
-            END INTERFACE
 
-            INTERFACE
-                INTEGER FUNCTION LOCATR3( K1, K2, K3, N, 
+                INTEGER FUNCTION LOCATR3( K1, K2, K3, N,
      &                                    LIST1, LIST2, LIST3 )
-                REAL     K1             !  first  key
-                REAL     K2             !  second key
-                REAL     K3             !  third  key
-                INTEGER  N              !  table size
-                REAL     LIST1( N )     !  table to search for K1
-                REAL     LIST2( N )     !  table to search for K2
-                REAL     LIST3( N )     !  table to search for K3
+                REAL   , INTENT(IN   ) :: K1             !  first  key
+                REAL   , INTENT(IN   ) :: K2             !  second key
+                REAL   , INTENT(IN   ) :: K3             !  third  key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                REAL   , INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                REAL   , INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                REAL   , INTENT(IN   ) :: LIST3( N )     !  table to search for K3
                 END FUNCTION LOCATR3
-            END INTERFACE
 
-            INTERFACE
-                INTEGER FUNCTION LOCATR4( K1, K2, K3, K4, N, 
+                INTEGER FUNCTION LOCATR4( K1, K2, K3, K4, N,
      &                                    LIST1, LIST2, LIST3, LIST4 )
-                REAL     K1             !  first  key
-                REAL     K2             !  second key
-                REAL     K3             !  third  key
-                REAL     K4             !  fourth key
-                INTEGER  N              !  table size
-                REAL     LIST1( N )     !  table to search for K1
-                REAL     LIST2( N )     !  table to search for K2
-                REAL     LIST3( N )     !  table to search for K3
-                REAL     LIST4( N )     !  table to search for K4
+                REAL   , INTENT(IN   ) :: K1             !  first  key
+                REAL   , INTENT(IN   ) :: K2             !  second key
+                REAL   , INTENT(IN   ) :: K3             !  third  key
+                REAL   , INTENT(IN   ) :: K4             !  fourth key
+                INTEGER, INTENT(IN   ) :: N              !  table size
+                REAL   , INTENT(IN   ) :: LIST1( N )     !  table to search for K1
+                REAL   , INTENT(IN   ) :: LIST2( N )     !  table to search for K2
+                REAL   , INTENT(IN   ) :: LIST3( N )     !  table to search for K3
+                REAL   , INTENT(IN   ) :: LIST4( N )     !  table to search for K4
                 END FUNCTION LOCATR4
-            END INTERFACE
+
+            END INTERFACE       !!  locate()
 
             INTERFACE
                 SUBROUTINE  LUSTR( STRING )
-                CHARACTER*(*)   STRING
+                CHARACTER*(*), INTENT(INOUT) :: STRING
                 END SUBROUTINE  LUSTR
             END INTERFACE
 
             INTERFACE
-                SUBROUTINE M3EXIT( CALLER, JDATE, JTIME,
-     &                             MSGTXT, EXITSTAT )
-                CHARACTER*(*)   CALLER          !  name of the caller
-                INTEGER         JDATE, JTIME    !  model date&time for the error
-                CHARACTER*(*)   MSGTXT          !  error message
-                INTEGER         EXITSTAT        !  exit status for program
+                SUBROUTINE M3EXIT( CALLER, JDATE, JTIME, MSGTXT, ISTAT )
+                CHARACTER*(*), INTENT(IN   ) :: CALLER          !  name of the caller
+                INTEGER      , INTENT(IN   ) :: JDATE, JTIME    !  model date&time for the error
+                CHARACTER*(*), INTENT(IN   ) :: MSGTXT          !  error message
+                INTEGER      , INTENT(IN   ) :: ISTAT           !  exit status for program
                 END SUBROUTINE M3EXIT
             END INTERFACE
 
             INTERFACE
                 SUBROUTINE  M3FLUSH( IDEV )
-                INTEGER         IDEV
+                INTEGER, INTENT(IN   ) :: IDEV
                 END SUBROUTINE  M3FLUSH
             END INTERFACE
 
             INTERFACE
                 SUBROUTINE  M3MESG( MESSAGE )
-                CHARACTER*(*)   MESSAGE
+                CHARACTER*(*), INTENT(IN   ) :: MESSAGE
                 END SUBROUTINE  M3MESG
             END INTERFACE
 
             INTERFACE
                 SUBROUTINE  M3MSG2( MESSAGE )
-                CHARACTER*(*)   MESSAGE
+                CHARACTER*(*), INTENT(IN   ) :: MESSAGE
                 END SUBROUTINE  M3MSG2
             END INTERFACE
 
             INTERFACE
                 SUBROUTINE  M3PARAG( NMESG, MSGS )
-                INTEGER         NMESG
-                CHARACTER*(*)   MSGS( NMESG )
+                INTEGER      , INTENT(IN   ) :: NMESG
+                CHARACTER*(*), INTENT(IN   ) :: MSGS( NMESG )
                 END SUBROUTINE  M3PARAG
             END INTERFACE
 
             INTERFACE
                 SUBROUTINE  M3PROMPT( MESSAGE, ANSWER, ISTAT )
-                CHARACTER*(*)   MESSAGE
-                CHARACTER*(*)   ANSWER
-                INTEGER         ISTAT
+                CHARACTER*(*), INTENT(IN   ) :: MESSAGE
+                CHARACTER*(*), INTENT(  OUT) :: ANSWER
+                INTEGER      , INTENT(  OUT) :: ISTAT
                 END SUBROUTINE  M3PROMPT
             END INTERFACE
 
             INTERFACE
                 SUBROUTINE  M3WARN( CALLER, JDATE, JTIME, MSGTXT )
-                CHARACTER*(*)   CALLER          !  name of the caller
-                INTEGER         JDATE, JTIME    !  model date&time for the error
-                CHARACTER*(*)   MSGTXT          !  error message
+                CHARACTER*(*), INTENT(IN   ) :: CALLER          !  name of the caller
+                INTEGER      , INTENT(IN   ) :: JDATE, JTIME    !  model date&time for the error
+                CHARACTER*(*), INTENT(IN   ) :: MSGTXT          !  error message
                 END SUBROUTINE  M3WARN
             END INTERFACE
 
             INTERFACE
                 CHARACTER*14 FUNCTION  MMDDYY ( JDATE )
-                INTEGER  	       JDATE    !  Julian date, coded YYYYDDD
+                INTEGER, INTENT(IN   ) :: JDATE    !  Julian date, coded YYYYDDD
                 END FUNCTION MMDDYY
             END INTERFACE
 
             INTERFACE
                 SUBROUTINE NEXTIME( JDATE , JTIME, DTIME )
-                INTEGER         JDATE           !  date (encoded YYYYDDD)
-                INTEGER         JTIME           !  time (encoded  HHMMSS)
-                INTEGER         DTIME           !  time increment (encoded HHMMSS)
+                INTEGER, INTENT(INOUT) :: JDATE           !  date (encoded YYYYDDD)
+                INTEGER, INTENT(INOUT) :: JTIME           !  time (encoded  HHMMSS)
+                INTEGER, INTENT(IN   ) :: DTIME           !  time increment (encoded HHMMSS)
                 END SUBROUTINE NEXTIME
             END INTERFACE
 
             INTERFACE
+                SUBROUTINE  PCOEF( N, X, Y, C )
+                INTEGER, INTENT(IN   ) :: N
+                REAL   , INTENT(IN   ) :: X( N )
+                REAL   , INTENT(IN   ) :: Y( N )
+                REAL   , INTENT(  OUT) :: C( N )
+                END SUBROUTINE  PCOEF
+            END INTERFACE
+
+            INTERFACE
                 SUBROUTINE  PMATVEC( NCOLS, NROWS, NCOFF, N, I, U, V )
-                INTEGER         NCOLS           ! length of input vector
-                INTEGER         NROWS           ! length of output vector
-                INTEGER         NCOFF           ! max number of coefficients
-                INTEGER         N( NROWS )      ! # of entries per row
-                INTEGER         I( NCOFF )      ! columns list
-                REAL            U( NCOLS )      !  input vector
-                REAL            V( NROWS )      ! output vector
+                INTEGER, INTENT(IN   ) :: NCOLS           ! length of input vector
+                INTEGER, INTENT(IN   ) :: NROWS           ! length of output vector
+                INTEGER, INTENT(IN   ) :: NCOFF           ! max number of coefficients
+                INTEGER, INTENT(IN   ) :: N( NROWS )      ! # of entries per row
+                INTEGER, INTENT(IN   ) :: I( NCOFF )      ! columns list
+                REAL   , INTENT(IN   ) :: U( NCOLS )      !  input vector
+                REAL   , INTENT(  OUT) :: V( NROWS )      ! output vector
                 END SUBROUTINE  PMATVEC
             END INTERFACE
 
             INTERFACE
                 REAL FUNCTION  POLY( XPT, XPTS, YPTS, NDEG )
-                INTEGER         NDEG
-                REAL            XPT
-                REAL            XPTS ( NDEG + 1 )
-                REAL            YPTS ( NDEG + 1 )
+                INTEGER, INTENT(IN   ) :: NDEG
+                REAL   , INTENT(IN   ) :: XPT
+                REAL   , INTENT(IN   ) :: XPTS ( NDEG + 1 )
+                REAL   , INTENT(IN   ) :: YPTS ( NDEG + 1 )
                 END  FUNCTION  POLY
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION PROMPTDFILE( PROMPT,  RDONLY, FMTTED,
      &                                        RECLEN, DEFAULT, CALLER )
-                CHARACTER*(*) PROMPT         !  prompt for user
-                LOGICAL       RDONLY         !  TRUE iff file is input-only
-                LOGICAL       FMTTED         !  TRUE iff file should be formatted
-                INTEGER	      RECLEN         !  record length
-                CHARACTER*(*) DEFAULT        !  default logical file name
-                CHARACTER*(*) CALLER         !  caller-name for logging messages
+                CHARACTER*(*), INTENT(IN   ) :: PROMPT         !  prompt for user
+                LOGICAL      , INTENT(IN   ) :: RDONLY         !  TRUE iff file is input-only
+                LOGICAL      , INTENT(IN   ) :: FMTTED         !  TRUE iff file should be formatted
+                INTEGER	     , INTENT(IN   ) :: RECLEN         !  record length
+                CHARACTER*(*), INTENT(IN   ) :: DEFAULT        !  default logical file name
+                CHARACTER*(*), INTENT(IN   ) :: CALLER         !  caller-name for logging messages
                 END FUNCTION PROMPTDFILE
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION PROMPTFFILE( PROMPT,  RDONLY, FMTTED,
      &                                        DEFAULT, CALLER )
-                CHARACTER*(*) PROMPT         !  prompt for user
-                LOGICAL       RDONLY         !  TRUE iff file is input-only
-                LOGICAL       FMTTED         !  TRUE iff file should be formatted
-                CHARACTER*(*) DEFAULT        !  default logical file name
-                CHARACTER*(*) CALLER         !  caller-name for logging messages
+                CHARACTER*(*), INTENT(IN   ) :: PROMPT         !  prompt for user
+                LOGICAL      , INTENT(IN   ) :: RDONLY         !  TRUE iff file is input-only
+                LOGICAL      , INTENT(IN   ) :: FMTTED         !  TRUE iff file should be formatted
+                CHARACTER*(*), INTENT(IN   ) :: DEFAULT        !  default logical file name
+                CHARACTER*(*), INTENT(IN   ) :: CALLER         !  caller-name for logging messages
                 END FUNCTION  PROMPTFFILE
+            END INTERFACE
+
+            INTERFACE
+                LOGICAL FUNCTION PROMPTGRID()
+                END FUNCTION PROMPTGRID
             END INTERFACE
 
             INTERFACE
                 CHARACTER*16  FUNCTION PROMPTMFILE( PROMPT,  FMODE,
      &                                              DEFAULT, CALLER )
-                CHARACTER*(*) PROMPT         !  prompt for user
-                INTEGER       FMODE          !  file opening-mode
-                CHARACTER*(*) DEFAULT        !  default logical file name
-                CHARACTER*(*) CALLER         !  caller-name for logging messages
+                CHARACTER*(*), INTENT(IN   ) :: PROMPT         !  prompt for user
+                INTEGER      , INTENT(IN   ) :: FMODE          !  file opening-mode
+                CHARACTER*(*), INTENT(IN   ) :: DEFAULT        !  default logical file name
+                CHARACTER*(*), INTENT(IN   ) :: CALLER         !  caller-name for logging messages
                 END FUNCTION  PROMPTMFILE
             END INTERFACE
 
             INTERFACE
-                LOGICAL FUNCTION REALIST( ENAME, EDESC,
-     &                                    NMAX, NCNT, LIST )
-                CHARACTER*(*)   ENAME   !  in:  environment variable for the list
-                CHARACTER*(*)   EDESC   !  in:  environment variable description
-                INTEGER         NMAX    !  in:  dimension for list
-                INTEGER         NCNT    ! out:  actual number of entries in list
-                REAL            LIST( NMAX )    ! out:  array of values found    
-                END FUNCTION REALIST
+                SUBROUTINE RUNSPEC( FNAME, USEENV, 
+     &                              SDATE, STIME, TSTEP, NRECS )
+                CHARACTER(LEN=*), INTENT(IN   ) :: FNAME        !!  input file
+                LOGICAL,          INTENT(IN   ) :: USEENV       !!  input file
+                INTEGER,          INTENT(  OUT) :: SDATE        !!  starting date YYYYDDD
+                INTEGER,          INTENT(  OUT) :: STIME        !!  starting time  H*MMSS
+                INTEGER,          INTENT(  OUT) :: TSTEP        !!  time step      H*MMSS
+                INTEGER,          INTENT(  OUT) :: NRECS        !!  Number of records
+                END  SUBROUTINE RUNSPEC
+            END INTERFACE
+
+            INTERFACE
+                SUBROUTINE SCANINT( STRING, VALUE, NCHARS, NDIGITS )
+                CHARACTER*(*), INTENT(IN   ) :: STRING
+                INTEGER      , INTENT(  OUT) :: VALUE, NCHARS, NDIGITS
+                END SUBROUTINE SCANINT
             END INTERFACE
 
             INTERFACE
@@ -749,134 +860,201 @@
             END INTERFACE
 
             INTERFACE
+                LOGICAL FUNCTION SETSPHERE( PARM1, PARM2 )
+                REAL*8, INTENT(IN   ) :: PARM1, PARM2
+                END FUNCTION SETSPHERE
+            END INTERFACE
+
+            INTERFACE
+                LOGICAL FUNCTION INITSPHERES( )
+                END FUNCTION INITSPHERES
+            END INTERFACE
+
+            INTERFACE
+                LOGICAL FUNCTION SPHEREDAT( INSPHERE, INPARAM, IOPARAM )
+                INTEGER, INTENT(  OUT) :: INSPHERE
+                REAL*8 , INTENT(  OUT) :: INPARAM( 15 ), IOPARAM( 15 )
+                END FUNCTION SPHEREDAT
+            END INTERFACE
+
+            INTERFACE
+                SUBROUTINE SKIPL( UNIT, NLINES )
+                INTEGER, INTENT(IN   ) :: UNIT
+                INTEGER, INTENT(IN   ) :: NLINES
+                END  SUBROUTINE SKIPL
+            END INTERFACE
+
+            INTERFACE
                 SUBROUTINE  SORTIC( N, IND, TBLC )
-                INTEGER         N
-                INTEGER         IND( N )
-                CHARACTER*(*)   TBLC( * )
+                INTEGER      , INTENT(IN   ) :: N
+                INTEGER      , INTENT(INOUT) :: IND( N )
+                CHARACTER*(*), INTENT(IN   ) :: TBLC( * )
                 END SUBROUTINE  SORTIC
             END INTERFACE
 
-            INTERFACE
+            INTERFACE SORTI
+                SUBROUTINE  SORTIC4( N, IND, TBLC )
+                INTEGER      , INTENT(IN   ) :: N
+                INTEGER      , INTENT(INOUT) :: IND( N )
+                CHARACTER*(*), INTENT(IN   ) :: TBLC( * )
+                END SUBROUTINE  SORTIC4
+
+                SUBROUTINE  SORTIC8( N, IND, TBLC )
+                INTEGER(8)   , INTENT(IN   ) :: N
+                INTEGER(8)   , INTENT(INOUT) :: IND( N )
+                CHARACTER*(*), INTENT(IN   ) :: TBLC( * )
+                END SUBROUTINE  SORTIC8
+
+                SUBROUTINE  SORTINC4( N, M, IND, TBLC )
+                INTEGER      , INTENT(IN   ) :: N
+                INTEGER      , INTENT(IN   ) :: M
+                INTEGER      , INTENT(INOUT) :: IND( N )
+                CHARACTER*(*), INTENT(IN   ) :: TBLC( * )
+                END SUBROUTINE  SORTINC4
+
+                SUBROUTINE  SORTINC8( N, M, IND, TBLC )
+                INTEGER(8)   , INTENT(IN   ) :: N
+                INTEGER(8)   , INTENT(IN   ) :: M
+                INTEGER(8)   , INTENT(INOUT) :: IND( N )
+                CHARACTER*(*), INTENT(IN   ) :: TBLC( * )
+                END SUBROUTINE  SORTINC8
+
                 SUBROUTINE  SORTI1( N, IND, TBL1 )
-                INTEGER         N
-                INTEGER         IND( N )
-                INTEGER         TBL1( * )
+                INTEGER, INTENT(IN   ) :: N
+                INTEGER, INTENT(INOUT) :: IND( N )
+                INTEGER, INTENT(IN   ) :: TBL1( * )
                 END SUBROUTINE  SORTI1
-            END INTERFACE
 
-            INTERFACE
                 SUBROUTINE  SORTI2( N, IND, TBL1, TBL2 )
-                INTEGER         N
-                INTEGER         IND( N )
-                INTEGER         TBL1( * )
-                INTEGER         TBL2( * )
+                INTEGER, INTENT(IN   ) :: N
+                INTEGER, INTENT(INOUT) :: IND( N )
+                INTEGER, INTENT(IN   ) :: TBL1( * )
+                INTEGER, INTENT(IN   ) :: TBL2( * )
                 END SUBROUTINE  SORTI2
-            END INTERFACE
 
-            INTERFACE
                 SUBROUTINE  SORTI3( N, IND, TBL1, TBL2, TBL3 )
-                INTEGER         N
-                INTEGER         IND( N )
-                INTEGER         TBL1( * )
-                INTEGER         TBL2( * )
-                INTEGER         TBL3( * )
+                INTEGER, INTENT(IN   ) :: N
+                INTEGER, INTENT(INOUT) :: IND( N )
+                INTEGER, INTENT(IN   ) :: TBL1( * )
+                INTEGER, INTENT(IN   ) :: TBL2( * )
+                INTEGER, INTENT(IN   ) :: TBL3( * )
                 END SUBROUTINE  SORTI3
-            END INTERFACE
 
-            INTERFACE
                 SUBROUTINE  SORTI4( N, IND, TBL1, TBL2, TBL3, TBL4 )
-                INTEGER         N
-                INTEGER         IND( N )
-                INTEGER         TBL1( * )
-                INTEGER         TBL2( * )
-                INTEGER         TBL3( * )
-                INTEGER         TBL4( * )
+                INTEGER, INTENT(IN   ) :: N
+                INTEGER, INTENT(INOUT) :: IND( N )
+                INTEGER, INTENT(IN   ) :: TBL1( * )
+                INTEGER, INTENT(IN   ) :: TBL2( * )
+                INTEGER, INTENT(IN   ) :: TBL3( * )
+                INTEGER, INTENT(IN   ) :: TBL4( * )
                 END SUBROUTINE  SORTI4
-            END INTERFACE
 
-            INTERFACE
+                SUBROUTINE  SORTL1( N, IND, TBL1 )
+                INTEGER,    INTENT(IN   ) :: N
+                INTEGER,    INTENT(INOUT) :: IND( N )
+                INTEGER(8), INTENT(IN   ) :: TBL1( * )
+                END SUBROUTINE  SORTL1
+
+                SUBROUTINE  SORTL2( N, IND, TBL1, TBL2 )
+                INTEGER,    INTENT(IN   ) :: N
+                INTEGER,    INTENT(INOUT) :: IND( N )
+                INTEGER(8), INTENT(IN   ) :: TBL1( * )
+                INTEGER(8), INTENT(IN   ) :: TBL2( * )
+                END SUBROUTINE  SORTL2
+
+                SUBROUTINE  SORTL3( N, IND, TBL1, TBL2, TBL3 )
+                INTEGER,    INTENT(IN   ) :: N
+                INTEGER,    INTENT(INOUT) :: IND( N )
+                INTEGER(8), INTENT(IN   ) :: TBL1( * )
+                INTEGER(8), INTENT(IN   ) :: TBL2( * )
+                INTEGER(8), INTENT(IN   ) :: TBL3( * )
+                END SUBROUTINE  SORTL3
+
+                SUBROUTINE  SORTL4( N, IND, TBL1, TBL2, TBL3, TBL4 )
+                INTEGER,    INTENT(IN   ) :: N
+                INTEGER,    INTENT(INOUT) :: IND( N )
+                INTEGER(8), INTENT(IN   ) :: TBL1( * )
+                INTEGER(8), INTENT(IN   ) :: TBL2( * )
+                INTEGER(8), INTENT(IN   ) :: TBL3( * )
+                INTEGER(8), INTENT(IN   ) :: TBL4( * )
+                END SUBROUTINE  SORTL4
+
                 SUBROUTINE  SORTR1( N, IND, TBL1 )
-                INTEGER         N
-                INTEGER         IND( N )
-                REAL            TBL1( * )
+                INTEGER, INTENT(IN   ) :: N
+                INTEGER, INTENT(INOUT) :: IND( N )
+                REAL   , INTENT(IN   ) :: TBL1( * )
                 END SUBROUTINE  SORTR1
-            END INTERFACE
 
-            INTERFACE
                 SUBROUTINE  SORTR2( N, IND, TBL1, TBL2 )
-                INTEGER         N
-                INTEGER         IND( N )
-                REAL            TBL1( * )
-                REAL            TBL2( * )
+                INTEGER, INTENT(IN   ) :: N
+                INTEGER, INTENT(INOUT) :: IND( N )
+                REAL   , INTENT(IN   ) :: TBL1( * )
+                REAL   , INTENT(IN   ) :: TBL2( * )
                 END SUBROUTINE  SORTR2
-            END INTERFACE
 
-            INTERFACE
                 SUBROUTINE  SORTR3( N, IND, TBL1, TBL2, TBL3 )
-                INTEGER         N
-                INTEGER         IND( N )
-                REAL            TBL1( * )
-                REAL            TBL2( * )
-                REAL            TBL3( * )
+                INTEGER, INTENT(IN   ) :: N
+                INTEGER, INTENT(INOUT) :: IND( N )
+                REAL   , INTENT(IN   ) :: TBL1( * )
+                REAL   , INTENT(IN   ) :: TBL2( * )
+                REAL   , INTENT(IN   ) :: TBL3( * )
                 END SUBROUTINE  SORTR3
-            END INTERFACE
+
+                SUBROUTINE  SORTR4( N, IND, TBL1, TBL2, TBL3, TBL4 )
+                INTEGER, INTENT(IN   ) :: N
+                INTEGER, INTENT(INOUT) :: IND( N )
+                REAL   , INTENT(IN   ) :: TBL1( * )
+                REAL   , INTENT(IN   ) :: TBL2( * )
+                REAL   , INTENT(IN   ) :: TBL3( * )
+                REAL   , INTENT(IN   ) :: TBL4( * )
+                END SUBROUTINE  SORTR4
+
+            END INTERFACE       !!  sorti()
 
             INTERFACE
-                SUBROUTINE  SORTR4( N, IND, TBL1, TBL2, TBL3, TBL4 )
-                INTEGER         N
-                INTEGER         IND( N )
-                REAL            TBL1( * )
-                REAL            TBL2( * )
-                REAL            TBL3( * )
-                REAL            TBL4( * )
-                END SUBROUTINE  SORTR4
+                SUBROUTINE  SPLITLINE( LINE, NMAX, N, FIELD, EFLAG )
+                    CHARACTER(LEN=*), INTENT(  IN )::  LINE
+                    INTEGER,          INTENT(  IN )::  NMAX
+                    INTEGER,          INTENT( OUT )::  N
+                    CHARACTER(LEN=*), INTENT( OUT )::  FIELD( NMAX )
+                    LOGICAL,          INTENT( OUT )::  EFLAG    ! error flag
+                END SUBROUTINE  SPLITLINE
             END INTERFACE
 
             INTERFACE
                 REAL*8 FUNCTION STR2DBLE( STRING )
-                CHARACTER*(*)   STRING
+                CHARACTER*(*), INTENT(IN   ) :: STRING
                 END FUNCTION STR2DBLE
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION STR2INT( STRING )
-                CHARACTER*(*)   STRING
+                CHARACTER*(*), INTENT(IN   ) :: STRING
                 END FUNCTION STR2INT
             END INTERFACE
 
             INTERFACE
                 REAL FUNCTION STR2REAL( STRING )
-                CHARACTER*(*)   STRING
+                CHARACTER*(*), INTENT(IN   ) :: STRING
                 END FUNCTION STR2REAL
             END INTERFACE
 
             INTERFACE
-                LOGICAL FUNCTION STRLIST( ENAME, EDESC,
-     &                                    NMAX, NCNT, LIST )
-                CHARACTER*(*)   ENAME   !  in:  environment variable for the list
-                CHARACTER*(*)   EDESC   !  in:  environment variable description
-                INTEGER         NMAX    !  in:  dimension for list
-                INTEGER         NCNT    ! out:  actual number of entries in list
-                CHARACTER*(*)   LIST( NMAX )    ! out:  array of values found    
-                END FUNCTION STRLIST
-            END INTERFACE
-
-            INTERFACE
                 INTEGER  FUNCTION  SEC2TIME ( SECS )
-                INTEGER  	SECS
+                INTEGER, INTENT(IN   ) :: SECS
                 END FUNCTION  SEC2TIME
             END INTERFACE
 
             INTERFACE
                 INTEGER  FUNCTION  TIME2SEC ( TIME )
-                INTEGER  	TIME    !  formatted HHMMSS
+                INTEGER, INTENT(IN   ) :: TIME    !  formatted HHMMSS
                 END FUNCTION  TIME2SEC
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION SECSDIFF( ADATE, ATIME, ZDATE, ZTIME )
-                INTEGER         ADATE, ATIME
-                INTEGER         ZDATE, ZTIME
+                INTEGER, INTENT(IN   ) :: ADATE, ATIME
+                INTEGER, INTENT(IN   ) :: ZDATE, ZTIME
                 END FUNCTION SECSDIFF
             END INTERFACE
 
@@ -884,14 +1062,14 @@
                 SUBROUTINE  UNGRIDB( NCOLS, NROWS, XORIG, YORIG,
      &                               XCELL, YCELL, NPTS, XLOC, YLOC,
      &                               NU, CU )
-                INTEGER		NCOLS, NROWS	!  number of grid columns, rows
-                REAL*8		XORIG, YORIG	!  X,Y coords of LL grid corner
-                REAL*8		XCELL, YCELL	!  X,Y direction cell size
-                INTEGER		NPTS	        !  number of (point-source) locations
-                REAL		XLOC( NPTS ) 	!  X point coordinates
-                REAL		YLOC( NPTS ) 	!  Y point coordinates
-                INTEGER		NU( 4,NPTS )    !  single-indexed subscripts into grid
-                REAL            CU( 4,NPTS )    !  coefficients
+                INTEGER, INTENT(IN   ) :: NCOLS, NROWS	!  number of grid columns, rows
+                REAL*8 , INTENT(IN   ) :: XORIG, YORIG	!  X,Y coords of LL grid corner
+                REAL*8 , INTENT(IN   ) :: XCELL, YCELL	!  X,Y direction cell size
+                INTEGER, INTENT(IN   ) :: NPTS	        !  number of (point-source) locations
+                REAL   , INTENT(IN   ) :: XLOC( NPTS ) 	!  X point coordinates
+                REAL   , INTENT(IN   ) :: YLOC( NPTS ) 	!  Y point coordinates
+                INTEGER, INTENT(  OUT) :: NU( 4,NPTS )    !  single-indexed subscripts into grid
+                REAL   , INTENT(  OUT) :: CU( 4,NPTS )    !  coefficients
                 END SUBROUTINE  UNGRIDB
             END INTERFACE
 
@@ -899,37 +1077,37 @@
                 SUBROUTINE  UNGRIDI( NCOLS, NROWS, XORIG, YORIG,
      &                               XCELL, YCELL, NPTS, XLOC, YLOC,
      &                               NX )
-                INTEGER		NCOLS, NROWS	!  number of grid columns, rows
-                REAL*8		XORIG, YORIG	!  X,Y coords of LL grid corner
-                REAL*8		XCELL, YCELL	!  X,Y direction cell size
-                INTEGER		NPTS	        !  number of (point-source) locations
-                REAL		XLOC( NPTS ) 	!  X point coordinates
-                REAL		YLOC( NPTS ) 	!  Y point coordinates
-                INTEGER		  NX( NPTS )    !  single-indexed subscripts into grid
+                INTEGER, INTENT(IN   ) :: NCOLS, NROWS	!  number of grid columns, rows
+                REAL*8 , INTENT(IN   ) :: XORIG, YORIG	!  X,Y coords of LL grid corner
+                REAL*8 , INTENT(IN   ) :: XCELL, YCELL	!  X,Y direction cell size
+                INTEGER, INTENT(IN   ) :: NPTS	        !  number of (point-source) locations
+                REAL   , INTENT(IN   ) :: XLOC( NPTS ) 	!  X point coordinates
+                REAL   , INTENT(IN   ) :: YLOC( NPTS ) 	!  Y point coordinates
+                INTEGER, INTENT(  OUT) :: NX( NPTS )    !  single-indexed subscripts into grid
                 END SUBROUTINE  UNGRIDI
             END INTERFACE
 
             INTERFACE
-                SUBROUTINE  UPCASE ( BUFFER )
-                CHARACTER*(*)   BUFFER
+                SUBROUTINE  UPCASE( BUFFER )
+                CHARACTER*(*), INTENT(INOUT) :: BUFFER
                 END SUBROUTINE  UPCASE
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION WKDAY( JDATE )
-                INTEGER         JDATE	!  date YYYYDDD = 1000 * YEAR + DAY
+                INTEGER, INTENT(IN   ) :: JDATE	!  date YYYYDDD = 1000 * YEAR + DAY
                 END FUNCTION WKDAY
             END INTERFACE
 
             INTERFACE
                 INTEGER FUNCTION YEAR4 ( YY )
-                INTEGER         YY    ! 2 digit year
+                INTEGER, INTENT(IN   ) :: YY    ! 2 digit year
                 END FUNCTION YEAR4
             END INTERFACE
 
             INTERFACE
                 REAL FUNCTION YR2DAY ( YEAR )
-                INTEGER         YEAR  ! 4 digit year YYYY
+                INTEGER, INTENT(IN   ) :: YEAR  ! 4 digit year YYYY
                 END FUNCTION YR2DAY
             END INTERFACE
 
@@ -1338,140 +1516,11 @@
         CONTAINS
 
 
-            SUBROUTINE SPLITLINE( LINE, NMAX, N, FIELD, EFLAG )
-
-            ! -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-            !   Split LINE into fields FIELD( N )
-            ! -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
-            IMPLICIT NONE
-
-            CHARACTER(LEN=*), INTENT(  IN )::  LINE
-            INTEGER,          INTENT(  IN )::  NMAX
-            INTEGER,          INTENT( OUT )::  N
-            CHARACTER(LEN=*), INTENT( OUT )::  FIELD( NMAX )
-            LOGICAL,          INTENT( OUT )::  EFLAG    ! error flag
-
-            !!  PARAMETERS and their descriptions:
-
-            CHARACTER*1,  PARAMETER :: BLANK  = ' '
-            CHARACTER*1,  PARAMETER :: TAB    = '	'
-            CHARACTER*1,  PARAMETER :: COMMA  = ','
-            CHARACTER*1,  PARAMETER :: SEMI   = ';'
-            CHARACTER*1,  PARAMETER :: BANG   = '!'
-            CHARACTER*1,  PARAMETER :: POUND  = '#'
-            CHARACTER*1,  PARAMETER :: DOLLAR = '$'
-            CHARACTER*1,  PARAMETER :: QUOTE  = ''''
-            CHARACTER*1,  PARAMETER :: QUOTES = '"'
-
-
-            !!  LOCAL VARIABLES and their descriptions:
-
-            INTEGER         I, J, K, L
-            CHARACTER*1     CC, DD
-            CHARACTER*256   MESG
-
-            !!  STATEMENT FUNCTIONS: separator characters; comment characters
-
-            CHARACTER*1  CH
-            LOGICAL      ISSEP, ISCMT
-
-            ISSEP( CH ) = ( ( CH .LE. BLANK ) .OR. ( CH .EQ. TAB  ) .OR.
-     &                      ( CH .EQ. COMMA ) .OR. ( CH .EQ. SEMI ) )
-
-            ISCMT( CH ) = ( ( CH .EQ. BANG  ) .OR.
-     &                      ( CH .EQ. POUND ) .OR. ( CH .EQ. DOLLAR ) )
-
-            ! -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
-            EFLAG = .FALSE.
-            J     = 0
-            N     = 0
-
-            DO  I = 1, NMAX
-
-                DO K = J+1, 256
-                    CC = LINE( K:K )
-                    IF ( .NOT.ISSEP( CC ) ) THEN
-                        L = K
-                        GO TO  111
-                    ELSE IF ( ISCMT( CC ) ) THEN
-                        RETURN
-                    END IF
-                END DO
-
-                !!  if you get to here:  end of names in list
-
-                EXIT
-
-111             CONTINUE
-
-                !!  so CC = line( L:L ) at this point...
-
-                IF ( CC .EQ.QUOTE ) THEN
-
-                    DO K = L+1, 256
-                        CC = LINE( K:K )
-                        IF ( CC .EQ.QUOTE ) THEN
-                            N = N + 1           !!  n=I<=NMAX by construction
-                            FIELD( N ) = LINE( L+1:K-1 )
-                            J = K
-                            GO TO  122
-                        END IF
-                    END DO
-
-                ELSE IF ( CC .EQ.QUOTES ) THEN
-
-                    DO K = L+1, 256
-                        CC = LINE( K:K )
-                        IF ( CC .EQ.QUOTES ) THEN
-                            N = N + 1           !!  n=I<=NMAX by construction
-                            FIELD( N ) = LINE( L+1:K-1 )
-                            J = K
-                            GO TO  122
-                        END IF
-                    END DO
-
-                ELSE
-
-                    DO K = L+1, 256
-                        CC = LINE( K:K )
-                        IF ( ISSEP( CC ) ) THEN
-                            N = N + 1           !!  n=I<=NMAX by construction
-                            FIELD( N ) = LINE( L:K-1 )
-                            J = K
-                            GO TO  122
-                        END IF
-                    END DO
-
-                END IF
-
-                !!  if you get to here:  error
-
-                WRITE( MESG, '( A, I3, 2X, 3A )' )
-     &              'Badly formatted field', N,
-     &              'in "', TRIM( LINE ), '"'
-                CALL M3MSG2( MESG )
-                EFLAG = .TRUE.
-
-122             CONTINUE
-
-            END DO
-
-            DO I = N+1, NMAX
-                FIELD( I ) = BLANK
-            END DO
-
-            RETURN
-            END SUBROUTINE SPLITLINE
-
-        ! -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
             SUBROUTINE FIXFIELD( FIELD )
 
             ! -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
             !   DESCRIPTION
-            !       Convert "missing" = "-9" fields and leading blanks 
+            !       Convert "missing" = "-9" fields and leading blanks
             !       in FIELD to all-zeros
             ! -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -1499,7 +1548,7 @@
                         FIELD( I:I ) = '0'
                     ELSE
                         EXIT
-                    ENDIF
+                    END IF
                 END DO
 
             END IF

@@ -1,16 +1,15 @@
-C.........................................................................
-C Version "@(#)$Header$"
-C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
-C 2003-2005 by Baron Advanced Meteorological Systems.
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
 
         INTEGER FUNCTION NAME2FID( FNAME )
 
 C***********************************************************************
-C  function  NAME2FID   starts at line  65
+C Version "$Id: name2fid.f 1 2014-03-14 20:22:54Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
+C  function  NAME2FID   starts at line  66
 C
 C  FUNCTION:
 C       Find STATE3 index FID for  I/O API file with logical name FNAME.
@@ -31,6 +30,7 @@ C  REVISION  HISTORY:
 C       Prototype 10/2003 by CJC for I/O API version 3
 C       Bug-fix   11/2003 by CJC:  don't return from within critical section
 C       Modified  3/2005 by CJC:  bad name length returns  (-1)
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
         IMPLICIT NONE
@@ -44,13 +44,12 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)   FNAME   !  logical name of file to be opened
+        CHARACTER*(*), INTENT(IN   ) :: FNAME   !  logical name of file to be opened
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER         INDEX1, TRIMLEN
-        EXTERNAL        INDEX1, TRIMLEN
+        INTEGER, EXTERNAL ::INDEX1
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -79,7 +78,7 @@ C   begin body of function  NAME2FID
             RETURN
         END IF
 
-        L = TRIMLEN( FNAME )
+        L = LEN_TRIM( FNAME )
         IF ( L .GT. NAMLEN3 ) THEN
             WRITE( MESG, '( 3 A, I9, A, I9 )' )
      &          'Bad file name length for "', FNAME( 1:L ),
@@ -97,6 +96,6 @@ C.......   Find STATE3 index for the file:
 
         RETURN
 
-        END
+        END FUNCTION NAME2FID
 
 

@@ -2,16 +2,16 @@
         SUBROUTINE  MAXREG
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: agmax.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2005 Baron Advanced Meteorological Systems, LLC
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  entry INITTAG body starts at line  106
-C  entry AGGREG  body starts at line  170
-C  entry OUTAGG  body starts at line  215
+C  entry INITTAG body starts at line  101
+C  entry AGGREG  body starts at line  149
+C  entry OUTAGG  body starts at line  199
 C
 C  FUNCTION:
 C       Aggregate time steps as either sum, average, or max.
@@ -37,23 +37,22 @@ C       Modified 11/1999 by CJC to keep hour-maxes of the aggregated result.
 C       F90 only.
 C
 C       Modified 11/2005 by CJC:  eliminate unused vbles
+C
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 ***********************************************************************
 
+      USE M3UTILIO
       IMPLICIT NONE
 
-C...........   INCLUDES:
-
-        INCLUDE 'PARMS3.EXT'  !  I/O parameter definitions
-        INCLUDE 'IODECL3.EXT' !  I/O definitions and declarations
-
 C...........   PARAMETERS
-        INTEGER         M3SUM
-        INTEGER         M3AVE
-        INTEGER         M3MAX
 
-        PARAMETER(      M3SUM = 1,
-     &                  M3AVE = 2,
-     &                  M3MAX = 3  )
+        INTEGER, PARAMETER :: M3SUM = 1
+        INTEGER, PARAMETER :: M3AVE = 2
+        INTEGER, PARAMETER :: M3MAX = 3
+
+        CHARACTER*2, PARAMETER :: SUFFIX( 6 ) =
+     &     (/ '_1', '_2', '_3', '_4', '_5', '_6' /)
 
 C...........   ARGUMENTS and their descriptions:
 
@@ -84,7 +83,6 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
 
         CHARACTER*16    VNAME
 
-!  f90 treatment
         REAL,    ALLOCATABLE, SAVE::    GRID( :, :, : )
         REAL,    ALLOCATABLE, SAVE::    AMAX( :, :, :, : )
         REAL,    ALLOCATABLE, SAVE::    AGRD( :, :, : )
@@ -92,27 +90,24 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         INTEGER, ALLOCATABLE, SAVE::    EXC8( :, :, : )
         LOGICAL, SAVE::              FIRSTIME = .TRUE.
 
-        CHARACTER*2     SUFFIX( 6 )
-        DATA            SUFFIX / '_1', '_2', '_3', '_4', '_5', '_6' /
-
         CHARACTER*256   MESG
 
 C***********************************************************************
-C   begin body of subroutine  TAGGREG
+C   begin body of subroutine  MAXGREG
 
 C***********************************************************************
 C   begin body of entry point INITAGG
 
-        ENTRY INITAGG( NCOLS, NROWS, NLAYS, T, JDATE, JTIME, 
+        ENTRY INITAGG( NCOLS, NROWS, NLAYS, T, JDATE, JTIME,
      &                 INAME, VNAMEI, LOGDEV )
 
 
         IF ( FIRSTIME ) THEN
-            ALLOCATE( GRID( NCOLS, NROWS, NLAYS ), 
-     &                AMAX( NCOLS, NROWS, NLAYS, 6 ), 
-     &                AGRD( NCOLS, NROWS, NLAYS ), 
-     &                EXC1( NCOLS, NROWS, NLAYS ), 
-     &                EXC8( NCOLS, NROWS, NLAYS ), 
+            ALLOCATE( GRID( NCOLS, NROWS, NLAYS ),
+     &                AMAX( NCOLS, NROWS, NLAYS, 6 ),
+     &                AGRD( NCOLS, NROWS, NLAYS ),
+     &                EXC1( NCOLS, NROWS, NLAYS ),
+     &                EXC8( NCOLS, NROWS, NLAYS ),
      &                STAT=K )
             IF ( K .NE. 0 ) THEN
                  CALL M3EXIT( 'TAGGREG', JDATE, JTIME,
@@ -188,8 +183,8 @@ C   begin body of entry point AGGREG
 
         ELSE
 
-            WRITE( MESG, '( A, I8, 2X, A)' ) 
-     &          'Aggregation type ', TYPE, 'not supported' 
+            WRITE( MESG, '( A, I8, 2X, A)' )
+     &          'Aggregation type ', TYPE, 'not supported'
             CALL M3EXIT ( 'M3AGMAX:AGGREG', JDATE, JTIME, MESG, 2 )
 
         END IF              !  if read3() worked, or not
@@ -201,14 +196,14 @@ C***********************************************************************
 C   begin body of entry point OUTAGG
 
         ENTRY OUTAGG( NCOLS, NROWS,  NLAYS, T, JDATE, JTIME,
-     &                ANAME, VNAMEO, TYPE , NSTEPS, 
+     &                ANAME, VNAMEO, TYPE , NSTEPS,
      &                CMAX,  CCOL,   CROW,  CLAY, LOGDEV )
 
         JTOP = MIN( 6, T-1 )    !  number of AMAX(:,:,:,*) already set
 
         IF( TYPE .EQ. M3AVE ) THEN
 
-            DENOM = 1.0 / REAL( NSTEPS ) 
+            DENOM = 1.0 / REAL( NSTEPS )
             CMAX = DENOM * GRID( 1,1,1 )
             CCOL = 1
             CROW = 1
@@ -234,7 +229,7 @@ C   begin body of entry point OUTAGG
                 DO  J = 1, JTOP
                     IF ( X .GT. AMAX( C,R,L,J ) ) THEN
                         DO  K = JTOP, J+1, -1
-                            AMAX( C,R,L,K ) =  AMAX( C,R,L,K-1 ) 
+                            AMAX( C,R,L,K ) =  AMAX( C,R,L,K-1 )
                         END DO
                         AMAX( C,R,L,J ) = X
                         GO TO  11
@@ -275,7 +270,7 @@ C   begin body of entry point OUTAGG
                 DO  J = 1, JTOP
                     IF ( X .GT. AMAX( C,R,L,J ) ) THEN
                         DO  K = JTOP, J+1, -1
-                            AMAX( C,R,L,K ) =  AMAX( C,R,L,K-1 ) 
+                            AMAX( C,R,L,K ) =  AMAX( C,R,L,K-1 )
                         END DO
                         AMAX( C,R,L,J ) = X
                         GO TO  22
@@ -305,11 +300,11 @@ C***********************************************************************
 C   begin body of entry point MAXAGG
 
         ENTRY MAXAGG( JDATE, JTIME, MNAME, VNAMEO )
-        
+
         DO  J = 1, 6
 
             VNAME = TRIM( VNAMEO ) // SUFFIX( J )
-            
+
             GRID = AMAX( :, :, :, J )
 
             IF ( .NOT. WRITE3( MNAME, VNAME,
@@ -339,5 +334,5 @@ C   begin body of entry point MAXAGG
             CALL M3EXIT ( 'M3AGMAX:AGGREG', JDATE, JTIME, MESG, 2 )
         END IF
 
-        END
+        END SUBROUTINE  MAXREG
 

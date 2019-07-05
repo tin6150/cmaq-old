@@ -1,11 +1,15 @@
-# @(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/Makeinclude.AIX,v 1.2 2000/11/28 21:56:41 smith_w Exp $
+# VERSION "$Id: Makeinclude.OSF1 1 2014-03-14 20:22:54Z coats $"
+#
 #   Enhancements due to Jinyou Liang, California Air Resources Board
+
 AR   = ar
 CC   = cc
 FC   = f90
 M4   = m4
 CPP  = cpp
 LINK = cc
+
+MODI = -I       ## Module-include-directory command
 
 MFLAGS    = -arch host -tune host
 

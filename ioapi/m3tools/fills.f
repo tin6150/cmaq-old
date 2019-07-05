@@ -1,7 +1,9 @@
 
 C***********************************************************************
-C Version "@(#)$Header: /env/proj/archive/cvs/ioapi_tools/./ioapi_tools/src/fills.f,v 1.2 2000/12/14 22:55:21 smith_w Exp $"
-C EDSS/Models-3 M3TOOLS.  Copyright (C) 1992-1999 MCNC
+C Version "$Id: fills.f 44 2014-09-12 18:03:16Z coats $"
+C EDSS/Models-3 M3TOOLS.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
@@ -17,7 +19,7 @@ C               2 -- row number
 C               3 -- layer number
 C               otherwise:  value of VAL
 C
-C       where GRID has type 
+C       where GRID has type
 C               INTEGER for IFILL
 C               REAL    for RFILL
 C               DOUBLE  for DFILL
@@ -31,9 +33,14 @@ C
 C  REVISION  HISTORY:
 C       prototype 8/95 by CJC
 C
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
+C
+C       Version 11/2013 by CJC:  OpenMP parallel.  Reorganize loops
+C       with R outermost to allow parallelism whether or not NLAYS=1
 C***********************************************************************
 
-C...........................  begin DFILL()  .....................
+C...........................  begin IFILL()  .....................
 
         SUBROUTINE  IFILL( GRID, NCOLS, NROWS, NLAYS, OP, VAL )
 
@@ -41,10 +48,10 @@ C...........................  begin DFILL()  .....................
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         NCOLS, NROWS, NLAYS
-        INTEGER         GRID( NCOLS, NROWS, NLAYS )
-        INTEGER         OP
-        REAL		VAL
+        INTEGER, INTENT(IN   ) :: NCOLS, NROWS, NLAYS
+        INTEGER, INTENT(  OUT) :: GRID( NCOLS, NROWS, NLAYS )
+        INTEGER, INTENT(IN   ) :: OP
+        REAL   , INTENT(IN   ) :: VAL
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -56,38 +63,50 @@ C***********************************************************************
 C   begin body of subroutine  IFILL
 
         IF ( OP .EQ. 1 ) THEN
-            DO  13  L = 1, NLAYS
-            DO  12  R = 1, NROWS
-            DO  11  C = 1, NCOLS
+!$OMP       PARALLEL DO DEFAULT( NONE ),
+!$OMP&                  SHARED( GRID, NCOLS, NROWS, NLAYS ),
+!$OMP&                  PRIVATE( I )
+            DO  R = 1, NROWS
+            DO  L = 1, NLAYS
+            DO  C = 1, NCOLS
                 GRID( C,R, L ) = C
-11          CONTINUE
-12          CONTINUE
-13          CONTINUE
+            END DO
+            END DO
+            END DO
         ELSE IF ( OP .EQ. 2 ) THEN
-            DO  23  L = 1, NLAYS
-            DO  22  R = 1, NROWS
-            DO  21  C = 1, NCOLS
+!$OMP       PARALLEL DO DEFAULT( NONE ),
+!$OMP&                  SHARED( GRID, NCOLS, NROWS, NLAYS ),
+!$OMP&                  PRIVATE( I )
+            DO  R = 1, NROWS
+            DO  L = 1, NLAYS
+            DO  C = 1, NCOLS
                 GRID( C,R, L ) = R
-21          CONTINUE
-22          CONTINUE
-23          CONTINUE
+            END DO
+            END DO
+            END DO
         ELSE IF ( OP .EQ. 3 ) THEN
-            DO  33  L = 1, NLAYS
-            DO  32  R = 1, NROWS
-            DO  31  C = 1, NCOLS
+!$OMP       PARALLEL DO DEFAULT( NONE ),
+!$OMP&                  SHARED( GRID, NCOLS, NROWS, NLAYS ),
+!$OMP&                  PRIVATE( I )
+            DO  R = 1, NROWS
+            DO  L = 1, NLAYS
+            DO  C = 1, NCOLS
                 GRID( C,R, L ) = L
-31          CONTINUE
-32          CONTINUE
-33          CONTINUE
+            END DO
+            END DO
+            END DO
         ELSE
             V = INT( VAL )
-            DO  43  L = 1, NLAYS
-            DO  42  R = 1, NROWS
-            DO  41  C = 1, NCOLS
+!$OMP       PARALLEL DO DEFAULT( NONE ),
+!$OMP&                  SHARED( GRID, NCOLS, NROWS, NLAYS, V ),
+!$OMP&                  PRIVATE( I )
+            DO  R = 1, NROWS
+            DO  L = 1, NLAYS
+            DO  C = 1, NCOLS
                 GRID( C,R, L ) = V
-41          CONTINUE
-42          CONTINUE
-43          CONTINUE
+            END DO
+            END DO
+            END DO
         END IF
 
         RETURN
@@ -102,10 +121,10 @@ C...........................  begin RFILL()  .....................
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         NCOLS, NROWS, NLAYS
-        REAL            GRID( NCOLS, NROWS, NLAYS )
-        INTEGER         OP
-        REAL            VAL
+        INTEGER, INTENT(IN   ) :: NCOLS, NROWS, NLAYS
+        REAL   , INTENT(  OUT) :: GRID( NCOLS, NROWS, NLAYS )
+        INTEGER, INTENT(IN   ) :: OP
+        REAL   , INTENT(IN   ) :: VAL
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -117,37 +136,49 @@ C***********************************************************************
 C   begin body of subroutine  RFILL
 
         IF ( OP .EQ. 1 ) THEN
-            DO  13  L = 1, NLAYS
-            DO  12  R = 1, NROWS
-            DO  11  C = 1, NCOLS
+!$OMP       PARALLEL DO DEFAULT( NONE ),
+!$OMP&                  SHARED( GRID, NCOLS, NROWS, NLAYS ),
+!$OMP&                  PRIVATE( I )
+            DO  R = 1, NROWS
+            DO  L = 1, NLAYS
+            DO  C = 1, NCOLS
                 GRID( C,R, L ) = FLOAT( C )
-11          CONTINUE
-12          CONTINUE
-13          CONTINUE
+            END DO
+            END DO
+            END DO
         ELSE IF ( OP .EQ. 2 ) THEN
-            DO  23  L = 1, NLAYS
-            DO  22  R = 1, NROWS
-            DO  21  C = 1, NCOLS
+!$OMP       PARALLEL DO DEFAULT( NONE ),
+!$OMP&                  SHARED( GRID, NCOLS, NROWS, NLAYS ),
+!$OMP&                  PRIVATE( I )
+            DO  R = 1, NROWS
+            DO  L = 1, NLAYS
+            DO  C = 1, NCOLS
                 GRID( C,R, L ) = FLOAT( R )
-21          CONTINUE
-22          CONTINUE
-23          CONTINUE
+            END DO
+            END DO
+            END DO
         ELSE IF ( OP .EQ. 3 ) THEN
-            DO  33  L = 1, NLAYS
-            DO  32  R = 1, NROWS
-            DO  31  C = 1, NCOLS
+!$OMP       PARALLEL DO DEFAULT( NONE ),
+!$OMP&                  SHARED( GRID, NCOLS, NROWS, NLAYS ),
+!$OMP&                  PRIVATE( I )
+            DO  R = 1, NROWS
+            DO  L = 1, NLAYS
+            DO  C = 1, NCOLS
                 GRID( C,R, L ) = FLOAT( L )
-31          CONTINUE
-32          CONTINUE
-33          CONTINUE
+            END DO
+            END DO
+            END DO
         ELSE
-            DO  43  L = 1, NLAYS
-            DO  42  R = 1, NROWS
-            DO  41  C = 1, NCOLS
+!$OMP       PARALLEL DO DEFAULT( NONE ),
+!$OMP&                  SHARED( GRID, NCOLS, NROWS, NLAYS, VAL ),
+!$OMP&                  PRIVATE( I )
+            DO  R = 1, NROWS
+            DO  L = 1, NLAYS
+            DO  C = 1, NCOLS
                 GRID( C,R, L ) = VAL
-41          CONTINUE
-42          CONTINUE
-43          CONTINUE
+            END DO
+            END DO
+            END DO
         END IF
 
         RETURN
@@ -162,10 +193,10 @@ C...........................  begin DFILL()  .....................
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER          NCOLS, NROWS, NLAYS
-        DOUBLE PRECISION GRID( NCOLS, NROWS, NLAYS )
-        INTEGER          OP
-        REAL		 VAL
+        INTEGER         , INTENT(IN   ) :: NCOLS, NROWS, NLAYS
+        DOUBLE PRECISION, INTENT(  OUT) :: GRID( NCOLS, NROWS, NLAYS )
+        INTEGER         , INTENT(IN   ) :: OP
+        REAL            , INTENT(IN   ) :: VAL
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -178,38 +209,50 @@ C***********************************************************************
 C   begin body of subroutine  DFILL
 
         IF ( OP .EQ. 1 ) THEN
-            DO  13  L = 1, NLAYS
-            DO  12  R = 1, NROWS
-            DO  11  C = 1, NCOLS
+!$OMP       PARALLEL DO DEFAULT( NONE ),
+!$OMP&                  SHARED( GRID, NCOLS, NROWS, NLAYS ),
+!$OMP&                  PRIVATE( I )
+            DO  R = 1, NROWS
+            DO  L = 1, NLAYS
+            DO  C = 1, NCOLS
                 GRID( C,R, L ) = DBLE( C )
-11          CONTINUE
-12          CONTINUE
-13          CONTINUE
+            END DO
+            END DO
+            END DO
         ELSE IF ( OP .EQ. 2 ) THEN
-            DO  23  L = 1, NLAYS
-            DO  22  R = 1, NROWS
-            DO  21  C = 1, NCOLS
+!$OMP       PARALLEL DO DEFAULT( NONE ),
+!$OMP&                  SHARED( GRID, NCOLS, NROWS, NLAYS ),
+!$OMP&                  PRIVATE( I )
+            DO  R = 1, NROWS
+            DO  L = 1, NLAYS
+            DO  C = 1, NCOLS
                 GRID( C,R, L ) = DBLE( R )
-21          CONTINUE
-22          CONTINUE
-23          CONTINUE
+            END DO
+            END DO
+            END DO
         ELSE IF ( OP .EQ. 3 ) THEN
-            DO  33  L = 1, NLAYS
-            DO  32  R = 1, NROWS
-            DO  31  C = 1, NCOLS
+!$OMP       PARALLEL DO DEFAULT( NONE ),
+!$OMP&                  SHARED( GRID, NCOLS, NROWS, NLAYS ),
+!$OMP&                  PRIVATE( I )
+            DO  R = 1, NROWS
+            DO  L = 1, NLAYS
+            DO  C = 1, NCOLS
                 GRID( C,R, L ) = DBLE( L )
-31          CONTINUE
-32          CONTINUE
-33          CONTINUE
+            END DO
+            END DO
+            END DO
         ELSE
             V = DBLE( VAL )
-            DO  43  L = 1, NLAYS
-            DO  42  R = 1, NROWS
-            DO  41  C = 1, NCOLS
+!$OMP       PARALLEL DO DEFAULT( NONE ),
+!$OMP&                  SHARED( GRID, NCOLS, NROWS, NLAYS, V ),
+!$OMP&                  PRIVATE( I )
+            DO  R = 1, NROWS
+            DO  L = 1, NLAYS
+            DO  C = 1, NCOLS
                 GRID( C,R, L ) = V
-41          CONTINUE
-42          CONTINUE
-43          CONTINUE
+            END DO
+            END DO
+            END DO
         END IF
 
         RETURN

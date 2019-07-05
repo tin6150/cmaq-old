@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/PCOEF.html,v 1.1.1.1 2001/12/05 20:25:37 coats Exp $ -->
+<!-- "$Id: PCOEF.html 83 2014-12-29 14:31:32Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> PCOEF() </TITLE>
 </HEAD>
@@ -15,17 +15,13 @@
 
 <H1>    PCOEF() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
     SUBROUTINE PCOEF( N, XN, YN, CN )
-      INTEGER  N            ! length of input vector
-      REAL     XN( N )      ! input vector of X-values
-      REAL     YN( N )      ! input vector of Y-values
-      REAL     CN( N )      ! output vector of polynomial coefficients
+      INTEGER, INTENT(IN   ) :: N            ! length of input vector
+      REAL   , INTENT(IN   ) :: XN( N )      ! input vector of X-values
+      REAL   , INTENT(IN   ) :: YN( N )      ! input vector of Y-values
+      REAL   , INTENT(  OUT) :: CN( N )      ! output vector of polynomial coefficients
 </PRE><P> 
 
 <H2> C version:  none </H2>

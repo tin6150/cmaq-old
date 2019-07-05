@@ -2,14 +2,14 @@
         PROGRAM FACTOR
 
 C***********************************************************************
-C Version "@(#)$Header$ $Id: factor.f 49 2007-07-06 16:20:50Z coats@borel $"
+C Version "$Id: factor.f 43 2014-09-12 14:06:19Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr, and
-C (C) 2002-2007 Baron Advanced Meteorological Systems, LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line 83
+C  program body starts at line 74
 C
 C  DESCRIPTION:
 C       factor [integer]
@@ -23,41 +23,20 @@ C  SUBROUTINES AND FUNCTIONS CALLED:
 C       GETNUM, STR2INT
 C
 C  REVISION  HISTORY:
-C       prototype 1/97 by CJC
+C       prototype 1/1997 by CJC
 C
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C***********************************************************************
 
+      USE M3UTILIO
       IMPLICIT NONE
 
 C...........   PARAMETERS and their descriptions:
 
-        INTEGER     NPRIMES
-        PARAMETER ( NPRIMES = 175 )
+        INTEGER, PARAMETER :: NPRIMES = 175
 
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        INTEGER         IARGC           !  should be intrinsic
-        INTEGER         GETNUM, STR2INT
-        EXTERNAL        GETNUM, STR2INT
-
-C...........   PARAMETERS and their descriptions:
-
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id:: factor.f 49 2007-07-06 16:20:50Z coats@borel            $'
-     &  /
-
-C...........   LOCAL VARIABLES and their descriptions:
-
-        INTEGER         ARGCNT  !  number of command-line args, from IARGC()
-        CHARACTER*256   ENVBUF  !  value from command line arguments
-        CHARACTER*256   MESG    !  for M3EXIT()
-        INTEGER         ARG
-        INTEGER         F, I, K, P, SIGN
-
-        INTEGER         PLIST( NPRIMES )
-        DATA            PLIST
-     &          /
+        INTEGER, PARAMETER :: PLIST( NPRIMES ) = (/
      &       2,   3,   5,   7,  11,  13,  17,  19,  23,  29,   !   1-10
      &      31,  37,  41,  43,  47,  53,  59,  61,  67,  71,   !  11-20
      &      73,  79,  83,  89,  97, 103, 107, 109, 113, 119,   !  21-30
@@ -76,35 +55,48 @@ C...........   LOCAL VARIABLES and their descriptions:
      &     827, 829, 839, 841, 853, 857, 859, 863, 877, 881,   ! 151-160
      &     883, 887, 911, 929, 937, 941, 947, 953, 961, 967,   ! 161-170
      &     971, 977, 983, 991, 997                             ! 171-175
-     &          /
+     &          /)
+
+C...........   EXTERNAL FUNCTIONS and their descriptions:
+
+        INTEGER :: IARGC           !  should be intrinsic
+
+C...........   LOCAL VARIABLES and their descriptions:
+
+        INTEGER         ARGCNT  !  number of command-line args, from IARGC()
+        CHARACTER*256   ENVBUF  !  value from command line arguments
+        CHARACTER*256   MESG    !  for M3EXIT()
+        INTEGER         ARG, F, I, K, P, SIGN
 
 C***********************************************************************
 C   begin body of program FACTOR
 
+        I = INIT3()
         WRITE( *,92000 )
      &  ' ',
      &  'Program FACTOR to find the prime factors of the specified ',
      &  '(positive) integer taken either from the command line or from',
      &  'the user.',
-     &  ' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
+     &' ',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: factor.f 43 2014-09-12 14:06:19Z coats                  $',
      &' '
 
         ARGCNT = IARGC()
@@ -232,5 +224,5 @@ C...........   Informational (LOG) message formats... 92xxx
 92012   FORMAT ( 5X, A, :, I10, :, '^', I2,  ' = ', I10 )
 
 
-        END
+        END PROGRAM FACTOR
 

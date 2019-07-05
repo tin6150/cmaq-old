@@ -2,16 +2,17 @@
         SUBROUTINE  MAXREG
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: agmask.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2005 Baron Advanced Meteorological Systems, LLC
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  entry INITTAG body starts at line  120
-C  entry AGGREG  body starts at line  170
-C  entry OUTAGG  body starts at line  215
+C  entry INITTAG body starts at line  110
+C  entry AGGREG  body starts at line  195
+C  entry OUTAGG  body starts at line  285
+C  entry MAXAGG  body starts at line  522
 C
 C  FUNCTION:
 C       Aggregate time steps as either sum, average, or max.
@@ -36,24 +37,26 @@ C
 C       Modified 11/99 by CJC to keep hour-maxes of the aggregated result.
 C       F90 only.
 C
-C       Modified 11/2005 by CJC:  eliminate unused vbles
+C       Modified 11/2005 by CJC:  eliminate unused vbles.
+C
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
+C
+C       Version 11/2013 by CJC:  OpenMP parallel
 C***********************************************************************
+
+      USE M3UTILIO
 
       IMPLICIT NONE
 
-C...........   INCLUDES:
+C...........   PARAMETERS:
 
-        INCLUDE 'PARMS3.EXT'  !  I/O parameter definitions
-        INCLUDE 'IODECL3.EXT' !  I/O definitions and declarations
+        INTEGER, PARAMETER :: M3SUM = 1
+        INTEGER, PARAMETER :: M3AVE = 2
+        INTEGER, PARAMETER :: M3MAX = 3
 
-C...........   PARAMETERS
-        INTEGER         M3SUM
-        INTEGER         M3AVE
-        INTEGER         M3MAX
-
-        PARAMETER(      M3SUM = 1,
-     &                  M3AVE = 2,
-     &                  M3MAX = 3  )
+        CHARACTER*2, PARAMETER :: SUFFIX( 6 ) =
+     &     (/ '_1', '_2', '_3', '_4', '_5', '_6' /)
 
 C...........   ARGUMENTS and their descriptions:
 
@@ -87,7 +90,6 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         REAL            X, DENOM
         CHARACTER*16    VNAME
 
-!  f90 treatment
         REAL,    ALLOCATABLE, SAVE::    GRID( :, :, : )
         REAL,    ALLOCATABLE, SAVE::    AMAX( :, :, :, : )
         REAL,    ALLOCATABLE, SAVE::    ABAR( :, :, : )
@@ -97,9 +99,6 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         INTEGER, ALLOCATABLE, SAVE::    MASK( :, :, : )
         LOGICAL, SAVE::              FIRSTIME = .TRUE.
 
-        CHARACTER*2     SUFFIX( 6 )
-        DATA            SUFFIX / '_1', '_2', '_3', '_4', '_5', '_6' /
-
         CHARACTER*256   MESG
 
 C***********************************************************************
@@ -108,32 +107,32 @@ C   begin body of subroutine  TAGGREG
 C***********************************************************************
 C   begin body of entry point INITAGG
 
-        ENTRY INITAGG( NCOLS, NROWS, NLAYS, T, JDATE, JTIME, 
+        ENTRY INITAGG( NCOLS, NROWS, NLAYS, T, JDATE, JTIME,
      &                 INAME, VNAMEI, NMASKS, MASKF, MASKV, LOGDEV )
 
 
         IF ( FIRSTIME ) THEN
-            ALLOCATE( GRID( NCOLS, NROWS, NLAYS ), 
-     &                AMAX( NCOLS, NROWS, NLAYS, 6 ), 
-     &                ABAR( NCOLS, NROWS, NLAYS ), 
-     &                AGRD( NCOLS, NROWS, NLAYS ), 
-     &                EXC1( NCOLS, NROWS, NLAYS ), 
-     &                EXC8( NCOLS, NROWS, NLAYS ), 
-     &                MASK( NCOLS, NROWS, NMASKS ), 
+            ALLOCATE( GRID( NCOLS, NROWS, NLAYS ),
+     &                AMAX( NCOLS, NROWS, NLAYS, 6 ),
+     &                ABAR( NCOLS, NROWS, NLAYS ),
+     &                AGRD( NCOLS, NROWS, NLAYS ),
+     &                EXC1( NCOLS, NROWS, NLAYS ),
+     &                EXC8( NCOLS, NROWS, NLAYS ),
+     &                MASK( NCOLS, NROWS, NMASKS ),
      &                STAT=K )
             IF ( K .NE. 0 ) THEN
                  CALL M3EXIT( 'TAGGREG', JDATE, JTIME,
      &                        'Memory allocation error', 2 )
             END IF
             FIRSTIME = .FALSE.
-            
+
             DO  M = 1, NMASKS
                 IF ( .NOT. READ3( MASKF(M), MASKV(M), ALLAYS3,
      &                            JDATE, JTIME, MASK(1,1,M) ) ) THEN
-                    MESG = 'Read failure:  file "' // 
+                    MESG = 'Read failure:  file "' //
      &                     TRIM( MASKF(M) ) //
      &                     '" variable "' // MASKV(M) // '"'
-                    CALL M3EXIT ( 'M3AGMASK:AGGREG', JDATE, JTIME, 
+                    CALL M3EXIT ( 'M3AGMASK:AGGREG', JDATE, JTIME,
      &                            MESG, 2 )
                 END IF              !  if read3() worked, or not
             END DO
@@ -148,20 +147,43 @@ C   begin body of entry point INITAGG
         END IF              !  if read3() worked, or not
 
         IF ( T .EQ. 1 ) THEN
-           DO  L = 1, NLAYS
-           DO  R = 1, NROWS
-           DO  C = 1, NCOLS
-               X = GRID( C,R,L )
-               IF ( X .GT. 0.125 ) THEN
-                   EXC1( C,R,L ) = 1
-               ELSE
-                   EXC1( C,R,L ) = 0
-               END IF
-               EXC8( C,R,L ) = 0
-               ABAR( C,R,L ) = 0
-           END DO
-           END DO
-           END DO
+            IF ( NLAYS .EQ. 1 ) THEN        !!  for parallelization
+!$OMP           PARALLEL DO
+!$OMP&                  DEFAULT( NONE ),
+!$OMP&                  SHARED( NCOLS, NROWS, GRID, EXC1, ABAR ),
+!$OMP&                  PRIVATE( C, R, X )
+                DO  R = 1, NROWS
+                DO  C = 1, NCOLS
+                    X = GRID( C,R,1 )
+                    IF ( X .GT. 0.125 ) THEN
+                        EXC1( C,R,1 ) = 1
+                    ELSE
+                        EXC1( C,R,1 ) = 0
+                    END IF
+                    EXC8( C,R,1 ) = 0
+                    ABAR( C,R,1 ) = 0
+                END DO
+                END DO
+            ELSE
+!$OMP           PARALLEL DO
+!$OMP&                  DEFAULT( NONE ),
+!$OMP&                  SHARED( NCOLS, NROWS, NLAYS, GRID, EXC1, ABAR ),
+!$OMP&                  PRIVATE( C, R, L, X )
+                DO  L = 1, NLAYS
+                DO  R = 1, NROWS
+                DO  C = 1, NCOLS
+                    X = GRID( C,R,L )
+                    IF ( X .GT. 0.125 ) THEN
+                        EXC1( C,R,L ) = 1
+                    ELSE
+                        EXC1( C,R,L ) = 0
+                    END IF
+                    EXC8( C,R,L ) = 0
+                    ABAR( C,R,L ) = 0
+                END DO
+                END DO
+                END DO
+            END IF
         END IF          !  if first time step for this variable
 
         RETURN
@@ -180,36 +202,76 @@ C   begin body of entry point AGGREG
             CALL M3EXIT ( 'M3AGMASK:AGGREG', JDATE, JTIME, MESG, 2 )
         ELSE IF( TYPE .EQ. M3SUM .OR. TYPE .EQ. M3AVE ) THEN
 
-            DO  L = 1, NLAYS
-            DO  R = 1, NROWS
-            DO  C = 1, NCOLS
-                X = AGRD( C,R,L )
-                GRID( C,R,L ) = GRID( C,R,L ) + X
-                IF ( X .GT. 0.125 ) THEN
-                    EXC1( C,R,L ) = EXC1( C,R,L ) + 1
-                END IF
-            END DO
-            END DO
-            END DO
+            IF ( NLAYS .EQ. 1 ) THEN        !!  for parallelization
+!$OMP           PARALLEL DO
+!$OMP&                  DEFAULT( NONE ),
+!$OMP&                  SHARED( NCOLS, NROWS, AGRD, GRID, EXC1 ),
+!$OMP&                  PRIVATE( C, R, X )
+                DO  R = 1, NROWS
+                DO  C = 1, NCOLS
+                    X = AGRD( C,R,1 )
+                    GRID( C,R,1 ) = GRID( C,R,1 ) + X
+                    IF ( X .GT. 0.125 ) THEN
+                        EXC1( C,R,1 ) = EXC1( C,R,1 ) + 1
+                    END IF
+                END DO
+                END DO
+            ELSE
+!$OMP           PARALLEL DO
+!$OMP&                  DEFAULT( NONE ),
+!$OMP&                  SHARED( NCOLS, NROWS, NLAYS, AGRD, GRID, EXC1 ),
+!$OMP&                  PRIVATE( C, R, L, X )
+                DO  L = 1, NLAYS
+                DO  R = 1, NROWS
+                DO  C = 1, NCOLS
+                    X = AGRD( C,R,L )
+                    GRID( C,R,L ) = GRID( C,R,L ) + X
+                    IF ( X .GT. 0.125 ) THEN
+                        EXC1( C,R,L ) = EXC1( C,R,L ) + 1
+                    END IF
+                END DO
+                END DO
+                END DO
+            END IF
 
         ELSE IF( TYPE .EQ. M3MAX ) THEN
 
-            DO  L = 1, NLAYS
-            DO  R = 1, NROWS
-            DO  C = 1, NCOLS
-                X = AGRD( C,R,L )
-                GRID( C,R,L ) = MAX( GRID( C,R,L ), X )
-                IF ( X .GT. 0.125 ) THEN
-                    EXC1( C,R,L ) = EXC1( C,R,L ) + 1
-                END IF
-            END DO
-            END DO
-            END DO
+            IF ( NLAYS .EQ. 1 ) THEN        !!  for parallelization
+!$OMP           PARALLEL DO
+!$OMP&                  DEFAULT( NONE ),
+!$OMP&                  SHARED( NCOLS, NROWS, AGRD, GRID, EXC1 ),
+!$OMP&                  PRIVATE( C, R, X )
+                DO  R = 1, NROWS
+                DO  C = 1, NCOLS
+                    X = AGRD( C,R,L )
+                    GRID( C,R,L ) = MAX( GRID( C,R,L ), X )
+                    IF ( X .GT. 0.125 ) THEN
+                        EXC1( C,R,L ) = EXC1( C,R,L ) + 1
+                    END IF
+                END DO
+                END DO
+            ELSE
+!$OMP           PARALLEL DO
+!$OMP&                  DEFAULT( NONE ),
+!$OMP&                  SHARED( NCOLS, NROWS, NLAYS, AGRD, GRID, EXC1 ),
+!$OMP&                  PRIVATE( C, R, L, X )
+                DO  L = 1, NLAYS
+                DO  R = 1, NROWS
+                DO  C = 1, NCOLS
+                    X = AGRD( C,R,L )
+                    GRID( C,R,L ) = MAX( GRID( C,R,L ), X )
+                    IF ( X .GT. 0.125 ) THEN
+                        EXC1( C,R,L ) = EXC1( C,R,L ) + 1
+                    END IF
+                END DO
+                END DO
+                END DO
+            END IF
 
         ELSE
 
-            WRITE( MESG, '( A, I8, 2X, A)' ) 
-     &          'Aggregation type ', TYPE, 'not supported' 
+            WRITE( MESG, '( A, I8, 2X, A)' )
+     &          'Aggregation type ', TYPE, 'not supported'
             CALL M3EXIT ( 'M3AGMASK:AGGREG', JDATE, JTIME, MESG, 2 )
 
         END IF              !  if read3() worked, or not
@@ -221,14 +283,14 @@ C***********************************************************************
 C   begin body of entry point OUTAGG
 
         ENTRY OUTAGG( NCOLS, NROWS,  NLAYS, RUNLEN, NMASKS,
-     &                T, JDATE, JTIME, ANAME, VNAMEO, TYPE , NSTEPS, 
+     &                T, JDATE, JTIME, ANAME, VNAMEO, TYPE , NSTEPS,
      &                CMAX, CCOL, CROW, CLAY, LOGDEV )
 
         JTOP = MIN( 6, T-1 )    !  number of AMAX(:,:,:,*) already set
 
         IF( TYPE .EQ. M3AVE ) THEN
 
-            DENOM = 1.0 / REAL( NSTEPS ) 
+            DENOM = 1.0 / REAL( NSTEPS )
             DO M = 1, NMASKS
                 CMAX( T,M ) = -9.999E37
                 CCOL( T,M ) = 0
@@ -236,46 +298,105 @@ C   begin body of entry point OUTAGG
                 CLAY( T,M ) = 0
             END DO
 
-            DO  L = 1, NLAYS
-            DO  R = 1, NROWS
-            DO  C = 1, NCOLS
+            IF ( NLAYS .EQ. 1 ) THEN        !!  for parallelization
 
-                X = DENOM * GRID( C,R,L )
-                GRID( C,R,L ) = X
-                ABAR( C,R,L ) = ABAR( C,R,L ) + X
+!$OMP           PARALLEL DO
+!$OMP&                 DEFAULT( NONE ),
+!$OMP&                 SHARED( NCOLS, NROWS, NMASKS, JTOP, DENOM,
+!$OMP&                         T, GRID, ABAR, MASK, CMAX, CCOL, CROW,
+!$OMP&                         CLAY, EXC8, AMAX ),
+!$OMP&                PRIVATE( C, R, M, J, X )
 
-                DO M = 1, NMASKS
-                    IF ( MASK( C,R,M ) .GT. 0 ) THEN
-                        IF ( X .GT. CMAX( T,M ) ) THEN
-                            CMAX( T,M ) = X
-                            CCOL( T,M ) = C
-                            CROW( T,M ) = R
-                            CLAY( T,M ) = L
+                DO  R = 1, NROWS
+                DO  C = 1, NCOLS
+
+                    X = DENOM * GRID( C,R,L )
+                    GRID( C,R,L ) = X
+                    ABAR( C,R,L ) = ABAR( C,R,L ) + X
+
+                    DO M = 1, NMASKS
+                        IF ( MASK( C,R,M ) .GT. 0 ) THEN
+                            IF ( X .GT. CMAX( T,M ) ) THEN
+                                CMAX( T,M ) = X
+                                CCOL( T,M ) = C
+                                CROW( T,M ) = R
+                                CLAY( T,M ) = L
+                            END IF
                         END IF
+                    END DO
+
+                    IF ( X .GT. 0.085 ) THEN
+                        EXC8( C,R,L ) = EXC8( C,R,L ) + 1
                     END IF
+
+                    DO  J = 1, JTOP
+                        IF ( X .GT. AMAX( C,R,L,J ) ) THEN
+                            DO  K = JTOP, J+1, -1
+                                AMAX( C,R,L,K ) =  AMAX( C,R,L,K-1 )
+                            END DO
+                            AMAX( C,R,L,J ) = X
+                            GO TO  11
+                        END IF
+                    END DO
+                    IF ( JTOP .LT. 6 ) THEN
+                        AMAX( C,R,L,JTOP+1 ) = X
+                    END IF          !  if jtop<6
+11                  CONTINUE
+
+                END DO
                 END DO
 
-                IF ( X .GT. 0.085 ) THEN
-                    EXC8( C,R,L ) = EXC8( C,R,L ) + 1
-                END IF
+            ELSE
 
-                DO  J = 1, JTOP
-                    IF ( X .GT. AMAX( C,R,L,J ) ) THEN
-                        DO  K = JTOP, J+1, -1
-                            AMAX( C,R,L,K ) =  AMAX( C,R,L,K-1 ) 
-                        END DO
-                        AMAX( C,R,L,J ) = X
-                        GO TO  11
+!$OMP           PARALLEL DO
+!$OMP&                 DEFAULT( NONE ),
+!$OMP&                 SHARED( NCOLS, NROWS, NLAYS, NMASKS, JTOP, DENOM,
+!$OMP&                         T, GRID, ABAR, MASK, CMAX, CCOL, CROW,
+!$OMP&                         CLAY, EXC8, AMAX ),
+!$OMP&                PRIVATE( C, R, L, M, J, X )
+
+                DO  L = 1, NLAYS
+                DO  R = 1, NROWS
+                DO  C = 1, NCOLS
+
+                    X = DENOM * GRID( C,R,L )
+                    GRID( C,R,L ) = X
+                    ABAR( C,R,L ) = ABAR( C,R,L ) + X
+
+                    DO M = 1, NMASKS
+                        IF ( MASK( C,R,M ) .GT. 0 ) THEN
+                            IF ( X .GT. CMAX( T,M ) ) THEN
+                                CMAX( T,M ) = X
+                                CCOL( T,M ) = C
+                                CROW( T,M ) = R
+                                CLAY( T,M ) = L
+                            END IF
+                        END IF
+                    END DO
+
+                    IF ( X .GT. 0.085 ) THEN
+                        EXC8( C,R,L ) = EXC8( C,R,L ) + 1
                     END IF
-                END DO
-                IF ( JTOP .LT. 6 ) THEN
-                    AMAX( C,R,L,JTOP+1 ) = X
-                END IF          !  if jtop<6
-11              CONTINUE
 
-            END DO
-            END DO
-            END DO
+                    DO  J = 1, JTOP
+                        IF ( X .GT. AMAX( C,R,L,J ) ) THEN
+                            DO  K = JTOP, J+1, -1
+                                AMAX( C,R,L,K ) =  AMAX( C,R,L,K-1 )
+                            END DO
+                            AMAX( C,R,L,J ) = X
+                            GO TO  12
+                        END IF
+                    END DO
+                    IF ( JTOP .LT. 6 ) THEN
+                        AMAX( C,R,L,JTOP+1 ) = X
+                    END IF          !  if jtop<6
+12                  CONTINUE
+
+                END DO
+                END DO
+                END DO
+
+            END IF
 
         ELSE    !  not average:  sum or max
 
@@ -286,45 +407,103 @@ C   begin body of entry point OUTAGG
                 CLAY( T,M ) = 0
             END DO
 
-            DO  L = 1, NLAYS
-            DO  R = 1, NROWS
-            DO  C = 1, NCOLS
+            IF ( NLAYS .EQ. 1 ) THEN        !!  for parallelization
 
-                X = GRID( C,R,L )
-                ABAR( C,R,L ) = ABAR( C,R,L ) + X
+!$OMP           PARALLEL DO
+!$OMP&                 DEFAULT( NONE ),
+!$OMP&                 SHARED( NCOLS, NROWS, NMASKS, JTOP, DENOM,
+!$OMP&                         T, GRID, ABAR, MASK, CMAX, CCOL, CROW,
+!$OMP&                         CLAY, EXC8, AMAX ),
+!$OMP&                PRIVATE( C, R, M, J, X )
 
-                DO M = 1, NMASKS
-                    IF ( MASK( C,R,M ) .GT. 0 ) THEN
-                        IF ( X .GT. CMAX( T,M ) ) THEN
-                            CMAX( T,M ) = X
-                            CCOL( T,M ) = C
-                            CROW( T,M ) = R
-                            CLAY( T,M ) = L
+                DO  R = 1, NROWS
+                DO  C = 1, NCOLS
+
+                    X = GRID( C,R,L )
+                    ABAR( C,R,L ) = ABAR( C,R,L ) + X
+
+                    DO M = 1, NMASKS
+                        IF ( MASK( C,R,M ) .GT. 0 ) THEN
+                            IF ( X .GT. CMAX( T,M ) ) THEN
+                                CMAX( T,M ) = X
+                                CCOL( T,M ) = C
+                                CROW( T,M ) = R
+                                CLAY( T,M ) = L
+                            END IF
                         END IF
+                    END DO
+
+                    IF ( X .GT. 0.085 ) THEN
+                        EXC8( C,R,L ) = EXC8( C,R,L ) + 1
                     END IF
+
+                    DO  J = 1, JTOP
+                        IF ( X .GT. AMAX( C,R,L,J ) ) THEN
+                            DO  K = JTOP, J+1, -1
+                                AMAX( C,R,L,K ) =  AMAX( C,R,L,K-1 )
+                            END DO
+                            AMAX( C,R,L,J ) = X
+                            GO TO  21
+                        END IF
+                    END DO
+                    IF ( JTOP .LT. 6 ) THEN
+                        AMAX( C,R,L,JTOP+1 ) = X
+                    END IF          !  if jtop<6
+21                  CONTINUE
+
+                END DO
                 END DO
 
-                IF ( X .GT. 0.085 ) THEN
-                    EXC8( C,R,L ) = EXC8( C,R,L ) + 1
-                END IF
+            ELSE
 
-                DO  J = 1, JTOP
-                    IF ( X .GT. AMAX( C,R,L,J ) ) THEN
-                        DO  K = JTOP, J+1, -1
-                            AMAX( C,R,L,K ) =  AMAX( C,R,L,K-1 ) 
-                        END DO
-                        AMAX( C,R,L,J ) = X
-                        GO TO  22
+!$OMP           PARALLEL DO
+!$OMP&                 DEFAULT( NONE ),
+!$OMP&                 SHARED( NCOLS, NROWS, NLAYS, NMASKS, JTOP, DENOM,
+!$OMP&                         T, GRID, ABAR, MASK, CMAX, CCOL, CROW,
+!$OMP&                         CLAY, EXC8, AMAX ),
+!$OMP&                PRIVATE( C, R, L, M, J, X )
+
+                DO  L = 1, NLAYS
+                DO  R = 1, NROWS
+                DO  C = 1, NCOLS
+
+                    X = GRID( C,R,L )
+                    ABAR( C,R,L ) = ABAR( C,R,L ) + X
+
+                    DO M = 1, NMASKS
+                        IF ( MASK( C,R,M ) .GT. 0 ) THEN
+                            IF ( X .GT. CMAX( T,M ) ) THEN
+                                CMAX( T,M ) = X
+                                CCOL( T,M ) = C
+                                CROW( T,M ) = R
+                                CLAY( T,M ) = L
+                            END IF
+                        END IF
+                    END DO
+
+                    IF ( X .GT. 0.085 ) THEN
+                        EXC8( C,R,L ) = EXC8( C,R,L ) + 1
                     END IF
-                END DO
-                IF ( JTOP .LT. 6 ) THEN
-                    AMAX( C,R,L,JTOP+1 ) = X
-                END IF          !  if jtop<6
-22              CONTINUE
 
-            END DO
-            END DO
-            END DO
+                    DO  J = 1, JTOP
+                        IF ( X .GT. AMAX( C,R,L,J ) ) THEN
+                            DO  K = JTOP, J+1, -1
+                                AMAX( C,R,L,K ) =  AMAX( C,R,L,K-1 )
+                            END DO
+                            AMAX( C,R,L,J ) = X
+                            GO TO  22
+                        END IF
+                    END DO
+                    IF ( JTOP .LT. 6 ) THEN
+                        AMAX( C,R,L,JTOP+1 ) = X
+                    END IF          !  if jtop<6
+22                  CONTINUE
+
+                END DO
+                END DO
+                END DO
+
+            END IF
 
         END IF          !  if averaging; else (sum or max)
 
@@ -341,11 +520,11 @@ C***********************************************************************
 C   begin body of entry point MAXAGG
 
         ENTRY MAXAGG( JDATE, JTIME, MNAME, RUNLEN, VNAMEO )
-        
+
         DO  J = 1, 6
 
             VNAME = TRIM( VNAMEO ) // SUFFIX( J )
-            
+
             GRID = AMAX( :, :, :, J )
 
             IF ( .NOT. WRITE3( MNAME, VNAME,
@@ -386,5 +565,5 @@ C   begin body of entry point MAXAGG
             CALL M3EXIT ( 'M3AGMASK:AGGREG', JDATE, JTIME, MESG, 2 )
         END IF
 
-        END
+        END SUBROUTINE  MAXREG
 

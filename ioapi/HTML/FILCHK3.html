@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header$ -->
+<!-- "$Id: FILCHK3.html 131 2015-01-26 14:03:44Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> FILCHK3() and filchk3c() </TITLE>
 </HEAD>
@@ -13,21 +13,17 @@
       LEFTMARGIN="15" 
       MARGINWIDTH="15">
 <H1>    FILCHK3() and filchk3c() </H1>
-
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
         
 <H2> Fortran version: </H2>
 <PRE>
     LOGICAL FUNCTION FILCHK3( FNAME, 
-     &                        FTYPE, NCOLS, NROWS, NLAYS, NTHIK ) 
-        CHARACTER*(*)   FNAME     !  file name for query
-        INTEGER         FTYPE     !  
-        INTEGER         NCOLS     !  
-        INTEGER         NROWS     !  
-        INTEGER         NLAYS     !  (or ALLAYS3 (=-1))
-        INTEGER         NTHIK     !  
+     &amp;                        FTYPE, NCOLS, NROWS, NLAYS, NTHIK ) 
+        CHARACTER*(*), INTENT(IN   ) :: FNAME     !  file name for query
+        INTEGER      , INTENT(IN   ) :: FTYPE     !  
+        INTEGER      , INTENT(IN   ) :: NCOLS     !  
+        INTEGER      , INTENT(IN   ) :: NROWS     !  
+        INTEGER      , INTENT(IN   ) :: NLAYS     !  (or ALLAYS3 (=-1))
+        INTEGER      , INTENT(IN   ) :: NTHIK     !  
 </PRE><P> 
 
 <H2> C version: </H2>
@@ -46,8 +42,8 @@ int filchk3c( const char * fname ,
     <CODE>FTYPE</CODE> and appropriate dimensions <CODE>NCOLS, NROWS, NLAYS,
     NTHIK</CODE> (with checking of just those that are appropriate for each
     <CODE>FTYPE</CODE>). Layer-checking may be suppressed by setting
-    <CODE>NLAYS=ALLAYS3</CODE>.  Reports details of what was wrong to
-    the program log.
+    <CODE>NLAYS=ALLAYS3</CODE>.  Reports details of what was wrong 
+    (if anything) to the program log.
     <P> 
 
     Returns .TRUE. (or 1) iff the file is already open, and has the
@@ -60,6 +56,8 @@ int filchk3c( const char * fname ,
     </PRE><P>
 
 <H2> Preconditions: </H2>
+
+    <CODE><A HREF = "M3UTILIO.html">USE M3UTILIO</A></CODE> or
     <A HREF = "INCLUDE.html#iodecl"> 
     <CODE>INCLUDE 'IODECL3.EXT'</CODE> </A>  for Fortran, or 
     <CODE>#include &quot;iodecl3.h&quot;</CODE> for C.
@@ -70,10 +68,15 @@ int filchk3c( const char * fname ,
     <P> 
     
     FNAME must have length at most 16.
-    <P> 
+    <P>
 
-    FNAME must already have been opened by 
-    <A HREF = "OPEN3.html"> OPEN3() or open3c() </A>.
+    Call
+    <BLOCKQUOTE>
+    <A HREF = "OPEN3.html"> <CODE>OPEN3( FNAME... )</CODE></A><BR>
+    <A HREF = "DESC3.html"> <CODE>DESC3( FNAME )</CODE></A>
+    </BLOCKQUOTE>
+    prior to call.  Don't tamper with <CODE>FDESC3</CODE> variables
+    between <CODE>DESC3( FNAME )</CODE> and <CODE>GRDCHK3( FNAME... )</CODE>
     <P> 
 
 
@@ -88,23 +91,28 @@ int filchk3c( const char * fname ,
 
 
 <H2> Fortran Usage: </H2>
-
+        
+    See <A HREF = "SAMPLE.html">sample</A> program
+    <A HREF = "VERTINTEGRAL.txt">VERTINTEGRAL</A> 
+    for an additional usage example.
+    <P>
 
 <PRE>
     ...
-    INCLUDE 'IODECL3.EXT'
-    INCLUDE 'PARMS3.EXT'
+    USE M3UTILIO
     ...
     INTEGER NCOLS, NROWS, NLAYS, NTHIK
     ...
     ...
-    IF ( .NOT.OPEN3( 'MYFILE', FSREAD3, 'Myprogram' ) ) THEN
-C              MYFILE could not be opened for read-only
+    IF ( .NOT.OPEN3( 'MYFILE', ... ) ) THEN
+        !!      MYFILE could not be opened
         ...
-    ELSE IF ( .NOT. FILCHK3( 'MYFILE', 
- &amp;                       GRDDED3, NCOLS, NROWS, NLAYS, NTHIK ) ) THEN
-C            Either the file type for 'MYFILE' was not GRIDDED, or 
-C            it had unexpected dimensions (see log for more details).
+    ELSE IF ( .NOT. DESC3( 'MYFILE' ) ) THEN
+        !!    ...DESC3() failed for MYFILE
+        ...
+    ELSE IF ( .NOT. FILCHK3( 'MYFILE',  GRDDED3, NCOLS, NROWS, NLAYS, NTHIK ) ) THEN
+        !!    Either the file type for 'MYFILE' was not GRIDDED, or 
+        !!    it had unexpected dimensions (see log for more details).
         ...
     END IF
     ...
@@ -125,7 +133,7 @@ C            it had unexpected dimensions (see log for more details).
             /*  MYFILE successfully opened for read-only  */
         ...
         }
-    if ( ! filchk3c( &quot;BFILE&quot;, 
+    if ( ! filchk3c( &quot;MYFILE&quot;, 
                      GRDDED3, ncols, nrows, nlays, nthik  ) )
         {
             /*  Either the file type for &quot;MYFILE&quot; was not GRIDDED, or 

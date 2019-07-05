@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header$ -->
+<!-- "$Id: index.html 11 2014-03-31 18:42:12Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE>  
     The EDSS/Models-3 I/O&nbsp;API 
@@ -15,19 +15,12 @@
       LEFTMARGIN="15" 
       MARGINWIDTH="15">
 
-<!--#include virtual="/INCLUDES/header.html" -->
-
-<CENTER>
 <H1>  The EDSS/Models-3  I/O&nbsp;API </H1>
-
-      <A REL="author" HREF="/staff/coats/">
-      Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.</A>
-</CENTER>
 
 <HR> <!----------------------------------------------------------------->
 
-     <U>NOTES:</U>
      <BLOCKQUOTE><STRONG>
+     <U>NOTES:</U>
      <DL>
          <DT> The Models-3 I/O&nbsp;API is <EM>not a data format&nbsp;!!</EM>
          <P>
@@ -44,8 +37,6 @@
 
 <HR> <!----------------------------------------------------------------->
 
-<H2><A NAME = "contents">Contents</A></H2>
-
     <UL>
         <LI> <A HREF = "AA.html"          >User (Programming) Manual</A>
         <LI> <A HREF = "TUTORIAL.html"    >Tutorial</A>
@@ -61,16 +52,14 @@
         <LI> <A HREF = "ERRORS.html"      >Trouble-Shooting</A>
         <LI> <A HREF = "MCPL.html"        >MCPL: an I/O&nbsp;API 
                                            output module for MM5</A>
-        <LI>  <A HREF = "M3_IOAPI.html"   >Layering the WRF I/O&nbsp;API
-                                           on Top of the Models-3/EDSS
-                                           I/O&nbsp;API</A>
         <LI> <A HREF = "NOTICES.html"     >Notices:  Copyright,
                                            Acknowledgements</A>
+        <LI> <A HREF = "WRF_IOAPI.html"   >Layering the WRF I/O&nbsp;API
+                                           on Top of the Models-3/EDSS
+                                           I/O&nbsp;API</A>
      </UL> 
 
 <HR> <!----------------------------------------------------------------->
-
-<H2>Abstract</H2>
 
     The Models-3/EDSS Input/Output Applications Programming Interface 
     (I/O&nbsp;API) provides the environmental model developer with an 
@@ -153,8 +142,10 @@
                         observations or source level emissions)
 
                   <LI>  <VAR>sparse matrix</VAR> (as used in the 
-                        <A HREF = "../emissions/index.html">SMOKE</A> 
-                        emissions model)
+                        SMOKE emissions model)
+
+                  <LI>  <VAR>User customized</VAR> to cover other
+                        potential applications.
 
               </UL>
 
@@ -205,7 +196,28 @@
     for moving-mesh plume-in-grid modeling).
     <P> 
     
-<!--#include virtual="/INCLUDES/footer.html" -->
+    These web pages are copyright &copy; 1992-2002 MCNC and
+    Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr., 2003-2005 by Baron Advanced
+    Meteorological Systems (hereinafter, BAMS), &copy; 2005-2013
+    Carlie&nbsp;J.&nbsp;Coats, Jr., and &copy; 2014- UNC Institute
+    for the Environment.
+    The I/O&nbsp;API source code and
+    documentation are copyright 1992-2002 MCNC and
+    Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr., 2003-2013 by Baron Advanced
+    Meteorological Systems (hereinafter, BAMS), &copy; 2005-2013
+    Carlie&nbsp;J.&nbsp;Coats, Jr.,, and &copy; 2014- UNC Institute
+    for the Environment, and distributed under the
+    <A HREF="https://www.gnu.org/licenses/lgpl-2.1.html">
+    GNU Lesser (library) Public License (LGPL) Version&nbsp;2.1</A>,
+    subject to copyright-statement retention constraints.
+    See <A HREF = "NOTICES.html">the <EM>Notices:  Copyright, and
+    Acknowledgements</EM> page.</A>
+    <P>
+    <P> 
+    
+    <PRE>
+    $Id: index.html 11 2014-03-31 18:42:12Z coats $
+    </PRE>
 
  </BODY>
 </HTML>

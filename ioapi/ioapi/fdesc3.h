@@ -1,12 +1,12 @@
 
 /************************************************************************
-C  INCLUDE FILE  fdesc3.h
-C
-C    Version "@(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/fdesc3.h,v 1.5 2000/12/13 20:57:17 smith_w Exp $"
-C    EDSS/Models-3 I/O API.  Copyright (C) 1992-1999 MCNC
-C    Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C    See file "LGPL.txt" for conditions of use.
-C
+C  VERSION "$Id: fdesc3.h 1 2014-03-14 20:22:54Z coats $"
+C    EDSS/Models-3 I/O API Version 3.1.
+C       Copyright (C) 1992-2002 MCNC,
+C       (C) 1992-2002,2005-2013  Carlie J. Coats, Jr., and
+C       (C) 2003-2010 Baron AAdvanced Meteorological Systems, LLC (BAMS)
+C       Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C       See file "LGPL.txt" for conditions of use.
 C
 C    DO NOT EDIT !!
 C

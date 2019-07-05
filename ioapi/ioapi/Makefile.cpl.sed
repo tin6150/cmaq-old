@@ -1,5 +1,5 @@
 #.........................................................................
-# VERSION "@(#)$Header$"
+# VERSION "$Id: Makefile.cpl.sed 186 2015-04-28 19:20:36Z coats $"
 #    EDSS/Models-3 I/O API Version 3.
 #.........................................................................
 # COPYRIGHT
@@ -125,13 +125,14 @@ lustr.f	      m3warn.f      name2fid.f    opnlist3.f    pcoef.f	      \
 pgrdsum.f     pmatvec.f     poly.f        promptdfile.f promptffile.f \
 promptgrid.f  promptmfile.f rdatt3.f      rdbndary.f    rdbuf3.f      \
 rdcustom.f    rddict3.f     rdgrdded.f    rdiddata.f    rdsmatrx.f    \
-rdtflag.f     readsmet.f    realist.f     scanint.f     sec2time.f    \
-setsphere.f   str2dble.f    skipl.f       smatvec.f     str2int.f     \
-str2real.f    strlist.f     sync3.f       syncfid.f     synchtao.f    \
-time2sec.f    trimlen.f     ungridb.f     ungridi.f     upcase.f      \
-utm2ll.f      wratt3.f      wrbndary.f    wrbuf3.f      wrcustom.f    \
-wrdict3.f     wrgrdded.f    wriddata.f    wrsmatrx.f    wrtflag.f     \
-xtbuf3.f      xtract3.f     year4.f       
+rdtflag.f     readsmet.f    realist.f     runspec.f     scanint.f     \
+sec2time.f    setsphere.f   str2dble.f    skipl.f       smatvec.f     \
+splitline.f   str2int.f     str2real.f    strlist.f     sync3.f       \
+syncfid.f     synchtao.f    time2sec.f    trimlen.f     ungridb.f     \
+ungridi.f     upcase.f      utm2ll.f      wratt3.f      wrbndary.f    \
+wrbuf3.f      wrcustom.f    wrdict3.f     wrgrdded.f    wriddata.f    \
+wrsmatrx.f    wrtflag.f     xtbuf3.f      xtract3.f     year4.f       \
+chkbuf3.f
 
 FSRC = \
 cbarnes1.F    cbarnesN.F    check3.F      crtfil3.F     crlf.F       \
@@ -262,10 +263,11 @@ init3.o:  ${EXTS} ${IODIR}/Makeinclude.${BIN}
 	cd ${OBJDIR}; $(FC) -c $(FPPFLAGS) $(FFLAGS) $(VFLAG) ${IODIR}/init3.F -o $@
 
 matxatts.o:  m3utilio.o
+runspec.o :  m3utilio.mod
 
 
 $(LIB): $(OBJ)
-	cd ${OBJDIR}; $(AR) $(ARFLAGS) ${LIB} ${OBJ} ; ranlib ${LIB}
+	cd $(OBJDIR); $(AR) $(ARFLAGS) $(LIB) $(OBJ)
 
 $(OBJDIR):
 	mkdir -p $(OBJDIR)

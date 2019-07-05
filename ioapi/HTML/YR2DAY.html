@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/YR2DAY.html,v 1.1.1.1 2001/12/05 20:25:43 coats Exp $ -->
+<!-- "$Id: YR2DAY.html 131 2015-01-26 14:03:44Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> YR2DAY() </TITLE>
 </HEAD>
@@ -15,14 +15,10 @@
 
 <H1>    YR2DAY() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
     REAL FUNCTION  YR2DAY( YYYY )
-        INTEGER   YYYY
+        INTEGER, INTENT(IN   ) :: YYYY
 </PRE><P> 
 
 <H2> C version: </H2>
@@ -33,7 +29,7 @@ by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 #define   YR2DAY yr2day_
 #elif  __sgi || __sun || __osf__ || __mips__
 #define   YR2DAY yr2day_
-#enduf
+#endif
 
     float YR2DAY( const int *yy )
 

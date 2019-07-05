@@ -1,4 +1,4 @@
-# @(#)$Header$
+# VERSION "$Id: Makeinclude.Linux2_ia64_mp 1 2014-03-14 20:22:54Z coats $"
 #
 AR   = ar
 CC   = ecc
@@ -6,6 +6,8 @@ FC   = efc -auto -w90 -cm
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
+
+MODI = -I       ## Module-include-directory command
 
 MFLAGS    = -tpp2
 OMPFLAGS  = -openmp

@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/TRIMLEN.html,v 1.1.1.1 2001/12/05 20:25:41 coats Exp $ -->
+<!-- "$Id: TRIMLEN.html 131 2015-01-26 14:03:44Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> TRIMLEN() </TITLE>
 </HEAD>
@@ -15,16 +15,14 @@
 
 <H1>    TRIMLEN() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
     INTEGER FUNCTION TRIMLEN( ASTRING )
-        CHARACTER*(*)   ASTRING  !  string to find effective length for
-</PRE><P>
-Note that this is equivalent to new Fortran-90 intrinsic
+        CHARACTER*(*), INTENT(IN   ) :: ASTRING  !  string to find effective length for
+</PRE>
+<P>
+
+Note that this is equivalent to Fortran-90 intrinsic
 <CODE>LEN_TRIM()</CODE>; furthermore note that Fortran-90 added new
 intrinsics <CODE>TRIM()</CODE>, <CODE>ADJUSTL()</CODE>, and
 <CODE>ADJUSTR()</CODE> that frequently help in directly doing the tasks
@@ -43,7 +41,7 @@ the programmer is really attempting.
     <STRONG>Deprecated as Fortran-77-only</STRONG>, since the new
     Fortran-90 intrinsic <CODE>LEN_TRIM()</CODE> has exactly the same
     meaning, and the additional new Fortran-90 intrinsic character
-    string function<CODE>LEN_TRIM()</CODE> that trims trailing blanks
+    string function <CODE>TRIM()</CODE> that trims trailing blanks
     can be used to replace expressions like
     <CODE>ASTRING(&nbsp;1:LEN_TRIM(&nbsp;ASTRING&nbsp;)&nbsp;)</CODE>
     with the much simpler <CODE>TRIM(&nbsp;ASTRING&nbsp;)</CODE>.

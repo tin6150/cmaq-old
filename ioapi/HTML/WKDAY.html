@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/WKDAY.html,v 1.1.1.1 2001/12/05 20:25:42 coats Exp $ -->
+<!-- "$Id: WKDAY.html 131 2015-01-26 14:03:44Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> WKDAY() and wkdayc() </TITLE>
 </HEAD>
@@ -14,15 +14,11 @@
       MARGINWIDTH="15">
 <H1>    WKDAY() and wkdayc() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 
 <H2> Fortran version: </H2>
 <PRE>
     INTEGER FUNCTION  WKDAY( JDATE )
-        INTEGER   JDATE	!  Julian date (YYYYDDD)
+        INTEGER, INTENT(IN   ) :: JDATE	!  Julian date (YYYYDDD)
 </PRE><P> 
 
 <H2> C version:   </H2>
@@ -58,12 +54,11 @@ by Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 <H2> Fortran Usage: </H2>
 <PRE>
     ...
+    USE M3UTILIO    !!  or:  INTEGER, EXTERNAL :: WKDAY
     ...
-    INTEGER	  WKDAY
     INTEGER   JDATE, IDAY
     ...
-    IDAY = WKDAY( 1988001 )
-C	    Now IDAY is day of the week for Jan. 1, 1988
+    IDAY = WKDAY( 1988001 ) !! Now IDAY is day of the week for Jan. 1, 1988
     ...
 </PRE><P> 
 

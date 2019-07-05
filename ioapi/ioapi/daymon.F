@@ -2,14 +2,14 @@
       SUBROUTINE DAYMON( JDATE, MNTH, MDAY )
  
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: daymon.F 1 2014-03-14 20:22:54Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2007 Baron Advanced Meteorological Systems
+C (C) 2003-2013 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  function body starts at line  47
+C  function body starts at line  49
 C
 C  FUNCTION:
 C
@@ -24,16 +24,20 @@ C       2/2002 Unification by CJC with global-climate DAYMON, which
 C       uses a 360-day "year"
 C
 C       Version 1/2007 by CJC:  handle negative JDATEs correctly
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
+C
+C       Version 5/2013 by CJC:  handle standard-year cases
 C***********************************************************************
  
 
       IMPLICIT NONE
 
 C...........   ARGUMENTS and their descriptions:
-        
-        INTEGER	JDATE	!  Julian date, format YYYYDDD = 1000*Year + Day
-        INTEGER MNTH    !  month (1...12)
-        INTEGER MDAY    !  day-of-month (1...28,29,30,31)
+
+        INTEGER, INTENT(IN   ) :: JDATE	!  Julian date, format YYYYDDD = 1000*Year + Day
+        INTEGER, INTENT(  OUT) :: MNTH  !  month (1...12)
+        INTEGER, INTENT(  OUT) :: MDAY  !  day-of-month (1...28,29,30,31)
 
 
 C...........   SCRATCH LOCAL VARIABLES:
@@ -44,7 +48,7 @@ C...........   SCRATCH LOCAL VARIABLES:
 C***********************************************************************
 C   begin body of subroutine  DAYMON
       
-        IF ( JDATE .GE. 1000 ) THEN
+        IF ( JDATE .GT. -1000 ) THEN
             IDATE = JDATE
             IBIAS = 0
         ELSE
@@ -63,7 +67,9 @@ C   begin body of subroutine  DAYMON
 #ifndef IO_360
       YEAR = JDATE / 1000
       DAY  = MOD( IDATE, 1000 )
-      IF      ( MOD( YEAR, 400 ) .EQ. 0 ) THEN
+      IF      ( YEAR .LE. 2 ) THEN      !!  "standard-year data
+          L = 365
+      ELSE IF      ( MOD( YEAR, 400 ) .EQ. 0 ) THEN
           L = 366
       ELSE IF ( MOD( YEAR, 100 ) .EQ. 0 ) THEN
           L = 365
@@ -81,5 +87,5 @@ C   begin body of subroutine  DAYMON
 #endif
  
       RETURN
-      END
+      END SUBROUTINE DAYMON
 

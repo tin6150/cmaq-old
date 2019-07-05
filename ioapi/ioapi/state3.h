@@ -3,8 +3,9 @@
   INCLUDE FILE  state3.h
 
 COPYRIGHT
-    (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-    (C) 2003-2005 Baron Advanced Meteorological Systems.
+    (C) 1992-2002 MCNC,
+    (C) 1992-2002,2005-2013 Carlie J. Coats, Jr., and
+    (C) 2003-2010 Baron Advanced Meteorological Systems.
     Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
     See file "LGPL.txt" for conditions of use.
 
@@ -51,7 +52,9 @@ REVISION HISTORY:
     upper-case Fortran  symbols, prepend _C to common blocks.
 
     Modified 3/2006 by CJC:  change order of "versn" in IOAPI_CSTATE3
-    ot match storage order in STATE3.EXT / CSTATE3 /
+    to match storage order in STATE3.EXT / CSTATE3 /
+
+    Revised 4/2011 by CJC  to add state for full buffered-file file descriptions.
 
 ************************************************************************/
 
@@ -97,6 +100,9 @@ typedef struct{
               double yorig[ MXFILE3 ] ;
               double xcell[ MXFILE3 ] ;
               double ycell[ MXFILE3 ] ;
+              FINT   vgtyp[ MXFILE3 ] ;
+              FREAL  vgtop[ MXFILE3 ] ;
+              FREAL  vglvs[ MXFILE3 ][ MXLAYS3+1 ] ;
               FINT   finit ;
               FINT   count ;
               FINT   curdate ;
@@ -150,6 +156,7 @@ typedef struct{
               M3Name  flist[ MXFILE3 ] ;
               M3Name  gdnam[ MXFILE3 ] ;
               M3Name  vlist[ MXFILE3 ][ MXVARS3 ] ;
+              M3Name  units[ MXFILE3 ][ MXVARS3 ] ;
               M3Line  versn ;
               }  IOAPI_CSTATE3 ;                      /** for Fortran COMMON CSTATE3 **/
 

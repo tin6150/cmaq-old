@@ -2,14 +2,14 @@
         PROGRAM DAYAGG
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: dayagg.f 47 2014-10-03 22:21:37Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2008 Baron Advanced Meteorological Systems, LLC
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line  125
+C  program body starts at line  101
 C
 C  DESCRIPTION:
 C       Program DAYAGG to construct "seasonal standard day" weighted
@@ -39,43 +39,38 @@ C  SUBROUTINES AND FUNCTIONS CALLED:
 C
 C
 C  REVISION  HISTORY:
-C       Prototype 12/6/2000 by Carlie J. Coats, Jr., NCSC
+C       Prototype 12/6/2000 by Carlie J. Coats, Jr., NCSC, adapted
+C       from "m3tproc'
+C
 C       Version   11/2001 by CJC for I/O API Version 2.1
+C
 C       Version   11/2005 by CJC:  eliminate unused vbles
+C
 C       Version   06/2008 by CJC:  output starting date is
 C         1 = 1000*YEAR + DAY
+C
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
+C
+C       Version 10/2014 by CJC:  Fix handling of ENV*() calls.
 C***********************************************************************
+
+      USE M3UTILIO
 
       IMPLICIT NONE
 
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'      ! I/O API constants
-      INCLUDE 'FDESC3.EXT'      ! I/O API file description data structure
-      INCLUDE 'IODECL3.EXT'     ! I/O API function declarations
-
-
 C...........   PARAMETERS and their descriptions:
 
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id:: dayagg.f 251 2008-06-16 19:33:22Z coats@bdsl            $'
-     &  /
-
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-        LOGICAL  GETYN, INTLIST, REALIST, STRLIST
-        INTEGER  ENVINT, INDEX1, SEC2TIME, TIME2SEC
-        EXTERNAL GETYN, INTLIST, REALIST, STRLIST,
-     &           ENVINT, INDEX1, SEC2TIME, TIME2SEC
+        CHARACTER*16, PARAMETER :: PNAME   = 'DAYAGG'
 
 C...........   LOCAL VARIABLES and their descriptions:
 
-        INTEGER         STTIME
-        INTEGER         TSTEP
-        INTEGER         RUNLEN
-        INTEGER         NFILES, NSTEPS, NVARS
-        INTEGER         JDATE, JTIME
+        INTEGER     STTIME
+        INTEGER     TSTEP
+        INTEGER     RUNLEN
+        INTEGER     NFILES, NSTEPS, NVARS
+        INTEGER     JDATE, JTIME
+        LOGICAL     EFLAG
 
         CHARACTER*16  VNAME( MXVARS3 )
         CHARACTER*16  UNITS( MXVARS3 )
@@ -111,17 +106,11 @@ C...........   LOCAL VARIABLES and their descriptions:
 
         CHARACTER*256   MESG
 
-C...........   STATEMENT FUNCTIONS:  REAL, REAL*8 "definitely unequal"
-
-        LOGICAL         DBLERR
-        REAL*8          P, Q
-
-        DBLERR( P, Q ) =
-     &      ( (P - Q)**2  .GT.  1.0E-10*( P*P + Q*Q + 1.0E-5 ) )
 
 C***********************************************************************
 C   begin body of program DAYAGG
 
+        EFLAG = .FALSE.
         I = INIT3()
         WRITE( *,'( 5X, A )' )
      &  ' ',
@@ -146,101 +135,116 @@ C   begin body of program DAYAGG
      &  '     setenv DATELIST <list of starting dates>',
      &  ' For each of the input files,',
      &  '     setenv <logical name> <physical name>',
-     &  ' ',
+     &' ',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
+     &' ',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
+     &' ',
      &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
-     &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2008 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
-     &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: dayagg.f 47 2014-10-03 22:21:37Z coats                  $',
      &' '
 
         IF ( .NOT. GETYN( 'Continue with program?', .TRUE. ) ) THEN
-            CALL M3EXIT( 'DAYAGG', 0, 0,
+            CALL M3EXIT( PNAME, 0, 0,
      &                   'Program terminated at user request', 2 )
         END IF
 
         STTIME = ENVINT( 'STTIME',
      &                   'Starting TIME (HHMMSS)', 0, ESTAT )
-        IF ( ESTAT .NE. 0 ) THEN
-            MESG = 'Invalid/missing environment variable "STTIME"'
-            CALL M3EXIT( 'DAYAGG', 0,0, MESG, 2 )
+        IF ( ESTAT .GT. 0 ) THEN
+            MESG  = 'Invalid/missing environment variable "STTIME"'
+            EFLAG = .TRUE.
+            CALL M3MESG( MESG )
         END IF
 
         TSTEP = ENVINT( 'TSTEP',
      &                  'TIME-STEP (HHMMSS)', 10000, ESTAT )
         IF ( ESTAT .NE. 0 ) THEN
-            MESG = 'Invalid/missing environment variable "TSTEP"'
-            CALL M3EXIT( 'DAYAGG', 0,0, MESG, 2 )
+            MESG  = 'Invalid/missing environment variable "TSTEP"'
+            EFLAG = .TRUE.
+            CALL M3MESG( MESG )
         END IF
 
         RUNLEN = ENVINT( 'RUNLEN',
      &                  'Run duration (HHMMSS)', 0, ESTAT )
         IF ( ESTAT .NE. 0 ) THEN
-            MESG = 'Invalid/missing environment variable "RUNLEN"'
-            CALL M3EXIT( 'DAYAGG', 0,0, MESG, 2 )
+            MESG  = 'Invalid/missing environment variable "RUNLEN"'
+            EFLAG = .TRUE.
+            CALL M3MESG( MESG )
         END IF
 
         IF ( .NOT. STRLIST( 'VBLELIST',
      &                      'List of extracted output variables',
      &                      MXVARS3, NVARS, VNAME ) ) THEN
-            CALL M3EXIT( 'DAYAGG', 0, 0,
-     &                   'Bad environment vble "VBLELIST"', 2 )
+            MESG  = 'Bad environment vble "VBLELIST"'
+            EFLAG = .TRUE.
+            CALL M3MESG( MESG )
         END IF
 
         IF ( .NOT. STRLIST( 'FILELIST',
      &                      'List of input-file logical names',
      &                      MXFILE3, NFILES, FNAME ) ) THEN
-            CALL M3EXIT( 'DAYAGG', 0, 0,
-     &                   'Bad environment vble "FILELIST"', 2 )
+            MESG  = 'Bad environment vble "FILELIST"'
+            EFLAG = .TRUE.
+            CALL M3MESG( MESG )
         END IF
 
         IF ( .NOT. INTLIST( 'DATELIST',
      &                      'List of input-file starting dates',
      &                      MXFILE3, N, SDATES ) ) THEN
-            CALL M3EXIT( 'DAYAGG', 0, 0,
-     &                   'Bad environment vble "DATELIST"', 2 )
+            MESG  = 'Bad environment vble "DATELIST"'
+            EFLAG = .TRUE.
+            CALL M3MESG( MESG )
         ELSE IF ( N .NE. NFILES ) THEN
             WRITE ( MESG, '( A, I4, 2X, A, I4 )' )
      &         'Inconsistency:  # of input files:', NFILES,
      &         '# of DATES:', N
-            CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
+            EFLAG = .TRUE.
+            CALL M3MESG( MESG )
         END IF
 
         IF ( .NOT. REALIST( 'WGTSLIST',
      &                      'List of input-file weighting factors',
      &                      MXFILE3, N, WEIGHTS ) ) THEN
-            CALL M3EXIT( 'DAYAGG', 0, 0,
-     &                   'Bad environment vble "WGTSLIST"', 2 )
+            MESG  = 'Bad environment vble "WGTSLIST"'
+            EFLAG = .TRUE.
+            CALL M3MESG( MESG )
         ELSE IF ( N .NE. NFILES ) THEN
             WRITE ( MESG, '( A, I4, 2X, A, I4 )' )
      &         'Inconsistency:  # of input files:', NFILES,
      &         '# of WEIGHTS:', N
-            CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
+            EFLAG = .TRUE.
+            CALL M3MESG( MESG )
+        END IF
+
+        IF ( EFLAG ) THEN
+            CALL M3EXIT( PNAME, 0,0, 'Bad environment', 2 )
         END IF
 
 
 C...............  Open input files
 
         N = 1
-        IF ( .NOT. OPEN3( FNAME( N ), FSREAD3, 'DAYAGG' ) ) THEN
+        IF ( .NOT. OPEN3( FNAME( N ), FSREAD3, PNAME ) ) THEN
             MESG = 'Could not open ' // FNAME( N )
-            CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         ELSE IF ( .NOT. DESC3( FNAME( N ) ) ) THEN
             MESG = 'Could not get description for ' // FNAME( N )
-            CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
         NCOLS1 = NCOLS3D
@@ -261,11 +265,11 @@ C...............  Open input files
             IF ( 0 .GE. I ) THEN
                MESG = 'Variable "' // TRIM( VNAME( V ) )  //
      &                '" not available in file ' // FNAME( N )
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             ELSE IF ( VTYPE3D( I ) .NE. M3REAL ) THEN
                 MESG = 'Variable "' // TRIM( VNAME( V ) )  //
      &                '" not of type REAL'
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
             UNITS( V ) = UNITS3D( I )
             VDESC( V ) = VDESC3D( I )
@@ -274,77 +278,22 @@ C...............  Open input files
 
         DO  N = 2, NFILES       !  open/check the rest of the input files
 
-            IF ( .NOT. OPEN3( FNAME(N), FSREAD3, 'DAYAGG' ) ) THEN
+            IF ( .NOT. OPEN3( FNAME(N), FSREAD3, PNAME ) ) THEN
                 MESG = 'Could not open ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             ELSE IF ( .NOT. DESC3( FNAME(N) ) ) THEN
                 MESG = 'Could not get description for ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( NCOLS1 .NE. NCOLS3D ) THEN
-                MESG = 'NCOLS mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( NROWS1 .NE. NROWS3D ) THEN
-                MESG = 'NROWS mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( NLAYS1 .NE. NLAYS3D ) THEN
-                MESG = 'NLAYS mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( GDTYP1 .NE. GDTYP3D ) THEN
-                MESG = 'GDTYP mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( DBLERR( P_ALP1, P_ALP3D ) ) THEN
-                MESG = 'P_ALP mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( DBLERR( P_BET1, P_BET3D ) ) THEN
-                MESG = 'P_BET mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( DBLERR( P_GAM1, P_GAM3D ) ) THEN
-                MESG = 'P_GAM mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( DBLERR( XCENT1, XCENT3D ) ) THEN
-                MESG = 'XCENT mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( DBLERR( YCENT1, YCENT3D ) ) THEN
-                MESG = 'YCENT mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( DBLERR( XORIG1, XORIG3D ) ) THEN
-                MESG = 'XORIG mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( DBLERR( YORIG1, YORIG3D ) ) THEN
-                MESG = 'YORIG mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( DBLERR( XCELL1, XCELL3D ) ) THEN
-                MESG = 'XCELL mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
-            END IF
-
-            IF ( DBLERR( YCELL1, YCELL3D ) ) THEN
-                MESG = 'YCELL mismatch, file ' // FNAME(N)
-                CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
+            ELSE IF ( .NOT.FILCHK3( FNAME(N),  GRDDED3,
+     &                      NCOLS1, NROWS1, NLAYS1, NTHIK3D ) ) THEN
+                MESG = 'Inconsistent dimensions  for ' // FNAME(N)
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
+            ELSE IF ( .NOT.GRDCHK3( FNAME(N),
+     &                      P_ALP1, P_BET1, P_GAM1, XCENT1, YCENT1,
+     &                      XORIG1, YORIG1, XCELL1, YCELL1,
+     &                      NLAYS1, VGTYP3D, VGTOP3D, VGLVS3D ) ) THEN
+                MESG = 'Inconsistent coord/grid  for ' // FNAME(N)
+                CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
             END IF
 
             DO  V = 1, NVARS
@@ -352,7 +301,7 @@ C...............  Open input files
      &                              NVARS3D, VNAME3D ) ) THEN
                    MESG = 'Variable "' // TRIM( VNAME( V ) )  //
      &                '" not available in file ' // FNAME( N )
-                    CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
+                    CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
                 END IF
             END DO
 
@@ -373,9 +322,9 @@ C...............  Open the output file
             VTYPE3D( V ) =  M3REAL
         END DO
 
-        IF ( .NOT. OPEN3( 'AGGFILE', FSUNKN3, 'DAYAGG' ) ) THEN
+        IF ( .NOT. OPEN3( 'AGGFILE', FSUNKN3, PNAME ) ) THEN
             MESG = 'Could not open AGGFILE'
-            CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
 
@@ -404,7 +353,7 @@ C...............  File-related setup:
         IF ( ESTAT .NE. 0 ) THEN
             WRITE( MESG, '( A, I10)' )
      &               'Buffer allocation failed:  STAT=', ESTAT
-            CALL M3EXIT( 'DAYAGG', 0, 0, MESG, 2 )
+            CALL M3EXIT( PNAME, 0, 0, MESG, 2 )
         END IF
 
 
@@ -421,7 +370,7 @@ C...............  Process the requested time period and variables:
      &                            JDATES(N), JTIMES(N), TBUF ) ) THEN
                     MESG = 'Could not read "' // TRIM( VNAME(V) )//
      &                     '" from file ' // FNAME(N)
-                    CALL M3EXIT( 'DAYAGG', JDATE, JTIME, MESG, 2 )
+                    CALL M3EXIT( PNAME, JDATE, JTIME, MESG, 2 )
                 END IF
 
                 DO  L = 1, NLAYS1
@@ -439,7 +388,7 @@ C...............  Process the requested time period and variables:
      &                                ABUF ) ) THEN
                         MESG = 'Could not read "'//TRIM( VNAME(V) )//
      &                         '" from file ' // FNAME(N)
-                        CALL M3EXIT( 'DAYAGG', JDATE, JTIME, MESG, 2 )
+                        CALL M3EXIT( PNAME, JDATE, JTIME, MESG, 2 )
                     END IF
 
                     DO  L = 1, NLAYS1
@@ -457,7 +406,7 @@ C...............  Process the requested time period and variables:
      &                             JDATE, JTIME, TBUF )) THEN
                     MESG = 'Could not write "' // TRIM( VNAME(V) )//
      &                     '" to file AGGFILE'
-                    CALL M3EXIT( 'DAYAGG', JDATE, JTIME, MESG, 2 )
+                    CALL M3EXIT( PNAME, JDATE, JTIME, MESG, 2 )
                 END IF
 
             END DO      !  end loop on variables
@@ -469,8 +418,8 @@ C...............  Process the requested time period and variables:
 
         END DO          !  end loop on time steps
 
-        CALL M3EXIT( 'DAYAGG', 0, 0,
+        CALL M3EXIT( PNAME, 0, 0,
      &               'Successful completion of program DAYAGG', 0 )
 
-        END
+        END PROGRAM DAYAGG
 

@@ -2,75 +2,90 @@
         PROGRAM GREGDATE
 
 C***********************************************************************
-C Version "@(#)$Header$ $Id: gregdate.f 49 2007-07-06 16:20:50Z coats@borel $"
+C Version "$Id: gregdate.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr, and
-C (C) 2002-2007 Baron Advanced Meteorological Systems, LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line 73
+C  program body starts at line 58
 C
 C  DESCRIPTION:
-C	interactively enter julian date YYYYDD;
-C	get month, day, year back.
+C       interactively enter julian date YYYYDD;
+C       get month, day, year back.
 C
 C  PRECONDITIONS REQUIRED:
 C       none
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
-C	MMDDYY, GETNUM, GETMENU, STR2INT
+C       MMDDYY, GETNUM, GETMENU, STR2INT
 C
 C  REVISION  HISTORY:
-C	Prototype  8/95 by CJC
+C       Prototype  8/95 by CJC
 C       Enhanced   6/98 to support YESTERDAY, TODAY, TOMORROW.
 C       Version  11/2001 by CJC for I/O API Version 2.1
+C       Version  06/2011 by CJC: Fortran-90 for I/O API 3.1
 C***********************************************************************
+
+      USE M3UTILIO
 
       IMPLICIT NONE
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER		IARGC
-        INTEGER		GETNUM
-        LOGICAL		ISDSTIME
-        INTEGER		STR2INT
-        CHARACTER*14    MMDDYY
-        INTEGER		WKDAY
+        INTEGER :: IARGC
 
-        EXTERNAL	ISDSTIME, GETNUM, MMDDYY, STR2INT, WKDAY
+C...........   Local variables, PARAMETERs and their descriptions:
 
-C...........   PARAMETERS and their descriptions:
-
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id:: gregdate.f 49 2007-07-06 16:20:50Z coats@borel          $'
-     &  /
-
-
-C...........   LOCAL VARIABLES and their descriptions:
-
-        INTEGER		DATE, DAY, JTIME
+        INTEGER         DATE, DAY, JTIME
         INTEGER         ARGCNT  !  number of command-line args, from IARGC()
         CHARACTER*80    SCRBUF
 
-        CHARACTER*10    DAYS( 7 )
-        DATA            DAYS
-     &  /
-     &  'Monday', 'Tuesday', 'Wednesday',
-     &  'Thursday', 'Friday', 'Saturday', 'Sunday'
-     &  /
-
-        INTEGER         DLEN( 7 )	! string lengths
-        DATA            DLEN
-     &  /
-     &  6, 7, 9,
-     &  8, 6, 8, 6
-     &  /
+        CHARACTER*12, PARAMETER :: DAYS( 7 ) =
+     &   (/ 'Monday     ',
+     &      'Tuesday    ',
+     &      'Wednesday  ',
+     &      'Thursday   ',
+     &      'Friday     ',
+     &      'Saturday   ',
+     &      'Sunday     '   /)
 
 
 C***********************************************************************
 C   begin body of program GREGDATE
+
+        WRITE( *,92000 ) ' ', ' ',
+     & 'Program GREGDATE takes julian date (in form YYYYDDD) and',
+     & 'returns the date in form "Wkday, Month DD, YYYY".',
+     & ' ',
+     & '    Usage:  "gregdate [<JDATE>]" ',
+     & '    (alt    "gregdate [ YESTERDAY | TODAY | TOMORROW]") ',
+     & ' ',
+     & '(if the JDATE command-line argument is missing, prompts the ',
+     & 'user for JDATE)',
+     &' ',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
+     &' ',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
+     &' ',
+     &'Comments and questions are welcome and can be sent to',
+     &' ',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
+     &' ',
+     &'Program version: ',
+     &'$Id:: gregdate.f 44 2014-09-12 18:03:16Z coats                $',
+     &' '
+
 
         ARGCNT = IARGC()
         IF ( ARGCNT .EQ. 1 ) THEN
@@ -94,52 +109,21 @@ C   begin body of program GREGDATE
         IF ( ARGCNT .NE.       1  .OR.
      &       DATE  .LT. 1000000  .OR.
      &       DATE  .GT. 9999999 ) THEN
-
-            WRITE( *,92000 ) ' ', ' ',
-     & 'Program GREGDATE takes julian date (in form YYYYDDD) and',
-     & 'returns the date in form "Wkday, Month DD, YYYY".',
-     & ' ',
-     & '    Usage:  "gregdate [<JDATE>]" ',
-     & '    (alt    "gregdate [ YESTERDAY | TODAY | TOMORROW]") ',
-     & ' ',
-     & '(if the JDATE command-line argument is missing, prompts the ',
-     & 'user for JDATE)',
-     & ' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
-     &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
-     &' ',
-     &'Comments and questions are welcome and can be sent to',
-     &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
-     &' ',
-     &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
-     &' '
-
             CALL GETDTTIME( DAY, JTIME )
             DATE = GETNUM( 1000000, 9999999, DAY,
      &                      'Enter Julian date YYYYDDD' )
 
-        END IF	!  if argcnt=1, or not
+        END IF      !  if argcnt=1, or not
 
         DAY = WKDAY( DATE )
         IF ( ISDSTIME( DATE ) ) THEN
             WRITE( *,92010 )
-     &          DAYS( DAY )( 1:DLEN( DAY ) ),
+     &          TRIM( DAYS( DAY ) ),
      &          MMDDYY( DATE ),
      &          'Daylight Savings Time in effect.'
         ELSE
             WRITE( *,92010 )
-     &          DAYS( DAY )( 1:DLEN( DAY ) ),
+     &          TRIM( DAYS( DAY ) ),
      &          MMDDYY( DATE ),
      &          'Standard Time in effect.'
         END IF
@@ -151,10 +135,10 @@ C******************  FORMAT  STATEMENTS   ******************************
 
 C...........   Informational (LOG) message formats... 92xxx
 
-92000	FORMAT( 5X, A )
+92000   FORMAT( 5X, A )
 
-92010	FORMAT( /5X, A, ', ', A, /5X, A, / )
+92010   FORMAT( /5X, A, ', ', A, /5X, A, / )
 
 
-        END
+        END PROGRAM GREGDATE
 

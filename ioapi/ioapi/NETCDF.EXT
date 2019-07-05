@@ -1,5 +1,5 @@
 !.........................................................................
-! Version "@(#)$Header$"
+! Version "$Id: NETCDF.EXT 77 2014-12-11 19:36:50Z coats $"
 !    
 !    This is netCDF version 3.x (version 3.6.2) "fortran/netcdf.inc"
 !    but under another INCLUDE-file naming convention. 

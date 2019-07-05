@@ -1,24 +1,30 @@
-# @(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/Makeinclude.IRIX6n32dbg,v 1.1 2000/11/28 21:54:49 smith_w Exp $
+# VERSION "$Id: Makeinclude.IRIX6n32dbg 1 2014-03-14 20:22:54Z coats $"
 #
 #       Note:  there are problems with -TARG: need to be fixed-up
-#       on a  system-by-system basis, due to inconsistencies in SGI
+#       on a system-by-system basis, due to inconsistencies in SGI
 #       V7.3.x and V7.4.x compiler command-line behaviors.
 #
 AR   = ar
 CC   = cc
-FC   = f77
+FC   = f90
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
 
-MFLAGS    = -n32 -align64 -r12000 -TARG:platform=ip27,processor=r12000
-OMPFLAGS  = -mp -mpio
-OMPLIBS   = -mp -mpio -lmp
+MODI = -I       ## Module-include-directory command
+
+MFLAGS     = -n32 -align64 -mips4 -r12000 \
+ -OPT:Olimit=0 -TARG:platform=ip27 -TARG:processor=r12000
+ 
+# OMPFLAGS  = -mp -mpio -MP:old_mp=OFF
+# OMPLIBS   = -mp -mpio -lmp
+OMPFLAGS  = 
+OMPLIBS   = 
 COPTFLAGS = -g ${MFLAGS}
-FOPTFLAGS = -g -C ${MFLAGS}
-FPPFLAGS  = -cpp -macro_expand
+FOPTFLAGS = -g -C -DEBUG:trap_uninitialized=ON:subscript_check:verbose_runtime ${MFLAGS}
+FPPFLAGS  = -DF90=1 -cpp -macro_expand
 FSFLAGS   = -static
-ARCHFLAGS = 
+ARCHFLAGS = -DAUTO_ARRAYS=1 -DF90=1 -DSTAR=101 -DBIN3_DEBUG=1
 PARFLAGS  =
 ARCHLIB   = 
 

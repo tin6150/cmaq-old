@@ -1,4 +1,4 @@
-# @(#)$Header$
+# VERSION "$Id: Makeinclude.Linux2_ia64_nomp 1 2014-03-14 20:22:54Z coats $"
 #
 #
 #       Linux for IA64 using the Intel compiler suite, OpenMP disabled
@@ -9,6 +9,8 @@ FC   = efc -auto -w90 -cm
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
+
+MODI = -J       ## Module-include-directory command
 
 MFLAGS    = -tpp2 -traceback
 

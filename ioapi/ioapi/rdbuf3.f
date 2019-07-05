@@ -2,10 +2,10 @@
       LOGICAL FUNCTION RDBUF3( FID, VID, LAYER, JDATE, JTIME, BUFFER )
 
 C***********************************************************************
-C Version "$Id: bilin.f 1034 2011-08-03 17:46:01Z coats@borel $"
-C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
-C (C) 2003-2011 by Baron Advanced Meteorological Systems.
+C Version "$Id: rdbuf3.f 1 2014-03-14 20:22:54Z coats $"
+C BAMS/MCNC/EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
+C (C) 2003-2011 Baron Advanced Meteorological Systems
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................

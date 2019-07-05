@@ -1,19 +1,19 @@
 
-        PROGRAM AIRS2M3
+      PROGRAM AIRS2M3
 
 C*****************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: airs2m3.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2005 Baron Advanced Meteorological Systems, LLC
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body              starts at line  185
-C  logical function rdheader starts at line  642
+C  program body              starts at line  153
+C  logical function rdheader starts at line  607
 C
 C  DESCRIPTION:
-C	This program reads a AMP350 AIRS report and puts it into a
+C       This program reads a AMP350 AIRS report and puts it into a
 C       PAVE-able Models-3 I/O API "observations" file, with optional
 C       units conversion and time shift.
 C
@@ -21,6 +21,7 @@ C  PRECONDITIONS REQUIRED:
 C       Time zone cross reference file sorted by state and county
 C       setenv <logical file name> <path name> for all input and
 C       output files.
+C       Time period does not cross leap-year boundaries
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
 C       I/O API
@@ -30,7 +31,7 @@ C  REVISION  HISTORY:
 C       Adapted 3/2002 by Carlie J. Coats, Jr., MCNC EMC from
 C       program "OBSS2IOAPI"
 C
-C	OBS2IOAPI history:
+C       OBS2IOAPI history:
 C       Saravanan Arunachalam, MCNC EMC, 08/18/99
 C
 C       Restructured on 11/06/01,  Don Olerud, MCNC EMC
@@ -40,59 +41,58 @@ C       Then the obs are written to an obs NetCDF file.
 C
 C       Modified 11/2003 by CJC: removed redundant re-declarations of
 C       various variables (IREC, MONTH, OLDMON, OLDSPC, OLDYR)
+C
+C       Version 02/2010 by CJC for I/O API v3.1:  Fortran-90 only;
+C       USE M3UTILIO, and related changes.
 C*****************************************************************
 
+      USE M3UTILIO
+
       IMPLICIT NONE
-
-C...........   INCLUDES:
-
-      INCLUDE 'PARMS3.EXT'    !  I/O API parameters
-      INCLUDE 'IODECL3.EXT'   !  I/O API function declarations
-      INCLUDE 'FDESC3.EXT'    !  I/O API file description data structures.
-
-
-C...........   EXTERNAL FUNCTIONS and their descriptions:
-
-      CHARACTER*24  DT2STR      !  Models-3 time to ASCII string
-                                !  "MMM-DD-YYYY HH:MM:SS"
-      INTEGER       FIND1       !  look up integer in (sorted) table
-                                !  returns -1 for failure
-      INTEGER       FIND2       !  look up 2-tuple in (sorted) table
-                                !  returns -1 for failure
-      LOGICAL       GETYN       !  prompt user for "Yes/No" response
-      INTEGER       GETNUM      !  prompt user for integer
-      INTEGER       INDEX1      !  look up string in table of strings
-                                !  returns 0 for failure
-      INTEGER       JULIAN      !  Greg-to-Julian date conversion
-      INTEGER       JSTEP3      !  date&time-to-recordnumber
-      INTEGER       PROMPTFFILE !  Prompt user for logical file name
-                                !  and open Fortran file
-      CHARACTER*16  PROMPTMFILE !  Prompt user for logical file name
-                                !  and open Models-3 I/O API file
-      REAL          STR2REAL    !  read REAL from character-string
-
-      LOGICAL       RDHEADER    !  read AIRS file data-record header
-
-      EXTERNAL  DT2STR, FIND1, FIND2, GETNUM, GETYN, INDEX1, JULIAN,
-     &          JSTEP3, PROMPTFFILE, PROMPTMFILE, STR2REAL, RDHEADER
 
 
 C...........   PARAMETERS and their descriptions:
 
-      CHARACTER*1,  PARAMETER::  BAR       = '----------------------'
-      CHARACTER*1,  PARAMETER::  QUOTE     = ''''
-      CHARACTER*1,  PARAMETER::  COMMA     = ','
-      CHARACTER*16, PARAMETER::  PNAME     = 'AIRS2M3'
-      INTEGER,      PARAMETER::  IBIG      = 999999999
-      REAL,         PARAMETER::  CONVFACO3 = 1.0 / ( 40.89 * 48.0 )
-      REAL,         PARAMETER::  CONVFACNO = 1.0 / ( 40.89 * 30.0 )
-      REAL,         PARAMETER::  CONVFACNO2= 1.0 / ( 40.89 * 46.0 )
-      REAL,         PARAMETER::  CONVFACCO = 1.0 / ( 40.89 * 28.0 )
+        CHARACTER*1,  PARAMETER::  BAR       = '----------------------'
+        CHARACTER*1,  PARAMETER::  QUOTE     = ''''
+        CHARACTER*1,  PARAMETER::  COMMA     = ','
+        CHARACTER*16, PARAMETER::  PNAME     = 'AIRS2M3'
+        INTEGER,      PARAMETER::  IBIG      = 999999999
+        REAL,         PARAMETER::  CONVFACO3 = 1.0 / ( 40.89 * 48.0 )
+        REAL,         PARAMETER::  CONVFACNO = 1.0 / ( 40.89 * 30.0 )
+        REAL,         PARAMETER::  CONVFACNO2= 1.0 / ( 40.89 * 46.0 )
+        REAL,         PARAMETER::  CONVFACCO = 1.0 / ( 40.89 * 28.0 )
 
-        CHARACTER*80    PROGVER
-        DATA PROGVER /
-     &'$Id:: airs2m3.f 49 2007-07-06 16:20:50Z coats@borel           $'
-     &  /
+        CHARACTER*1, PARAMETER:: UFLAG(   5 ) =
+     &          (/ '$',   '&',   '%',    '#',     '?'      /)
+
+        REAL, PARAMETER::        UFACS( 0:5 ) =
+     &      (/ 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0 /)
+
+        INTEGER, PARAMETER::     KUNIT(   5 ) =
+     &           (/ 1,   5,     7,   8,     40  /)
+
+        REAL, PARAMETER::        KFACS( 0:5 ) =
+     &      (/ 1.0, 1.0, 0.001, 1.0, 0.001, 0.01 /)
+
+        INTEGER, PARAMETER::     CUNIT( 2 ) = (/ 1,   5 /)
+
+        INTEGER, SAVE::     MLENS( 12 ) =
+     &     (/  31,    28,    31,    30,    31,    30,
+     &         31,    31,    30,    31,    30,    31   /)
+
+       CHARACTER*5, PARAMETER:: SNAMES(   4 ) =
+     &          (/ '44201',     !  Ozone
+     &             '42101',     !  carbon monoxide
+     &             '42601',     !  NO
+     &             '42602'      !  NO_2
+     &             /)
+
+        REAL::        SFACS( 0:4 ) =
+     &     ( / 1.0, CONVFACO3, CONVFACCO, CONVFACNO, CONVFACNO2 /)
+
+       CHARACTER*16:: VNAMES( 0:4 ) =
+     &          (/ 'O3 ', 'O3 ', 'CO ', 'NO ', 'NO2' /)
 
 
 C...........   LOCAL VARIABLES and their descriptions:
@@ -147,37 +147,6 @@ C...........   LOCAL VARIABLES and their descriptions:
       REAL,        ALLOCATABLE::  LON( : )
       REAL,        ALLOCATABLE::  OBS (: , : )
 
-        CHARACTER*1:: UFLAG(   5 ) =
-     &          (/ '$',   '&',   '%',    '#',     '?'      /)
-
-        REAL::        UFACS( 0:5 ) =
-     &      (/ 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0 /)
-
-        INTEGER::     KUNIT(   5 ) =
-     &           (/ 1,   5,     7,   8,     40  /)
-
-        REAL::        KFACS( 0:5 ) =
-     &      (/ 1.0, 1.0, 0.001, 1.0, 0.001, 0.01 /)
-
-        INTEGER::     CUNIT( 2 ) = (/ 1,   5 /)
-
-        INTEGER::     MLENS( 12 ) =
-     &     (/  31,    28,    31,    30,    31,    30,
-     &         31,    31,    30,    31,    30,    31   /)
-
-       CHARACTER*5:: SNAMES(   4 ) =
-     &          (/ '44201',     !  Ozone
-     &             '42101',     !  carbon monoxide
-     &             '42601',     !  NO
-     &             '42602'      !  NO_2
-     &             /)
-
-        REAL::        SFACS( 0:4 ) =
-     &     (/ 1.0, CONVFACO3, CONVFACCO, CONVFACNO, CONVFACNO2 /)
-
-       CHARACTER*16:: VNAMES( 0:4 ) =
-     &          (/ 'O3 ', 'O3 ', 'CO ', 'NO ', 'NO2' /)
-
 
 C***********************************************************************
 C   begin body of program M3CPLE
@@ -215,24 +184,25 @@ C   begin body of program M3CPLE
      &' ',
      &'    Input TZ file is sorted by state and county.',
      &' ',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: airs2m3.f 44 2014-09-12 18:03:16Z coats                 $',
      &' '
 
         IF ( .NOT. GETYN( 'Continue with program?', .TRUE. ) ) THEN
@@ -633,10 +603,7 @@ C   begin body of program M3CPLE
         CALL M3EXIT( PNAME, 0, 0, 'Normal program completion', 0 )
 
 
-        END PROGRAM AIRS2M3
-
-
-!!-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+      CONTAINS  !!-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 
         LOGICAL FUNCTION RDHEADER( ADEV, SDEV,
@@ -842,5 +809,5 @@ C   begin body of program M3CPLE
 
         END FUNCTION RDHEADER
 
-!!-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
+        END PROGRAM AIRS2M3

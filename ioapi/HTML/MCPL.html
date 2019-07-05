@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML> 
 <HEAD>
-<!-- @(#)$Header$ -->
+<!-- "$Id: MCPL.html 11 2014-03-31 18:42:12Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> 
     MM5 MCPL()
@@ -14,17 +14,13 @@
       MARGINHEIGHT="15" 
       LEFTMARGIN="15" 
       MARGINWIDTH="15">
-    <HR>
 
-<CENTER>
+
+
 <H1>
     The MM5 MCPL() Meteorology-Coupler 
     <A HREF = "/products/ioapi/index.html">I/O&nbsp;API</A> Module
 </H1>
-<A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.</A>
-</CENTER>
-
 <H2> <A NAME = "contents">Contents</A> </H2>
 <UL>  
     <LI> <A HREF = "#copyright">  Copyright</A>
@@ -74,7 +70,7 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.</A>
  
     <A NAME = "authors">Please</A> report any problems to the authors, 
     Carlie Coats, 
-    <VAR><A HREF = "mailto:carlie.coats@baronams.com">carlie.coats@baronams.com</A></VAR>, 
+    <VAR><A HREF = "mailto:cjcoats@email.unc.edu">cjcoats@email.unc.edu</A></VAR>, 
     and John McHenry, 
     <VAR><A HREF = "mailto:john.mchenry@baronams.com">john.mchenry@baronams.com</A></VAR>.
 
@@ -87,11 +83,11 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.</A>
 
 
     Copyright 1997-2002 MCNC, Inc. and Carlie J. Coats, Jr., and
-    2003-<EM>present</EM> Baron Advanced Meteorological Systems.<P>
+    2003-2005 Baron Advanced Meteorological Systems.<P>
 
     MCPL is an output module for the MM5 meteorology model which produces
-    output via the EDSS/Models-3 I/O&nbsp;API (itself (C) 1992-2002 MCNC
-    and Carlie J. Coats, Jr., and 2003-<EM>present</EM> Baron Advanced
+    output via the EDSS/Models-3 I/O&nbsp;API (itself (C) 1992-2002 MCNC,
+    (C) 1997-2002, 2005-2014 Carlie J. Coats, Jr., and 2003-2011 Baron Advanced
     Meteorological Systems).
     <P>
 
@@ -140,7 +136,7 @@ Back to <A HREF = "#contents"><STRONG>Contents</STRONG></A>
 </A></H2>
 
     Conceptually, MCPL() is a drop-in MM5 output module designed for
-    coupling MM5 to other environmental models such as SMOKE or CMAQ, using the 
+    coupling MM5 to other environmental models, using the 
     <A HREF = "/products/ioapi/index.html">EDSS/Models-3 I/O&nbsp;API</A>.  
     It fits into MM5 as a subroutine called every output  time step by
     the MM5v2 driver or from the SOLVE routine.   It can either be
@@ -180,7 +176,7 @@ Back to <A HREF = "#contents"><STRONG>Contents</STRONG></A>
     these files are then used (for example) by air quality models to
     reproduce exactly the scheduling and behavior of such convective 
     events.  <EM>This package is not part of the standard release;
-    <A HREF = "mailto:carlie.coats@baronams.com,john.mchenry@baronams.com">please
+    <A HREF = "mailto:cjcoats@email.unc.edu,john.mchenry@baronams.com">please
     contact the MCPL authors</A> for access to it.</EM>
     <P>
     
@@ -399,11 +395,11 @@ C     STOP 99999                                                                
               grids of the specified MM5 nest domain at the current 
               time step.  
         <LI>  <STRONG><CODE>MCPL_KF2( <BR>
-     &      NEST, II, JJ,  !  what cell? <BR>
-     &      P300KF, TCKF, RKF, ICEKF, TADVEC, NIC, CLDTP, 
+     &amp;      NEST, II, JJ,  !  what cell? <BR>
+     &amp;      P300KF, TCKF, RKF, ICEKF, TADVEC, NIC, CLDTP, 
             !  scalar output variables <BR>
-     &      TKF0, QKF0, UKF0, VKF0, WAV0, PKF0,<BR>
-     &      DZQKF, DPKF )  ! vertical column output variables 
+     &amp;      TKF0, QKF0, UKF0, VKF0, WAV0, PKF0,<BR>
+     &amp;      DZQKF, DPKF )  ! vertical column output variables 
              </CODE></STRONG> <BR>
               writes the specified cloud-event data to the MET_KF_1D and
               MET_KF_3D output files for all output grids at the current
@@ -723,7 +719,6 @@ Back to <A HREF = "#contents"><STRONG>Contents</STRONG></A>
              when I prepare a new release.
              <P>
     </OL>
-    </EM>
     </BLOCKQUOTE>
 
     <H3>Download and Install</H3>
@@ -814,8 +809,8 @@ Back to <A HREF = "#contents"><STRONG>Contents</STRONG></A>
     The authors would also like to thank Dr.&nbsp;Nelson&nbsp;Seaman, 
     Annette&nbsp;Gibbs-Lario, and the Department of Meteorology at the 
     Pennsylvania State University for all their work beta-testing 
-    this software during the course of our joint 
-    <A HREF = "/projects/NAQP/">real-time 
+    this software during the course of the joint MCNC/Penn State
+    <A HREF = "http://www.baronams.com:/projects/NAQP/">real-time 
     air quality forecasting project</A>, and for all their help 
     and support in developing MCPL.
     <P>
@@ -841,79 +836,10 @@ end commenting for dummy-section body  -->
 Back to the <STRONG>Practical Parallel Computing Project</STRONG> </A>
 
 Send comments to 
-<A HREF = "mailto:carlie.coats@baronams.com"> <ADDRESS> 
+<A HREF = "mailto:cjcoats@email.unc.edu"> <ADDRESS> 
           Carlie J. Coats, Jr. <br> 
-          carlie.coats@baronams.com  </ADDRESS> </A><P> 
+          cjcoats@email.unc.edu  </ADDRESS> </A><P> 
 
-<!-- @(#)$Header: /env/proj/archive/cvs/web_shared/INCLUDES/header.html,v 1.9 20
-04/04/15 22:57:27 smith_w Exp $ -->
-    <HR>
-
-    <TABLE summary="footer" border="0">
-      <TR>
-        <TD>
-          <TABLE summary="footer" border="0">
-            <TR valign="TOP">
-              <TD align="LEFT">Send comments to</TD>
-            </TR>
-
-            <TR valign="BOTTOM">
-              <TD align="LEFT"><EM><STRONG>Webmaster</STRONG></EM>
-              </TD>
-            </TR>
-
-            <TR valign="BOTTOM">
-              <TD align="LEFT"><EM><A href=
-              "mailto:webmaster@baronams.com">webmaster@baronams.com</A></EM>
-              </TD>
-            </TR>
-          </TABLE>
-        </TD>
-
-        <TD>
-          <TABLE summary="footer" border="0">
-            <TR valign="TOP">
-              <TD colspan="8" align="CENTER"><SPAN class="c1">
-              <STRONG>Baron Advanced Meteorological
-              Systems</STRONG></SPAN> </TD>
-            </TR>
-
-            <TR valign="BOTTOM">
-              <TD width="12%" align="CENTER"><A href=
-              "/whats_new.html">What's<BR>
-              New</A> </TD>
-
-              <TD width="12%" align="CENTER"><A href="/">Home</A>
-              </TD>
-
-              <TD width="12%" align="CENTER"><A href="/products/">
-              Products</A> </TD>
-
-              <TD width="12%" align="CENTER"><A href="/projects/">
-              Projects</A> </TD>
-
-              <TD width="12%" align="CENTER"><A href="/pub_files/">
-              Publications</A> </TD>
-
-              <TD width="12%" align="CENTER"><A href="/services/">
-              Services</A> </TD>
-
-              <TD width="12%" align="CENTER"><A href="/staff/">
-              Staff</A> </TD>
-
-              <TD width="16%" align="CENTER">
-              <A href="/projects/SECMEP/">Realtime Forecasting</A> </TD>
-            </TR>
-          </TABLE>
-        </TD>
-      </TR>
-
-      <TR valign="BOTTOM">
-        <TD colspan="2">
-          <HR>
-        </TD>
-      </TR>
-    </TABLE>
 
 </BODY>      <!--end body  -->
 </HTML>      <!--end html  -->

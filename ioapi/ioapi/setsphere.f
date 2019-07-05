@@ -1,16 +1,17 @@
+
         FUNCTION SETSPHERE( PARM1, PARM2 )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "$Id: setsphere.f 88 2015-01-12 20:14:48Z coats $"
 C EDSS/Models-3 I/O API.
 C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
 C (C) 2003-2005 Baron Advanced Meteorological Systems.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  Function body      starts at line  161
-C  Entry  INITSPHERES starts at line  203
-C  Entry  SPHEREDAT   starts at line  273
+C  Function body      starts at line  155
+C  Entry  INITSPHERES starts at line  197
+C  Entry  SPHEREDAT   starts at line  267
 C
 C  FUNCTION:
 C       Set input and output sphere projections for Lambert and 
@@ -37,6 +38,8 @@ C
 C       Version 6/3/2008 by Steve Howard, USEPA:  additional sphere
 C       types 20, 21 (normal spheres with R=6370000, 6371200 meters
 C       matching MM5/WRF-ARW and WRF-NMM, respectively
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
@@ -52,9 +55,9 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        REAL*8          PARM1, PARM2
-        INTEGER         INSPHERE
-        REAL*8          INPARAM( 15 ), IOPARAM( 15 )
+        REAL*8 , INTENT(IN   ) :: PARM1, PARM2
+        INTEGER, INTENT(  OUT) :: INSPHERE
+        REAL*8 , INTENT(  OUT) :: INPARAM( 15 ), IOPARAM( 15 )
 
 C...........   PARAMETERS and their descriptions:
 
@@ -63,77 +66,68 @@ C...........   PARAMETERS and their descriptions:
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER         LBLANK, TRIMLEN
-        REAL*8          STR2DBLE
-        EXTERNAL        LBLANK, STR2DBLE, TRIMLEN
+        INTEGER, EXTERNAL :: LBLANK
+        REAL*8 , EXTERNAL :: STR2DBLE
 
 
 C...........   SAVED LOCAL VARIABLES and their descriptions:
 C...........   NOTE:  the ANSI standard requires the use of SAVE statements
 C...........   for variables which must retain their values from call to call.
 
-        INTEGER         ISPH
-        DATA            ISPH / 8 /     !  default GRS80  
+        INTEGER, SAVE :: ISPH = 8      !  default GRS80  
 
-        REAL*8          AXISMAJ
-        REAL*8          AXISMIN
-        DATA            AXISMAJ, AXISMIN / 2 * 0.0D0 /
+        REAL*8, SAVE :: AXISMAJ = 0.0D0
+        REAL*8, SAVE :: AXISMIN = 0.0D0
         
-        INTEGER         STDSPHERES( 0:21 )
-        DATA            STDSPHERES
-     &                  / 0,
-     &                    1,
-     &                    2,
-     &                    3,
-     &                    4,
-     &                    5,
-     &                    6,
-     &                    7,
-     &                    8,
-     &                    9,
-     &                   10,
-     &                   11,
-     &                   12,
-     &                   13,
-     &                   14,
-     &                   15,
-     &                   16,
-     &                   17,
-     &                   18,
-     &                   19,
-     &                   20,
-     &                   21 /
+        INTEGER, PARAMETER :: STDSPHERES( 0:21 ) =
+     &      (/ 0,
+     &         1,
+     &         2,
+     &         3,
+     &         4,
+     &         5,
+     &         6,
+     &         7,
+     &         8,
+     &         9,
+     &        10,
+     &        11,
+     &        12,
+     &        13,
+     &        14,
+     &        15,
+     &        16,
+     &        17,
+     &        18,
+     &        19,
+     &        20,
+     &        21 /)
 
-        CHARACTER*40    SPHERENAMES( 0:21 )
-        DATA            SPHERENAMES
-     &                  / 'Clarke 1866',
-     &                    'Clarke 1880',
-     &                    'Bessel',
-     &                    'New International 1967',
-     &                    'International 1909',
-     &                    'WGS 72',
-     &                    'Everest',
-     &                    'WGS 66',
-     &                    'GRS 1980',
-     &                    'Airy',
-     &                    'Modified Everest',
-     &                    'Modified Airy',
-     &                    'WGS 84',
-     &                    'Southeast Asia',
-     &                    'Australian National',
-     &                    'Krassovsky',
-     &                    'Hough',
-     &                    'Mercury 1960',
-     &                    'Modified Mercury 1968',
-     &                    'Normal Sphere, R_Earth=6370997 M',
-     &                    'Normal Sphere (MM5 & WRF-ARW) R=6370000',
-     &                    'Normal Sphere (WRF-NMM) R=6371200'       /
+        CHARACTER*40, PARAMETER :: SPHERENAMES( 0:21 ) =
+     &      (/ 'Clarke 1866                                  ',         !!  0
+     &         'Clarke 1880                                  ',         !!  1
+     &         'Bessel                                       ',         !!  2
+     &         'New International 1967                       ',         !!  3
+     &         'International 1909                           ',         !!  4
+     &         'WGS 72                                       ',         !!  5
+     &         'Everest                                      ',         !!  6
+     &         'WGS 66                                       ',         !!  7
+     &         'GRS 1980                                     ',         !!  8
+     &         'Airy                                         ',         !!  9
+     &         'Modified Everest                             ',         !! 10
+     &         'Modified Airy                                ',         !! 11
+     &         'WGS 84                                       ',         !! 12
+     &         'Southeast Asia                               ',         !! 13
+     &         'Australian National                          ',         !! 14
+     &         'Krassovsky                                   ',         !! 15
+     &         'Hough                                        ',         !! 16
+     &         'Mercury 1960                                 ',         !! 17
+     &         'Modified Mercury 1968                        ',         !! 18
+     &         'Normal Sphere, R_Earth=6370997               ',         !! 19
+     &         'Normal Sphere (MM5 & WRF-ARW) R=6370000      ',         !! 20
+     &         'Normal Sphere (WRF-NMM) R=6371200            '       /) !! 21
 
-        INTEGER         NCALLS
-        DATA            NCALLS / 0 /
-
-        SAVE        NCALLS,
-     &              ISPH, AXISMAJ, AXISMIN, STDSPHERES, SPHERENAMES
+        INTEGER, SAVE ::  NCALLS = 0
 
         
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -282,5 +276,5 @@ C   begin body of entry  SPHEREDAT
 
         RETURN
 
-        END
+        END FUNCTION SETSPHERE
 

@@ -3,21 +3,20 @@
      &                     NEPS, EPS, LABEL, LOGDEV )
 
 C***********************************************************************
-C Version "@(#)$Header$"
+C Version "@(#)$Id: stati.f 44 2014-09-12 18:03:16Z coats $"
 C EDSS/Models-3 M3TOOLS.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2002-2007 Baron Advanced Meteorological Systems. LLC.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  subroutine body starts at line  77
+C  subroutine body starts at line  76
 C
 C  FUNCTION:
 C       Produce statistics report to LOGDEV
 C
 C  PRECONDITIONS REQUIRED:
-C	Stack-allocation operating environment (such as CRAY)
-C	number of columns, rows, and levels at most 99
+C       None
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
 C       Models-3 I/O:  M3ERR(), READ3(), WRITE3()
@@ -31,21 +30,21 @@ C***********************************************************************
 
 C...........   ARGUMENTS and their descriptions:
 
-        INTEGER         NROWS   !  grid dimensions, from INNAME header
-        INTEGER         NLAYS   !  grid dimensions, from INNAME header
-        INTEGER         N       !  actual number of data
-        INTEGER         ID( NROWS )             !  ID-list
-        REAL		VV( NROWS, NLAYS )	!  the data values
-        INTEGER         LOGDEV  !  unit number for stats report
-        INTEGER		NEPS	!  number of thresholds
-        REAL		EPS( * )!  thresholds for threshold-fraction reports
-        CHARACTER*(*)   LABEL   !  legend text
+        INTEGER, INTENT(IN) :: NROWS    !  grid dimensions, from INNAME header
+        INTEGER, INTENT(IN) :: NLAYS    !  grid dimensions, from INNAME header
+        INTEGER, INTENT(IN) :: N        !  actual number of data
+        INTEGER, INTENT(IN) :: ID( NROWS )          !  ID-list
+        REAL   , INTENT(IN) :: VV( NROWS, NLAYS )   !  the data values
+        INTEGER, INTENT(IN) :: LOGDEV   !  unit number for stats report
+        INTEGER, INTENT(IN) :: NEPS     !  number of thresholds
+        REAL   , INTENT(IN) :: EPS( * ) !  thresholds for threshold-fraction reports
+
+        CHARACTER*(*), INTENT(IN) :: LABEL   !  legend text
 
 
 C...........   EXTERNAL FUNCTION:  number of leading blanks
 
-        INTEGER         LEN2
-        EXTERNAL        LEN2
+        INTEGER, EXTERNAL :: LEN2
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -59,7 +58,7 @@ C...........   SCRATCH LOCAL VARIABLES and their descriptions:
         REAL*8          ASUM
         REAL*8          ASSQ
         REAL*8          DNOM
-        INTEGER		ECNT          
+        INTEGER         ECNT
 
         CHARACTER*20    MIBUF
         CHARACTER*20    MRBUF
@@ -117,15 +116,15 @@ C...........   mean, and sigma
         WRITE( LOGDEV,92010 )
      &          LABEL, ' array statistics' ,
      &          'Max   ', AMAX, ' at site ',
-     &          MIBUF( LEN2( 1,20,MIBUF )+1 : 20 ), 
-     &          ' @(r,l)=', 
+     &          MIBUF( LEN2( 1,20,MIBUF )+1 : 20 ),
+     &          ' @(r,l)=',
      &          MRBUF( LEN2( 1,20,MRBUF )+1 : 20 ), ',',
      &          MLBUF( LEN2( 1,20,MLBUF )+1 : 20 ), ')',
      &          'Min   ', AMIN, ' at site ',
-     &          NIBUF( LEN2( 1,20,NIBUF )+1 : 20 ), 
-     &          ' @(r,l)=', 
-     &          NRBUF( LEN2( 1,20,NRBUF )+1 : 20 ), ',', 
-     &          NLBUF( LEN2( 1,20,NLBUF )+1 : 20 ), ')', 
+     &          NIBUF( LEN2( 1,20,NIBUF )+1 : 20 ),
+     &          ' @(r,l)=',
+     &          NRBUF( LEN2( 1,20,NRBUF )+1 : 20 ), ',',
+     &          NLBUF( LEN2( 1,20,NLBUF )+1 : 20 ), ')',
      &          'Mean  ', ASUM,
      &          'Sigma ', ASSQ
 
@@ -133,7 +132,7 @@ C...........   mean, and sigma
 C...........   For each threshold level, count the number of times the
 C...........   grid value exceeds the threshold, and report it:
 
-        DO  199  V = 1, NEPS	!  count threshold excesses:
+        DO  199  V = 1, NEPS    !  count threshold excesses:
             ECNT = 0
             T    = EPS( V )
             DO  188  L = 1, NLAYS
@@ -162,5 +161,5 @@ C...........   Internal buffering formats............ 94xxx
 
 94010   FORMAT( I20 )
 
-        END
+        END SUBROUTINE  STATI
 

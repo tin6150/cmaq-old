@@ -1,13 +1,15 @@
-# @(#)$Header$
+# VERSION "$Id: Makeinclude.Linux2_x86sundbg 1 2014-03-14 20:22:54Z coats $"
 #
 #       Linux for 32-bit x86 using the Sun Studio Express compiler suite
-#
+
 AR   = ar
 CC   = suncc
 FC   = sunf95
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
+
+MODI = -M       ## Module-include-directory command
 
 MFLAGS    =  -xarch=native -xtarget=native -xdebugformat=dwarf -xs
 

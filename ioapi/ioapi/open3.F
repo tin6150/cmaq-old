@@ -1,17 +1,15 @@
 
-C.........................................................................
-C Version "@(#)$Header$"
-C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003-2005 Baron Advanced Meteorological Systems
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
         LOGICAL FUNCTION  OPEN3( FNAME, FSTATUS, PGNAME )
 
 C***********************************************************************
-C  function body starts at line  135
+C Version "$Id: open3.F 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
+C  function body starts at line  130
 C
 C  FUNCTION:
 C       open Models-3 file with logical name FNAME, with file status
@@ -38,7 +36,7 @@ C	FDESC3.EXT COMMONs
 C
 C  SUBROUTINES AND FUNCTIONS CALLED:
 C       CKDESC3, CHKFIL3, CLOSE3, CRTBUF3, CRTFIL3, INDEX1, INIT3,
-C       OPNFIL3, OPNLIST3, RMFILE, TRIMLEN
+C       OPNFIL3, OPNLIST3, RMFILE
 C
 C  REVISION  HISTORY:
 C       prototype 3/1992 by CJC
@@ -66,6 +64,7 @@ C       associated with INIT3()
 C       Modified 10/2003 by CJC for I/O API version 3:  support for
 C       native-binary BINFIL3 file type; uses INTEGER NAME2FID
 C       Modified 12/2004 by CJC: implement NVARS range-checks
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
       IMPLICIT NONE
@@ -82,28 +81,24 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)   FNAME   !  logical name of file to be opened
-        INTEGER         FSTATUS !  read-only, read-write, new, or unknown
-        CHARACTER*(*)   PGNAME  !  name of calling program
+        CHARACTER*(*), INTENT(IN   ) :: FNAME   !  logical name of file to be opened
+        INTEGER      , INTENT(IN   ) :: FSTATUS !  read-only, read-write, new, or unknown
+        CHARACTER*(*), INTENT(IN   ) :: PGNAME  !  name of calling program
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        LOGICAL         CKDESC3  !  does header validity checks
-        LOGICAL         CHKFIL3  !  does work of checking file def consistency
-        LOGICAL         CLOSE3   !  closes files (if FSCREA3)
-        LOGICAL         CRTBUF3  !  create "buffered" virtual files
-        LOGICAL         CRTFIL3  !  does work of creating new files
-        INTEGER         INDEX1   !  look up names in tables
-        INTEGER         NAME2FID !  fname~~> fid lookup
-        LOGICAL         OPNFIL3  !  does work of opening "old" files
-        LOGICAL         OPNLIST3 !   " multi-file FILE-LIST data sets
-        INTEGER         RMFILE   !  shell around UNIX "unlink()" system call
-        INTEGER         TRIMLEN  !  length after trimming trailing blanks.
-
-        EXTERNAL  INDEX1, RMFILE, TRIMLEN, OPNFIL3, OPNLIST3,
-     &            NAME2FID, CRTBUF3, CRTFIL3, CHKFIL3, CLOSE3,  
-     &            INITBLK3      !  block data
+        LOGICAL, EXTERNAL :: CKDESC3  !  does header validity checks
+        LOGICAL, EXTERNAL :: CHKFIL3  !  does work of checking file def consistency
+        LOGICAL, EXTERNAL :: CLOSE3   !  closes files (if FSCREA3)
+        LOGICAL, EXTERNAL :: CRTBUF3  !  create "buffered" virtual files
+        LOGICAL, EXTERNAL :: CRTFIL3  !  does work of creating new files
+        INTEGER, EXTERNAL :: INDEX1   !  look up names in tables
+        INTEGER, EXTERNAL :: NAME2FID !  fname~~> fid lookup
+        LOGICAL, EXTERNAL :: OPNFIL3  !  does work of opening "old" files
+        LOGICAL, EXTERNAL :: OPNLIST3 !   " multi-file FILE-LIST data sets
+        INTEGER, EXTERNAL :: RMFILE   !  shell around UNIX "unlink()" system call
+        EXTERNAL          :: INITBLK3 !  BLOCK DATA to initialize STATE3 commons
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -320,7 +315,7 @@ C.......   of the file:
                 LISTFLAG = .TRUE.
                 AFLAG    = .FALSE.
             ELSE
-                MESG = FNAME // ':' // EQNAME( 1:TRIMLEN( EQNAME ) )
+                MESG = FNAME // ':' // TRIM( EQNAME )
                 CALL M3MSG2( MESG )
                 CALL M3WARN( 'OPEN3', 0, 0, 'LIST-File not readonly.' )
                 FLIST3( FID ) = CMISS3
@@ -362,7 +357,7 @@ C.......   of the file:
 
             ELSE                        !  file does not exist
 
-                MESG = FNAME // ':' // EQNAME( 1:TRIMLEN( EQNAME ) )
+                MESG = FNAME // ':' // TRIM( EQNAME )
                 CALL M3MSG2( MESG )
                 CALL M3WARN( 'OPEN3', 0, 0, 'File not available.' )
                 FLIST3( FID ) = CMISS3
@@ -386,7 +381,7 @@ C.......   of the file:
 
             ELSE                        !  file does not exist
 
-                MESG = FNAME // ':' // EQNAME( 1:TRIMLEN( EQNAME ) )
+                MESG = FNAME // ':' // TRIM( EQNAME )
                 CALL M3MSG2( MESG )
                 CALL M3WARN( 'OPEN3', 0, 0, 'File not available.' )
                 FLIST3( FID ) = CMISS3
@@ -525,5 +520,5 @@ C...........   Internal buffering formats..... 93xxx
 
 93010   FORMAT ( 5 ( A, :, I9, :, 2X ) )
 
-        END
+        END FUNCTION  OPEN3
 

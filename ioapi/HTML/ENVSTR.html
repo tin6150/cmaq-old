@@ -2,9 +2,8 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/ENVSTR.html,v 1.1.1.1 2001/12/05 20:25:27 coats Exp $ -->
+<!-- "$Id: ENVSTR.html 83 2014-12-29 14:31:32Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/ENVSTR.html,v 1.1.1.1 2001/12/05 20:25:27 coats Exp $ -->
 <TITLE> ENVSTR() and envstrc() </TITLE>
 </HEAD>
 
@@ -15,21 +14,17 @@
       MARGINWIDTH="15">
 <H1>    ENVSTR() and envstrc() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <BLOCKQUOTE>
         ENVSTR() is a Fortran wrapper calling the C envstrc()
 </BLOCKQUOTE><P> 
 <PRE>
     SUBROUTINE ENVSTR( LNAME, DESCRIP, DEFAULT, EVALUE, STATUS )
-        CHARACTER*(*)    LNAME   ! logical name to evaluate
-        CHARACTER*(*)    DESCRIP ! description of the value
-        CHARACTER*(*)    DEFAULT ! default value (if LNAME not set, or empty)
-        CHARACTER*(*)    EVALUE  ! result
-        INTEGER          STATUS  ! for error/default-case detection
+        CHARACTER*(*), INTENT(IN   ) :: LNAME   ! logical name to evaluate
+        CHARACTER*(*), INTENT(IN   ) :: DESCRIP ! description of the value
+        CHARACTER*(*), INTENT(IN   ) :: DEFAULT ! default value (if LNAME not set, or empty)
+        CHARACTER*(*), INTENT(IN   ) :: EVALUE  ! result
+        INTEGER      , INTENT(  OUT) :: STATUS  ! for error/default-case detection
 </PRE><P>    
 
 <H2> C version: </H2>
@@ -45,21 +40,22 @@ void envstrc( const char * lname        ,   /* logical name */
 
 <H2> Summary: </H2>
 
-    This function is a shell around the <VAR>getenv()</VAR> system call:  
-    find, log, and return the value of 
-    <A HREF = "LOGICALS.html">  shell variable/logical name </A> 
-    LNAME in the <A HREF = "ENVIRONMENT.html"> environment </A>,
-    and interpret it as a CHARACTER string.  Returns the  DEFAULT if the 
-    logical name is not defined, is defined but has an empty value, 
-    or has an improper value.  Writes a message to the log indicating 
-    the value returned -- and if the value was improper, writes a 
-    warning notice.  Returns STATUS indicating the nature of the 
-    DEFAULT returned.  STATUS takes the following values:
+    This function is a shell around the <VAR>getenv()</VAR> system
+    call:   find, log, and return the value of
+    <A HREF = "LOGICALS.html">  shell variable/logical name </A>  LNAME in
+    the <A HREF = "ENVIRONMENT.html"> environment </A>, and interpret it as a
+    <CODE>CHARACTER</CODE> string.  Returns the  <CODE>DEFAULT</CODE> if
+    the  logical name is not defined, is defined but has an empty
+    value,  or has an improper value.  Writes a message to the log
+    indicating  the value returned -- and if the value was improper,
+    writes a  warning notice.  Returns <CODE>STATUS</CODE> indicating the
+    nature of the  <CODE>DEFAULT</CODE> returned.  <CODE>STATUS</CODE>
+    takes the following values:
     <UL> 
-        <LI>  1  for improperly formatted value, returning DEFAULT
+        <LI>  1  for improperly formatted value, returning <CODE>DEFAULT</CODE>
         <LI>  0  for normal value
-        <LI>  -1 for environment value set but empty (returning DEFAULT)
-        <LI>  -2 for environment value not set (returning DEFAULT)
+        <LI>  -1 for environment value set but empty (returning <CODE>DEFAULT</CODE>)
+        <LI>  -2 for environment value not set (returning <CODE>DEFAULT</CODE>)
     </UL>
     <P>  
 

@@ -1,19 +1,17 @@
 
-C.........................................................................
-C Version "@(#)$Header$"
-C EDSS/Models-3 I/O API.
-C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr., and
-C (C) 2003 Baron Advanced Meteorological Systems
-C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
-C See file "LGPL.txt" for conditions of use.
-C.........................................................................
-
         LOGICAL FUNCTION  WRATT3( FNAME, VNAME, 
      &                            ANAME, ATYPE, AMAX, AVAL )
         IMPLICIT NONE
         LOGICAL WRATTC
 
 C***********************************************************************
+C Version "$Id: wratt3.f 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
+C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
+C See file "LGPL.txt" for conditions of use.
+C.........................................................................
 C  subroutine body starts at line   88
 C   Entry  WRATTC  starts at line  105
 C
@@ -42,6 +40,8 @@ C       associated with INIT3()
 C
 C       Modified 12/2004 by CJC:  bugfix for character attribute length; 
 C       improved error messages; restructure NF_ENDDEF call.
+C
+C       Modified 03/2010 by CJC: F9x changes for I/O API v3.1
 C***********************************************************************
 
 C...........   INCLUDES:
@@ -53,22 +53,19 @@ C...........   INCLUDES:
 
 C...........   ARGUMENTS and their descriptions:
 
-        CHARACTER*(*)   FNAME         !  logical file name
-        CHARACTER*(*)   VNAME         !  variable name, or ALLVARS3
-        CHARACTER*(*)   ANAME         !  attribute name
-        INTEGER         ATYPE         !  attribute type (M3REAL, M3INT, M3DBLE)
-        INTEGER         AMAX          !  attribute dimensionality/size
-        REAL            AVAL( AMAX )  !  attribute value (numeric)
-        CHARACTER*(*)   CVAL          !  attribute value (character-string)
+        CHARACTER*(*), INTENT(IN   ) :: FNAME         !  logical file name
+        CHARACTER*(*), INTENT(IN   ) :: VNAME         !  variable name, or ALLVARS3
+        CHARACTER*(*), INTENT(IN   ) :: ANAME         !  attribute name
+        INTEGER      , INTENT(IN   ) :: ATYPE         !  attribute type (M3REAL, M3INT, M3DBLE)
+        INTEGER      , INTENT(IN   ) :: AMAX          !  attribute dimensionality/size
+        REAL         , INTENT(IN   ) :: AVAL( AMAX )  !  attribute value (numeric)
+        CHARACTER*(*), INTENT(IN   ) :: CVAL          !  attribute value (character-string)
 
 
 C...........   EXTERNAL FUNCTIONS and their descriptions:
 
-        INTEGER         INIT3      !  Initialize I/O API
-        INTEGER         INDEX1     !  look up names in name tables
-        INTEGER         TRIMLEN    !  trimmed string length
-
-        EXTERNAL        INIT3, INDEX1, TRIMLEN
+        INTEGER, EXTERNAL :: INIT3      !  Initialize I/O API
+        INTEGER, EXTERNAL :: INDEX1     !  look up names in name tables
 
 
 C...........   SCRATCH LOCAL VARIABLES and their descriptions:
@@ -126,21 +123,21 @@ C.......   Check that Models-3 I/O has been initialized:
             RETURN
         END IF
 
-        IF ( TRIMLEN( FNAME ) .GT. NAMLEN3 ) THEN
+        IF ( LEN_TRIM( FNAME ) .GT. NAMLEN3 ) THEN
             EFLAG = .TRUE.
             MESG  = 'File "'// FNAME// '" Variable "'// VNAME//'"'
             CALL M3MSG2( MESG )
             WRITE( MESG, '( A , I10 )' )
-     &          'Max file name length 16; actual:', TRIMLEN( FNAME )
+     &          'Max file name length 16; actual:', LEN_TRIM( FNAME )
             CALL M3MSG2( MESG )
         END IF          !  if len( fname ) > 16
 
-        IF ( TRIMLEN( VNAME ) .GT. NAMLEN3 ) THEN
+        IF ( LEN_TRIM( VNAME ) .GT. NAMLEN3 ) THEN
             EFLAG = .TRUE.
             MESG  = 'File "'// FNAME// '" Variable "'// VNAME//'"'
             CALL M3MSG2( MESG )
             WRITE( MESG, '( A, I10 )'  )
-     &          'Max vble name length 16; actual:', TRIMLEN( VNAME )
+     &          'Max vble name length 16; actual:', LEN_TRIM( VNAME )
             CALL M3MSG2( MESG )
         END IF          !  if len( vname ) > 16
         
@@ -278,5 +275,5 @@ C...........   one can't execute a RETURN within a critical section.
 
         RETURN
 
-        END
+        END FUNCTION  WRATT3
 

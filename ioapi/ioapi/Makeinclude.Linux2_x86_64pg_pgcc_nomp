@@ -1,4 +1,5 @@
-# @(#)$Header$
+# VERSION "$Id: Makeinclude.Linux2_x86_64pg_pgcc_nomp 1 2014-03-14 20:22:54Z coats $"
+#
 #  In some ways, this is the most problematical install, because of 
 #  the way  various compilers create linker-visible object names for
 #  the code they compile.  The default flags assume that you are using
@@ -31,6 +32,8 @@ FC   = pgf90
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
+
+MODI = "-module "       ## Module-include-directory command
 
 MFLAGS    = -fast -Mnosecond_underscore # -Mnoupcase
 

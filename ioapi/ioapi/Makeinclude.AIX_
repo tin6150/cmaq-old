@@ -1,11 +1,15 @@
-# @(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/Makeinclude.AIX,v 1.2 2000/11/28 21:56:41 smith_w Exp $
+# VERSION "$Id: Makeinclude.AIX_ 1 2014-03-14 20:22:54Z coats $"
+#
 #  AIX with Feldman underscore-style name mangling
+
 AR   = ar
 CC   = xlc_r -DFLDMN=1
 FC   = xlf_r
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
+
+MODI = -I       ## Module-include-directory command
 
 MFLAGS    = -qextname -qarch=auto -qtune=auto
 

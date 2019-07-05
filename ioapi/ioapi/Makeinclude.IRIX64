@@ -1,27 +1,30 @@
-# @(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/Makeinclude.IRIX64,v 1.1 2000/11/28 21:54:46 smith_w Exp $
+# VERSION "$Id: Makeinclude.IRIX64 1 2014-03-14 20:22:54Z coats $"
 #
 #       Note:  there are problems with -TARG: need to be fixed-up
 #       on a  system-by-system basis, due to inconsistencies in SGI
 #       V7.3.x and V7.4.x compiler command-line behaviors.
 #
 AR   = ar
-CC   = cc  -64 -prototypes -fullwarn 
-FC   = f77 -64
+CC   = cc  -64
+FC   = f90 -64
 M4   = m4
 CPP  = cpp
-LINK = cc -64 -mips4
+LINK = $(CC)
 
-MFLAGS    = -mips4 -align64 -r12000 \
- -OPT:Olimit=0 -TARG:platform=ip27,processor=r12000
+MODI = -I       ## Module-include-directory command
 
-OMPFLAGS  = -mp -mpio
+MFLAGS    = -align64 -mips4 -r12000 \
+ -OPT:Olimit=0 -TARG:platform=ip27 -TARG:processor=r12000
+
+OMPFLAGS  = -mp -mpio -MP:old_mp=OFF
 OMPLIBS   = -lmp
-COPTFLAGS = -O3 ${MFLAGS}
-FOPTFLAGS = -O3 ${MFLAGS}
-INCFLAGS  = -I/usr/include -I/usr/include/sys -I/usr/include/rpc 
-FPPFLAGS  = -cpp -macro_expand
+COPTFLAGS = -O2 ${MFLAGS}
+FOPTFLAGS = -O2 ${MFLAGS}
+FPPFLAGS  = -cpp -macro_expand -DF90=1
 FSFLAGS   = -static
-ARCHFLAGS =  
+ARCHFLAGS = -DAUTO_ARRAYS=1 -DF90=1 -DSTAR=101
+PVM_ROOT  = /env/proj/ppar/pvm3
+PVM_ARCH  = SGI64
 PARFLAGS  =
 ARCHLIB   = 
 

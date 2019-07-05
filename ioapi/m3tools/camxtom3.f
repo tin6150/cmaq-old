@@ -2,12 +2,14 @@
       PROGRAM CAMXTOM3
 
 C***********************************************************************
-C Version "%W% %P% %G% %U% $Id: camxtom3.f 49 2007-07-06 16:20:50Z coats@borel $"
-C Copyright (c) 2006 Baron Advanced Meteorological Systems, LLC.
+C Version "$Id: camxtom3.f 43 2014-09-12 14:06:19Z coats $"
+C EDSS/Models-3 M3TOOLS.
+C Copyright (C) 1992-2002 MCNC, (C) 1995-2002,2005-2013 Carlie J. Coats, Jr.,
+C and (C) 2002-2010 Baron Advanced Meteorological Systems. LLC.
 C Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 C See file "GPL.txt" for conditions of use.
 C.........................................................................
-C  program body starts at line  104
+C  program body starts at line  103
 C
 C  DESCRIPTION:
 C       Convert CAMx/UAM style files to M3IO
@@ -20,6 +22,7 @@ C       Models-3 I/O API
 C
 C  REVISION  HISTORY:
 C       Prototype  12/2006 by Carlie J. Coats, Jr., BAMS
+C       Error-message bug-fix 10/2011 by CJC
 C***********************************************************************
 
         USE M3UTILIO
@@ -31,8 +34,6 @@ C...........  PARAMETERS and their descriptions:
         INTEGER     , PARAMETER :: MXSPEC= 200
         CHARACTER*16, PARAMETER :: PNAME = 'CAMXTOM3'
         CHARACTER*16, PARAMETER :: BLANK = ' '
-        CHARACTER*72, PARAMETER :: PROGVER =
-     &'$Id:: camxtom3.f 49 2007-07-06 16:20:50Z coats@borel          $'
         CHARACTER*64, PARAMETER :: BAR   =
      &'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-'
 
@@ -128,25 +129,26 @@ C   begin body of program RAINFIX
      &'',
      &'THE PROGRAM WILL PROMPT YOU for the starting date (YYYYDDD),',
      &'starting time (HHMMSS), and time step (HHMMSS).',
-     &'',
-     &'See URL  http://www.baronams.com/products/ioapi/AA.html#tools',
      &' ',
-     &'Program copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.',
-     &'and (C) 2002-2007 Baron Advanced Meteorological Systems, LLC',
-     &'Released under Version 2 of the GNU General Public License.',
-     &'See enclosed GPL.txt, or URL',
-     &'http://www.gnu.org/copyleft/gpl.html',
+     &'See URL',
+     &'https://www.cmascenter.org/ioapi/documentation/3.1/html#tools',
+     &' '
+     &'Program copyright (C) 1992-2002 MCNC, (C) 1995-2013',
+     &'Carlie J. Coats, Jr., and (C) 2002-2010 Baron Advanced',
+     &'Meteorological Systems, LLC.  Released under Version 2',
+     &'of the GNU General Public License. See enclosed GPL.txt, or',
+     &'URL http://www.gnu.org/copyleft/gpl.html',
      &' ',
      &'Comments and questions are welcome and can be sent to',
      &' ',
-     &'    Carlie J. Coats, Jr.    coats@baronams.com',
-     &'    Baron Advanced Meteorological Systems, LLC.',
-     &'    1009  Capability Drive, Suite 312, Box # 4',
-     &'    Raleigh, NC 27606',
+     &'    Carlie J. Coats, Jr.    cjcoats@email.unc.edu',
+     &'    UNC Institute for the Environment',
+     &'    100 Europa Dr., Suite 490 Rm 405',
+     &'    Campus Box 1105',
+     &'    Chapel Hill, NC 27599-1105',
      &' ',
      &'Program version: ',
-     &PROGVER,
-     &'Program release tag: $Name$',
+     &'$Id:: camxtom3.f 43 2014-09-12 14:06:19Z coats                $',
      &' '
 
         IF ( .NOT. GETYN( 'Continue with program?', .TRUE. ) ) THEN
@@ -180,7 +182,7 @@ C...............  Open input file and read header:
 
         IF ( IDEV .LT. 0 ) THEN
             EFLAG = .TRUE.
-            MESG  = 'Bad environment variable "GRID_NAME"'
+            MESG  = 'Could not open "INFILE"'
             CALL M3MESG( MESG )
         ELSE
 

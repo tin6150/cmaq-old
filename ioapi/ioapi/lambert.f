@@ -44,15 +44,16 @@
         LOGICAL          LL2ALB
 
 C***********************************************************************
-C Version "%W% %P% %G% %U% $Id$"
-C EDSS/Models-3 I/O API.  Copyright (C) 1992-2002 MCNC and
-C (C) 2003-2008 Baron Advanced Meteorological Systems.
+C Version "$Id: lambert.f 45 2014-09-12 20:05:29Z coats $"
+C EDSS/Models-3 I/O API.
+C Copyright (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
+C (C) 2003-2010 by Baron Advanced Meteorological Systems.
 C Distributed under the GNU LESSER GENERAL PUBLIC LICENSE version 2.1
 C See file "LGPL.txt" for conditions of use.
 C.........................................................................
-C  subroutine LAMBERT body starts at line  330
+C  subroutine LAMBERT body starts at line  314
 C  entry      POLSTE       starts at line  413
-C  entry      TRMERC       starts at line  537
+C  entry      TRMERC       starts at line  521
 C  entry      EQMERC       starts at line  664
 C  entry      ALBERS       starts at line  792
 C  entry      SETLAM       starts at line  883
@@ -165,6 +166,7 @@ C              add CRDIN(1) and CRDIN(2) for POL2LL
 C       Revised    1/2006 by CJC: enforce zero-initialization of
 C       TPARIN, TPARIO for environments with default-initialization of NaN
 C       Revised    7/2008 by CJC: ALBERS, SETALB, ALB2LL, LL2ALB
+C       Modified 03/20010 by CJC: F90 changes for I/O API v3.1
 C***********************************************************************
 
         INCLUDE 'PARMS3.EXT'
@@ -186,24 +188,16 @@ C...........   ARGUMENTS:
 
 C...........   PARAMETERS:
 
-      REAL*8      D60
-      REAL*8      PI
-      REAL*8      PI180
-      REAL*8      RPI180
-      PARAMETER ( D60    = 1.0D0 / 60.0D0,
-     &            PI     = 3.14159 26535 89793 23846 26433 83279D0 ,
-     &            PI180  = PI / 180.0D0 ,
-     &            RPI180 = 180.0D0 / PI )
+      REAL*8, PARAMETER :: D60 = 1.0D0 / 60.0D0
+      REAL*8, PARAMETER :: PI  = 3.14159 26535 89793 23846 26433 83279D0
+      REAL*8, PARAMETER :: PI180  = PI / 180.0D0
+      REAL*8, PARAMETER :: RPI180 = 180.0D0 / PI
 
 
 C...........   External Functions
 
-        LOGICAL         DSCOORD
-        LOGICAL         DSCGRID
-        INTEGER         INIT3           !  from M3IO
-        LOGICAL         INITSPHERES, SPHEREDAT
-
-        EXTERNAL    DSCOORD, DSCGRID, INIT3, INITSPHERES, SPHEREDAT
+        LOGICAL, EXTERNAL :: DSCOORD, DSCGRID, INITSPHERES, SPHEREDAT
+        INTEGER, EXTERNAL :: INIT3
 
 
 C.......   LOCAL VARIABLES:
@@ -233,20 +227,19 @@ C.......   Arguments for GTPZ0:
 
 C.......   Error codes for GTPZ0:
 
-      CHARACTER*64      GMESG( 9 )
-      DATA              GMESG /
-     &  'Illegal  input system code INSYS',
-     &  'Illegal output system code IOSYS',
-     &  'Illegal  input unit code INUNIT',
-     &  'Illegal output unit code IOUNIT',
-     &  'Inconsistent unit and system codes for  input',
-     &  'Inconsistent unit and system codes for output',
-     &  'Illegal  input zone code INZONE',
-     &  'Illegal output zone code IOZONE',
-     &  'Projection-specific error' /
+      CHARACTER*64, SAVE :: GMESG( 9 ) = (/
+     &  'Illegal  input system code INSYS               ',
+     &  'Illegal output system code IOSYS               ',
+     &  'Illegal  input unit code INUNIT                ',
+     &  'Illegal output unit code IOUNIT                ',
+     &  'Inconsistent unit and system codes for  input  ',
+     &  'Inconsistent unit and system codes for output  ',
+     &  'Illegal  input zone code INZONE                ',
+     &  'Illegal output zone code IOZONE                ',
+     &  'Projection-specific error                      ' /)
 
 C.......   Arguments for DSCGRID() and DSCCORD():
-C.......   Lambert calls use *L; Polar calls use *P
+C.......   Lambert calls use *L; Polar calls use *P, etc.
 
         CHARACTER*16  ANAME
         INTEGER       CTYPE
@@ -263,36 +256,36 @@ C.......   Lambert calls use *L; Polar calls use *P
         INTEGER       NROWS     !  number of grid rows
         INTEGER       NTHIK     !  BOUNDARY:  perimeter thickness (cells)
 
-        REAL*8        P_ALPL     !  first, second, third map
-        REAL*8        P_BETL     !  projection descriptive
-        REAL*8        P_GAML     !  parameters
-        REAL*8        XCENTL     !  lon for coord-system X=0
-        REAL*8        YCENTL     !  lat for coord-system Y=0
+        REAL*8, SAVE :: P_ALPL     !  first, second, third map
+        REAL*8, SAVE :: P_BETL     !  projection descriptive
+        REAL*8, SAVE :: P_GAML     !  parameters
+        REAL*8, SAVE :: XCENTL     !  lon for coord-system X=0
+        REAL*8, SAVE :: YCENTL     !  lat for coord-system Y=0
 
-        REAL*8        P_ALPP     !  first, second, third map
-        REAL*8        P_BETP     !  projection descriptive
-        REAL*8        P_GAMP     !  parameters
-        REAL*8        XCENTP     !  lon for coord-system X=0
-        REAL*8        YCENTP     !  lat for coord-system Y=0
+        REAL*8, SAVE :: P_ALPP     !  first, second, third map
+        REAL*8, SAVE :: P_BETP     !  projection descriptive
+        REAL*8, SAVE :: P_GAMP     !  parameters
+        REAL*8, SAVE :: XCENTP     !  lon for coord-system X=0
+        REAL*8, SAVE :: YCENTP     !  lat for coord-system Y=0
 
 
-        REAL*8        P_ALPT     !  first, second, third map
-        REAL*8        P_BETT     !  projection descriptive
-        REAL*8        P_GAMT     !  parameters
-        REAL*8        XCENTT     !  lon for coord-system X=0
-        REAL*8        YCENTT     !  lat for coord-system Y=0
+        REAL*8, SAVE :: P_ALPT     !  first, second, third map
+        REAL*8, SAVE :: P_BETT     !  projection descriptive
+        REAL*8, SAVE :: P_GAMT     !  parameters
+        REAL*8, SAVE :: XCENTT     !  lon for coord-system X=0
+        REAL*8, SAVE :: YCENTT     !  lat for coord-system Y=0
 
-        REAL*8        P_ALPE     !  first, second, third map
-        REAL*8        P_BETE     !  projection descriptive
-        REAL*8        P_GAME     !  parameters
-        REAL*8        XCENTE     !  lon for coord-system X=0
-        REAL*8        YCENTE     !  lat for coord-system Y=0
+        REAL*8, SAVE :: P_ALPE     !  first, second, third map
+        REAL*8, SAVE :: P_BETE     !  projection descriptive
+        REAL*8, SAVE :: P_GAME     !  parameters
+        REAL*8, SAVE :: XCENTE     !  lon for coord-system X=0
+        REAL*8, SAVE :: YCENTE     !  lat for coord-system Y=0
 
-        REAL*8        P_ALPA     !  first, second, third map
-        REAL*8        P_BETA     !  projection descriptive
-        REAL*8        P_GAMA     !  parameters
-        REAL*8        XCENTA     !  lon for coord-system X=0
-        REAL*8        YCENTA     !  lat for coord-system Y=0
+        REAL*8, SAVE :: P_ALPA     !  first, second, third map
+        REAL*8, SAVE :: P_BETA     !  projection descriptive
+        REAL*8, SAVE :: P_GAMA     !  parameters
+        REAL*8, SAVE :: XCENTA     !  lon for coord-system X=0
+        REAL*8, SAVE :: YCENTA     !  lat for coord-system Y=0
 
 C.......   Scratch variables:
 
@@ -305,19 +298,11 @@ C.......   SAVED Local Variables:
         !!  coordinate system of the indicated type increments the
         !!  corresponding ID by 4 = Number of types implemented
 
-        INTEGER         LZONE   !  Lambert
-        INTEGER         PZONE   !  Polar Stereographic
-        INTEGER         TZONE   !  Transverse Mercator
-        INTEGER         EZONE   !  Equatorial Mercator
-        INTEGER         AZONE   !  Equatorial Mercator
-        DATA            LZONE, PZONE, TZONE, EZONE, AZONE
-     &           / 61, 62, 63, 64, 65 /
-
-        SAVE    LZONE, P_ALPL, P_BETL, P_GAML, XCENTL, YCENTL,
-     &          PZONE, P_ALPP, P_BETP, P_GAMP, XCENTP, YCENTP,
-     &          TZONE, P_ALPT, P_BETT, P_GAMT, XCENTT, YCENTT,
-     &          EZONE, P_ALPE, P_BETE, P_GAME, XCENTE, YCENTE,
-     &          AZONE, P_ALPA, P_BETA, P_GAMA, XCENTA, YCENTA
+        INTEGER, SAVE :: LZONE = 61   !  Lambert
+        INTEGER, SAVE :: PZONE = 62   !  Polar Stereographic
+        INTEGER, SAVE :: TZONE = 63   !  Transverse Mercator
+        INTEGER, SAVE :: EZONE = 64   !  Equatorial Mercator
+        INTEGER, SAVE :: AZONE = 65   !  Equatorial Mercator
 
 
 C***********************************************************************
@@ -794,7 +779,7 @@ C...........   Get coordinate system description, using DSCOORD or
 C...........   DSCGRID, as appropriate:
 
         IF ( .NOT. INITSPHERES() ) THEN
-            MESG = 'Bad geodetic sphere info' 
+            MESG = 'Bad geodetic sphere info'
             CALL M3WARN( 'LAMBERT/ALBERS', 0, 0, MESG )
         END IF
 
@@ -3379,4 +3364,4 @@ C...........   Internal buffering formats............ 94xxx
 
 94020   FORMAT( A, 1PG14.5, :, 2X )
 
-        END
+        END FUNCTION LAMBERT

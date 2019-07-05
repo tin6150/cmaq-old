@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
-<!-- @(#)$Header: /env/proj/archive/cvs/ioapi/ioapi/ioapi_doc_emc/MMDDYY.html,v 1.1.1.1 2001/12/05 20:25:36 coats Exp $ -->
+<!-- "$Id: MMDDYY.html 131 2015-01-26 14:03:44Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE> MMDDYY() and mmddyyc() </TITLE>
 </HEAD>
@@ -15,14 +15,10 @@
 
 <H1>    MMDDYY() and mmddyyc() </H1>
 
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
-
 <H2> Fortran version: </H2>
 <PRE>
-    CHARACTER*14  MMDDYY( JDATE )
-        INTEGER JDATE   ! date, YYYDDD = 1000*year + day(1...365,6)
+    CHARACTER*14 FUNCTION MMDDYY( JDATE )
+        INTEGER, INTENT(IN   ) :: JDATE   ! date, YYYDDD = 1000*year + day(1...365,6)
 </PRE><P> 
 
 <H2> C version: </H2>
@@ -42,14 +38,22 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
     </PRE><P>
 
     See also subroutines
-    <A HREF = "JULIAN.html"> JULIAN()</A> , 
-    <A HREF = "DAYMON.html"> DAYMON()</A> , 
-    <A HREF = "WKDAY.html">   WKDAY()</A> , and
-    <A HREF = "ISDSTIME.html"> ISDSTIME()</A>,
-    <A HREF = "DT2STR.html"> DT2STR() </A>
+    <BLOCKQUOTE>
+    <A HREF = "JULIAN.html"> JULIAN()</A>,  <BR>
+    <A HREF = "DAYMON.html"> DAYMON()</A>,  <BR>
+    <A HREF = "WKDAY.html">   WKDAY()</A>, <BR>
+    <A HREF = "ISDSTIME.html"> ISDSTIME()</A>, <BR>
+    <A HREF = "DT2STR.html"> DT2STR() </A> <BR>
+    </BLOCKQUOTE>
     as well as EDSS/ Models-3 date-time manipulation programs
-    <A HREF = "GREGDATE.html"> <STRONG>gregdate</STRONG></A> and
-    <A HREF = "JULDATE.html">  <STRONG> juldate</STRONG></A>.
+    <BLOCKQUOTE>
+    <A HREF = "GREGDATE.html"> <STRONG>gregdate</STRONG></A>, <BR>
+    <A HREF = "GREG2JUL.html"> <STRONG>greg2jul</STRONG></A>, <BR>
+    <A HREF = "JULDATE.html">  <STRONG>juldate</STRONG></A>, <BR>
+    <A HREF = "JUL2GREG.html">  <STRONG>jul2greg</STRONG></A> <BR>
+    <A HREF = "JULSHIFT.html">  <STRONG>julshift</STRONG></A> <BR>
+    <A HREF = "TIMESHIFT.html">  <STRONG>timeshift</STRONG></A>. <BR>
+    </BLOCKQUOTE>
 
 <H2> Preconditions: </H2>
 
@@ -62,7 +66,7 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 <H2> Fortran Usage: </H2>
 <PRE>
     ...
-    CHARACTER*14  MMDDYY
+    USE M3UTILIO
     ...
     CHARACTER*14  BUFFER
     ...
@@ -87,7 +91,7 @@ Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
 
 <HR>
 
-<A HREF = "JULIAN.html" >
+<A HREF = "LASTTIME.html" >
 Previous:  <STRONG>JULIAN</STRONG>
 </A><P> 
 

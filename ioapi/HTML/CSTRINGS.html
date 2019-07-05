@@ -2,6 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <HTML>
 <HEAD>
+<!-- "$Id: CSTRINGS.html 6 2014-03-20 17:30:58Z coats $" -->
 <META NAME="MSSmartTagsPreventParsing" CONTENT="TRUE"> 
 <TITLE>C String Routines</TITLE>
 </HEAD>
@@ -14,12 +15,7 @@
 <H1>    Fortran/C String Conversion Routines<BR>
         fstr2cstr(), name2cstr(), cstr2fstr() 
 </H1>
-
-<CENTER><A REL="author" HREF="/staff/coats/">
-Carlie&nbsp;J.&nbsp;Coats,&nbsp;Jr.,&nbsp;Ph.D.
-</A></CENTER>
 <H2> C version (non-Cray):   </H2>
-
 <PRE>
 void  name2cstr( const char * source, 
                  char       * target,
@@ -102,7 +98,7 @@ data structures for Fortran strings are <EM>very</EM> different!.
     cstr2fstr( "K",  cdesc.units[0], (FSTR_L)(NAMLEN3) ) ;
     cstr2fstr( "air temperature", cdesc.vdesc[0], (FSTR_L)(MXDLEN3) ) ;
     ...
-    if ( !open3c( "OUTFILE", & bdesc, & cdesc, FSUNKN3, "MY_PROGRAM" ) )
+    if ( !open3c( "OUTFILE", &amp; bdesc, &amp; cdesc, FSUNKN3, "MY_PROGRAM" ) )
     ...
 
 </PRE><P> 

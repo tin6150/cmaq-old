@@ -1,10 +1,16 @@
-# @(#)$Header: /env/proj/archive/cvs/ioapi/./ioapi/src/Makeinclude.cray,v 1.2 2000/11/28 21:56:46 smith_w Exp $
+# VERSION "$Id: Makeinclude.cray 1 2014-03-14 20:22:54Z coats $"
+#
+#  Library flags severely hacked to satisfy Sun's broken
+#  compiler-linker system
+
 AR   = ar
 CC   = cc
 FC   = f90
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
+
+MODI = -I       ## Module-include-directory command
 
 MFLAGS    =  -dp -eZ rm
 
