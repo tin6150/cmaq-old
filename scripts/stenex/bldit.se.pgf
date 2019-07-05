@@ -40,11 +40,15 @@
  set MV = "/bin/mv -f"
 
 #> Set location of MPICH include files
+ ##set INCL = /share/linux/bin/mpich-ch_p4/include
  set INCL = /share/linux/bin/mpich-ch_p4/include
 
 #> Set full path of Fortran 90 compiler 
- set FC = /share/linux/pgi/linux86/5.0/bin/pgf90
- set FSTD = "-Mfixed -Mextend -c"
+ ##set FC = /share/linux/pgi/linux86/5.0/bin/pgf90
+ ##set FSTD = "-Mfixed -Mextend -c"
+ ##set FC = /global/software/sl-7.x86_64/modules/langs/intel/2018.1.163/bin/fpp # PreProcessor
+ set FC = /global/software/sl-7.x86_64/modules/langs/intel/2018.1.163/bin/ifort
+ set FSTD = ""
 # set DEBUG     # Uncomment to create debug version of library
  if ( $?DEBUG ) then
     set F_FLAGS = "${FSTD} -g -I${INCL}"
