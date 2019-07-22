@@ -97,9 +97,13 @@ VERSION = 3.1
 #       Defining BIN3_DEBUG turns on trace-messages for native-binary
 #       mode routines.
 
-##SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/										 # intel compile install to /global/home
+## version for intel compile install to /global/home
+## (Makefile can't have extra space at the end of a var definition!!)
+## at least when there is a comment at the end of the line, so avoid that!
+##SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/
 ##DSTBASE    = /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/
-SNHOME     = /home/tin/tin-gh/cmaq/ioapi  # pgi container
+## version for pgi container
+SNHOME     = /home/tin/tin-gh/cmaq/ioapi
 DSTBASE    = /opt/CMAS4.5.1/rel/
 ##BASEDIR    = ${HOME}/web31
 BASEDIR    = ${SNHOME}/ioapi
