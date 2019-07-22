@@ -14,7 +14,8 @@
 
 .SUFFIXES: .m4 .c .F .f
 
-BASEDIR = /env/proj/coats/ioapi_3
+BASEDIR = /home/tin/tin-gh/cmaq//ioapi
+
 SRCDIR  = $(BASEDIR)/iotests
 IODIR   = $(BASEDIR)/ioapi
 OBJDIR  = $(BASEDIR)/$(BIN)
@@ -22,9 +23,10 @@ F90DIR  = $(BASEDIR)/$(BIN)f90
 
 # Architecture dependent stuff
 
-include $(IODIR)/Makeinclude.$(BIN)
+include /home/tin/tin-gh/cmaq//ioapi/ioapi/Makeinclude.Linux4
 
-include $(PVM_ROOT)/conf/$(PVM_ARCH).def
+include  /conf/.def
+
 
 CFLAGS = -I$(PVM_ROOT)/include $(ARCHFLAGS) $(PARFLAGS) $(COPTFLAGS)
 
@@ -39,8 +41,7 @@ LDFLAGS = -I$(IODIR) -DIOAPICPL $(DEFINEFLAGS) $(ARCHFLAGS) $(PARFLAGS)
 #          nc-config --libs
 #
 #LIBS = -L${OBJDIR} -lioapi -lnetcdf  $(PVMLIBS) $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
-
-LIBS =  -L$(OBJDIR) -lioapi -lnetcdff- -lnetcdf $(PVMLIBS) $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
+LIBS  = -L$(OBJDIR) -lioapi -lnetcdff- -lnetcdf $(PVMLIBS) $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
 
 VPATH = $(OBJDIR)
 

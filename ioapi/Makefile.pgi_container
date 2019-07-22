@@ -97,9 +97,13 @@ VERSION = 3.1
 #       Defining BIN3_DEBUG turns on trace-messages for native-binary
 #       mode routines.
 
-##SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/										 # intel compile install to /global/home
+## version for intel compile install to /global/home
+## (Makefile can't have extra space at the end of a var definition!!)
+## at least when there is a comment at the end of the line, so avoid that!
+##SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/
 ##DSTBASE    = /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/
-SNHOME     = /opt/cmaq/
+## version for pgi container, this is right path, build script acc for double ioapi/ioapi
+SNHOME     = /home/tin/tin-gh/cmaq/
 DSTBASE    = /opt/CMAS4.5.1/rel/
 ##BASEDIR    = ${HOME}/web31
 BASEDIR    = ${SNHOME}/ioapi
@@ -113,13 +117,16 @@ CPLMODE    = cpl
 IOAPIDEFS  = -DIOAPICPL
 
 #### i hope PVM_ROOT isn't really needed...
+#### PVM is optional per doc...  so just comment it out.
 PVMINCL    = $(PVM_ROOT)/conf/$(PVM_ARCH).def
 
 #               ****   Variants   ****
 #
 # CPLMODE  = nocpl              #  turn off PVM coupling mode
+CPLMODE  = nocpl              #  turn off PVM coupling mode
 # IOAPIDEFS=                    #  for "nocpl"
 # PVMINCL  = /dev/null          #  for "nocpl"
+PVMINCL  = /dev/null          #  for "nocpl"
 # PVM_ROOT = <for "cpl":  root for PVM installation>
 # PVM_ARCH = <for "cpl":  PVM machine/compiler type; may need to override>
 # BIN      = <I/O AIP machine/compiler-type for $(IODIR)/Makeinclude.*>

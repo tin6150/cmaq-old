@@ -1,6 +1,6 @@
 #
 #.........................................................................
-# Version "$Id: Makefile.cpl 65 2014-12-01 22:40:23Z coats $"
+# Version "$Id: Makefile.cpl.sed 65 2014-12-01 22:40:23Z coats $"
 # EDSS/Models-3 M3TOOLS
 #    (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
 #    (C) 2003-2004 by Baron Advanced Meteorological Systems,
@@ -35,17 +35,18 @@
 
 .SUFFIXES: .m4 .c .F .f .f90 .F90
 
-BASEDIR = ${HOME}/web31
+BASEDIR = /home/tin/tin-gh/cmaq//ioapi
 SRCDIR  = ${BASEDIR}/m3tools
 IODIR   = ${BASEDIR}/ioapi
 OBJDIR  = ${BASEDIR}/${BIN}
+INSTDIR = /opt/CMAS4.5.1/rel//lib/ioapi_3/Linux4
 
 # Architecture dependent stuff
 # Assumes FC is an f90
 
-include $(IODIR)/Makeinclude.${BIN}
+include /home/tin/tin-gh/cmaq//ioapi/ioapi/Makeinclude.Linux4
 
-include $(PVM_ROOT)/conf/$(PVM_ARCH).def
+include  /conf/.def
 
 FFLAGS = -I$(IODIR) -DIOAPICPL $(ARCHFLAGS) $(PARFLAGS) $(FOPTFLAGS) $(ARCHFLAGS)
 
@@ -83,9 +84,9 @@ utmtool.f       verstep.f       vertintegral.f  vertot.f        wndwstep.f
 
 FSRC= bcstep.F   latlon.F   presz.F
 
-F90SRC= vertimeproc.f90
+f90SRC= vertimeproc.f90
 
-OBJ = $(fSRC:.f=.o) $(FSRC:.F=.o) $(F90SRC:.f=.o)
+OBJ = $(fSRC:.f=.o) $(FSRC:.f=.o) $(f90SRC:.f=.o)
 
 EXE = \
 airs2m3   bcwndw    datshift  dayagg    factor    \
@@ -98,8 +99,6 @@ mtxbuild  mtxcalc   mtxcple   presterp  presz     \
 projtool  selmrg2d  timeshift utmtool   vertot    \
 vertimeproc         vertintegral
 
-
-
 #      ----------------------   TOP-LEVEL TARGETS:   ------------------
 
 all: $(EXE)
@@ -107,7 +106,7 @@ all: $(EXE)
 clean:
 	cd ${OBJDIR}; rm $(EXE) $(OBJ)
 
-install: $(INSTDIR)
+install: /opt/CMAS4.5.1/rel//lib/ioapi_3/Linux4
 	echo "Installing M3TOOLS in ${INSTDIR}"
 	cd ${OBJDIR}; cp $(EXE) $(INSTDIR)
 
