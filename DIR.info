@@ -1,19 +1,23 @@
 
-branch 4.5.1
-
-dirs:
-doc
-scripts
-models
-
-are from tar extracts
-
-tar xfz ~/Downloads/M3SCRIPTS.CMAQv4.5.1.tar.gz 
-tar xfz ~/Downloads/M3MODELS.CMAQv4.5.1.tar.gz 
-tar xfz ~/Downloads/M3DOCS.CMAQv4.5.1.tar.gz 
+DIRS that are in "branch 4.5.1", may need them (all? most?) in singularity container if build that way.
 
 
-lib/
-dir in /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel
-was created manually, as noted in build.rst   thus not in source tree.
+dirs that are from tar extracts
+-------------------------------
 
+* scripts
+	tar xfz ~/Downloads/M3SCRIPTS.CMAQv4.5.1.tar.gz 
+* models
+	tar xfz ~/Downloads/M3MODELS.CMAQv4.5.1.tar.gz 
+* doc
+	tar xfz ~/Downloads/M3DOCS.CMAQv4.5.1.tar.gz 
+
+dirs created manually
+---------------------
+
+* lib/
+	dir in /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel
+	was created manually, as noted in build.rst   thus not in source tree.
+
+* ioapi
+  contains the extracted source of ioapi, compile in there.

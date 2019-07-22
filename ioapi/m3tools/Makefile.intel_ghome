@@ -40,10 +40,8 @@
 
 .SUFFIXES: .m4 .c .F .f .f90 .F90
 
-##SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/
-##DSTBASE    = /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/
-SNHOME     = /opt/cmaq/
-DSTBASE    = /opt/CMAS4.5.1/rel/
+SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/
+DSTBASE    = /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/
 ##BASEDIR    = ${HOME}/web31
 BASEDIR    = ${SNHOME}/ioapi
 

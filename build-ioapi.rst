@@ -58,12 +58,23 @@ follow ioapi/README.txt
 	setenv BIN `uname -s``uname -r | cut -d. -f1`
 	Linux3
 vi Makefile
-vi ioapi/Makefiile
 vi m3tools/Makefile
+vi ioapi/Makefiile
+	2 version of these Makefile now.
+	(1) .intel_ghome, ie for install into Ling's dir 
+	##SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/
+    ##DSTBASE    = /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/
+    (2) .pgi_container, ie for install inside singularity cmaq.img
+	SNHOME     = /opt/cmaq/
+	DSTBASE    = /opt/CMAS4.5.1/rel/
 
 is there a `make configure`?
 
-cp Makeinclude.Linux2_x86_64ifortdbg Makeinclude.Linux3 + edit
+(still in ioapi/ )
+cp Makeinclude.Linux2_x86_64ifortdbg Makeinclude.Linux3 + edit  # for intel 
+	2 version too at this point
+cp Makeinclude.Linux2_x86_64pg Makeinclude.Linux3.pgi   + edit  # for pgi in container...  (no meaningful edit at this time)
+
 
 module load netcdf/4.6.1-intel-p	# so that -lnetcdf can find it
 make
@@ -72,4 +83,7 @@ make
 make clean
 
 new plan: compile my own netcdf, with -mcmodel=medium
+
+2019.0721 compile in PGI singularity container interactively
+(no more module load netcdf/4.6.1-intel-p, the container has its own lib)
 

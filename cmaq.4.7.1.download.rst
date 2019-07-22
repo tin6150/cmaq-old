@@ -5,7 +5,7 @@ https://www.cmascenter.org/download/software/cmaq/cmaq_4-7-1.cfm?DB=TRUE
 
 Don't really plan to use this version.
 But CMAQ 4.5.1 refered to data tgz that was not found anyhere except in here, 
-thus recording this info for fugture ref.
+thus recording this info for future ref.
 
 
 CMAQ 4.7.1
@@ -15,6 +15,8 @@ The CMAQ version 4.7.1 source code and scripts can be downloaded at the command 
 git clone -b 4.7.1 https://github.com/CMASCenter/CMAQ.git 
 
 Benchmark input and output data are available for direct download from the table below.
+
+
 
 
 Direct Download
