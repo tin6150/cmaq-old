@@ -91,9 +91,11 @@ I/O API INSTALLATION
           generating BIN is
 
               setenv BIN `uname -s``uname -r | cut -d. -f1`
-**// Linux3
+**// Linux3 # centos7/beagle/lrc
+     Linux4 # mint/bofh
 	 this may become a problem as code seems to be for Linux2 (3 rever to major kernel version)
 	 try Linux2_x86_64ifort or Linux2_x86_64ifort*dbg
+	 in singularity container w/ pgi, trying cp Makeinclude.Linux2_x86_64pg Makeinclude.Linux3
 //**
 
           with a possible compiler/functionality-specific extension,

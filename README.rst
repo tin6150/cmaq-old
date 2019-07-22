@@ -33,9 +33,9 @@ Singularity
 
 :: 
 
-    sudo /opt/singularity-2.5.2/bin/singularity build cmaq_b0721a.img pgi_netcdf.def
-    sudo /opt/singularity-2.5.2/bin/singularity shell cmaq.img 
-    ./singularity shell cmaq.img 
+    sudo /opt/singularity-2.5.2/bin/singularity build --writable cmaq_b0721c.img pgi_netcdf.def
+    ./singularity shell --writable cmaq.img 
+	# ++ need to start interactive container so content are saved, not ephemeral... 
 	# home dir is mapped, so source code for ioapi already avail in my use
 	# .def file would need to do more things...
 	# see the various rst files for commands.

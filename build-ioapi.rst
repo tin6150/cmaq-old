@@ -56,16 +56,17 @@ LOG
 **^ tin viz.scs00 ~/gs/tin-gh/cmaq/ioapi ^**>  
 follow ioapi/README.txt
 	setenv BIN `uname -s``uname -r | cut -d. -f1`
-	Linux3
+	Linux3 # on beagle or lrc
+	Linux4 # on bofh (mint)
 vi Makefile
 vi m3tools/Makefile
-vi ioapi/Makefiile
-	2 version of these Makefile now.
+vi ioapi/Makefile
+	2 version of these Makefile(s) now.
 	(1) .intel_ghome, ie for install into Ling's dir 
 	##SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/
     ##DSTBASE    = /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/
     (2) .pgi_container, ie for install inside singularity cmaq.img
-	SNHOME     = /opt/cmaq/
+	SNHOME     = /home/tin/tin-gh/cmaq/ioapi   # BASEDIR=${SNHOME}/ioapi 
 	DSTBASE    = /opt/CMAS4.5.1/rel/
 
 is there a `make configure`?
@@ -73,10 +74,10 @@ is there a `make configure`?
 (still in ioapi/ )
 cp Makeinclude.Linux2_x86_64ifortdbg Makeinclude.Linux3 + edit  # for intel 
 	2 version too at this point
-cp Makeinclude.Linux2_x86_64pg Makeinclude.Linux3.pgi   + edit  # for pgi in container...  (no meaningful edit at this time)
+cp Makeinclude.Linux2_x86_64pg       Makeinclude.Linux4 + edit  # for pgi in container...  (no meaningful edit at this time)
 
 
-module load netcdf/4.6.1-intel-p	# so that -lnetcdf can find it
+#module load netcdf/4.6.1-intel-p	# so that -lnetcdf can find it
 make
 
 *sigh* nope, doesn't work.  many unfindible symbols.

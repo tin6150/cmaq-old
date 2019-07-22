@@ -1,6 +1,6 @@
 # VERSION "$Id: Makeinclude.Linux2_x86_64pg 1 2014-03-14 20:22:54Z coats $"
 ####
-#### cp Makeinclude.Linux2_x86_64pg Makeinclude.Linux3.pgi   + edit  # for pgi in container...
+#### cp Makeinclude.Linux2_x86_64pg Makeinclude.Linux4.pgi   + edit  # for pgi in container...
 ####
 #
 #  In some ways, this is the most problematical install, because of 
@@ -31,7 +31,8 @@
 
 AR   = ar
 CC   = pgcc
-FC   = pgf90		## this exist in cmaq.img as /opt/pgi/linux86-64/19.4/bin/pgf90
+#FC   = pgf90		## this exist in cmaq.img as /opt/pgi/linux86-64/19.4/bin/pgf90
+FC   = pgf90 -Bstatic_pgi 		
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
@@ -39,7 +40,7 @@ LINK = $(CC)
 MODI = "-module "       ## Module-include-directory command
 
 ##MFLAGS    = -fast # -Mnoupcase
-MFLAGS    = -fast -mcmodel=medium   ## is this applicable to PGI ? or intel only??
+MFLAGS    = -fast -mcmodel=medium   ## this maybe for intel only...??
 
 OMPFLAGS  = # -mp
 OMPLIBS   = # -lmp

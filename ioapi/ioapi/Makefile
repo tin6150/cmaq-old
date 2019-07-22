@@ -73,7 +73,7 @@
 ##SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/
 ##DSTBASE    = /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/
 
-SNHOME     = /opt/cmaq/
+SNHOME     = /home/tin/tin-gh/cmaq/ioapi  # pgi container
 DSTBASE    = /opt/CMAS4.5.1/rel/
 ##BASEDIR    = ${HOME}/web31
 BASEDIR    = ${SNHOME}/ioapi
