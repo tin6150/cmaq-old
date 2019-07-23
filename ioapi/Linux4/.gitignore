@@ -1,0 +1,4 @@
+*.o
+libioapi.a
+m3utilio.mod
+matxatts.mod

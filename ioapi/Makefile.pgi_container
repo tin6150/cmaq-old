@@ -103,8 +103,8 @@ VERSION = 3.1
 ##SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/
 ##DSTBASE    = /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/
 ## version for pgi container, this is right path, build script acc for double ioapi/ioapi
-SNHOME     = /home/tin/tin-gh/cmaq/
-DSTBASE    = /opt/CMAS4.5.1/rel/
+SNHOME     = /home/tin/tin-gh/cmaq
+DSTBASE    = /opt/CMAS4.5.1/rel
 ##BASEDIR    = ${HOME}/web31
 BASEDIR    = ${SNHOME}/ioapi
 #INSTALL    = /SOMEWHERE

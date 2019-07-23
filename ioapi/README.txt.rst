@@ -43,6 +43,10 @@ CURRENT VERSION AVAILABILITY
 
         https://www.cmascenter.org/ioapi/documentation/3.1/html/NEWSTUFF.html
 
+**//
+	I am using ver 3.1
+//**
+
 
 I/O API INSTALLATION
 
@@ -120,6 +124,9 @@ I/O API INSTALLATION
           PVM Coupling Mode, "Makefile.nocpl" for no-PVM, etc.
           Copy the appropriate one of the "Makefile.*" to "Makefile".
 **// PVM ??!!
+     it is optional :)
+	 cd cmaq/ioapi/ioapi
+	 cp -p Makefile.pgi_container Makefile
 //**
 
        6. Customize "Makefile" for your system:
@@ -148,11 +155,18 @@ I/O API INSTALLATION
           SMOKE, and others.  It also enables OpenMP parallelism in a
           number of "m3tools" programs.
 
+
        7. In the I/O API library source directory "ioapi", type "make"
           to build the object library. The current build process will
           generate "${OBJDIR}/libioapi.a".  For the non-Standard-compliant
           "fixed-132" INCLUDE-files required by CMAQ and some versions
           of SMOKE, type "make fixed_src"
+**//
+	cd cmaq/ioapi/ioapi
+	make
+
+
+//**
 
        8. If necessary, get netCDF (for netCDF-4, get both
           netCDF-Fortran and netCDF-C) and build "libnetcdf.a" (and

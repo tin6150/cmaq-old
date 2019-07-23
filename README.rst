@@ -21,7 +21,7 @@ Build plan
 * Need to have a single compiler with NetCDF and ioapi, etc
   If using SMF Intel compiler, seems to need to recompile NetCDF.
 
-* Singularity: 2019.TBA: Trying to use a singularity container with PGI, Ryan already seeded with those libs.
+* Singularity: 2019.0721 : Trying to use a singularity container with PGI, Ryan already seeded with those libs.
   will start with interactive command rather than write .def cuz cmaq may need lot of interactions.
   jog down the commands that may eventually lead to a .def...
   without beagle or singularity-hub, no easy way to build the container.
@@ -33,7 +33,7 @@ Singularity
 
 :: 
 
-    sudo /opt/singularity-2.5.2/bin/singularity build --writable cmaq_b0721c.img pgi_netcdf.def
+    sudo /opt/singularity-2.5.2/bin/singularity build --writable cmaq_b0721e.img pgi_netcdf.def
     ./singularity shell --writable cmaq.img 
 	# ++ need to start interactive container so content are saved, not ephemeral... 
 	# home dir is mapped, so source code for ioapi already avail in my use
