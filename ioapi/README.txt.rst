@@ -125,8 +125,6 @@ I/O API INSTALLATION
           Copy the appropriate one of the "Makefile.*" to "Makefile".
 **// PVM ??!!
      it is optional :)
-	 cd cmaq/ioapi/ioapi
-	 cp -p Makefile.pgi_container Makefile
 //**
 
        6. Customize "Makefile" for your system:
@@ -163,8 +161,12 @@ I/O API INSTALLATION
           of SMOKE, type "make fixed_src"
 **//
 	cd cmaq/ioapi/ioapi
+	cp -p Makefile.pgi_container Makefile
 	make
+	cd cmaq/ioapi/bin; ln -s ../Linux4/libioapi.a .
 
+	maybe better as:
+	make HOME=/home/tin/tin-gh/cmaq/ioapi  BIN=Linux4  INSTDIR=/opt/CMAS4.5.1/rel/lib/ioapi_3/  install
 
 //**
 
@@ -177,10 +179,28 @@ I/O API INSTALLATION
           Copy or link ("ln -s ...")  the "libnetcdf.a" (and
           "libnetcdff.a", libpnetcdf.a, and "libpvm3.a" if you built
           them) to your $BASEDIR/$BIN.
+**//
+	may better be done by the container... but build dest isn't happening to /opt :-/
+	cd cmaq/ioapi/bin; 
+	ln -s ../Linux4/libioapi.a .
+	ln -s /usr/local/lib/libnetcdf.a .
+	(no libpnetcd.a avail (yet))
+
+//**
 
        9. In the I/O API tool source directory "m3tools", create a
           customized "Makefile" as in (6) above, and type "make".
 
+**//
+	cd cmaq/ioapi/m3tools
+	cp -p Makefile.pgi_container Makefile
+	make
+
+##++ not working yet, probaly cuz not finding libnetcdf.a or libnetcdff.a ??
+
+	##cd cmaq/ioapi/bin; ln -s ../Linux4/libioapi.a .
+
+//**
 
 
 
