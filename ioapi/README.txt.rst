@@ -81,6 +81,9 @@ I/O API INSTALLATION
               tar xvfz ioapi-3.*.tar.gz
 
           does unzip-untar all in one step).
+**//
+	BASEDIR=/home/tin/tin-gh/cmaq/ioapi/ioapi  # source dir
+//**
 
        Alternative 1. & 2. for Version 3.2 and later, only:
 
@@ -95,7 +98,14 @@ I/O API INSTALLATION
           generating BIN is
 
               setenv BIN `uname -s``uname -r | cut -d. -f1`
-**// Linux3 # centos7/beagle/lrc
+
+**// 
+	## export CC=/opt/pgi/linux86-64/19.4/bin/pgcc CCFLAGS="-g"   FC=/opt/pgi/linux86-64/19.4/bin/pgf95 FCFLAGS="-g"
+	## export PATH=/opt/pgi/linux86-64/19.4/bin/:$PATH
+	## above defined in container .def
+
+	 export BIN=`uname -s``uname -r | cut -d. -f1`
+	 Linux3 # centos7/beagle/lrc
      Linux4 # mint/bofh
 	 this may become a problem as code seems to be for Linux2 (3 rever to major kernel version)
 	 try Linux2_x86_64ifort or Linux2_x86_64ifort*dbg
@@ -161,12 +171,14 @@ I/O API INSTALLATION
           of SMOKE, type "make fixed_src"
 **//
 	cd cmaq/ioapi/ioapi
+	## export CC=/opt/pgi/linux86-64/19.4/bin/pgcc CCFLAGS="-g"   FC=/opt/pgi/linux86-64/19.4/bin/pgf95 FCFLAGS="-g"
 	cp -p Makefile.pgi_container Makefile
-	make
-	cd cmaq/ioapi/bin; ln -s ../Linux4/libioapi.a .
+	#make
+	#maybe better as:
+	#make HOME=/home/tin/tin-gh/cmaq/ioapi  BIN=Linux4  INSTDIR=/opt/CMAS4.5.1/rel/lib/ioapi_3/  install
+	make HOME=/local/home/tin/tin-gh/cmaq/ioapi  BIN=Linux4  INSTDIR=/opt/CMAS4.5.1/rel/lib/ioapi_3/  install
 
-	maybe better as:
-	make HOME=/home/tin/tin-gh/cmaq/ioapi  BIN=Linux4  INSTDIR=/opt/CMAS4.5.1/rel/lib/ioapi_3/  install
+	cd cmaq/ioapi/bin; ln -s ../Linux4/libioapi.a .
 
 //**
 

@@ -71,9 +71,8 @@ vi ioapi/Makefile
 	SNHOME     = /home/tin/tin-gh/cmaq/ioapi   # BASEDIR=${SNHOME}/ioapi 
 	DSTBASE    = /opt/CMAS4.5.1/rel/
 
-mkdir -p ${DSTBASE}/lib/ioapi_3
-
-
+mkdir -p ${DSTBASE}/lib/ioapi_3  
+mkdir -p /opt/CMAS4.5.1/rel/lib/ioapi_3
 
 
 (still in ioapi/ )

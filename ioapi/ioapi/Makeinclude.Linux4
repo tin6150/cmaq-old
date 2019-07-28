@@ -32,7 +32,8 @@
 AR   = ar
 CC   = pgcc
 #FC   = pgf90		## this exist in cmaq.img as /opt/pgi/linux86-64/19.4/bin/pgf90
-FC   = pgf90 -Bstatic_pgi 		
+#FC   = pgf90 -Bstatic_pgi 		
+FC   = pgf95 -Bstatic_pgi 		
 M4   = m4
 CPP  = cpp
 LINK = $(CC)

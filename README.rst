@@ -20,12 +20,17 @@ Build plan
 
 * Need to have a single compiler with NetCDF and ioapi, etc
   If using SMF Intel compiler, seems to need to recompile NetCDF.
+  	
 
 * Singularity: 2019.0721 : Trying to use a singularity container with PGI, Ryan already seeded with those libs.
   will start with interactive command rather than write .def cuz cmaq may need lot of interactions.
-  jog down the commands that may eventually lead to a .def...
-  without beagle or singularity-hub, no easy way to build the container.
-  get bofh to work with singulairty... 
+  commands (mostly) jogged into the pgi_netcdf.def, but may have missing steps.
+  bofh now has singularity via SMFdev.
+  cmaq.img is writable, with rebuild hdf5, libnetcdff compiled by pgi pgf95. [2019.0726, but ioapi isn't compiling]
+  cmaq.img is writable, with rebuild hdf5, libnetcdff compiled by pgi pgf90. [2019.0728]
+  now rebuild ioapi...  see  ioapi/README.txt.rst
+
+
 
 
 Singularity
@@ -33,13 +38,21 @@ Singularity
 
 :: 
 
-    sudo /opt/singularity-2.5.2/bin/singularity build --writable cmaq_b0721e.img pgi_netcdf.def
-    ./singularity shell --writable cmaq.img 
+	sudo /opt/singularity-2.5.2/bin/singularity build --writable cmaq_b0721e.img pgi_netcdf.def
+	module load tools/singularity/2.5.2 # SMFdev for bofh
+	singularity shell --writable cmaq.img 
 	# ++ need to start interactive container so content are saved, not ephemeral... 
 	# home dir is mapped, so source code for ioapi already avail in my use
 	# .def file would need to do more things...
 	# see the various rst files for commands.
+	sudo singularity shell --writable -B /home/tin cmaq.img 
+	# then `su  tin` as necessary (eg to compile cmaq)  ## dont use su - or prompt loose idea of inside singularity
 	
+	# if persistent overlay is avail (2.6 has), 
+	# but has to deal with an extra .img file.  maybe after cmaq is build and and to preserve from future changes...
+	# source (first) .img didn't need to be created as --writable if using persistent overlay
+	# singularity image.create cmaq-overlay.img
+	# sudo singularity shell --overlay cmaq-overlay.img shub_pgi_netcdf.img
 
 
 TMP

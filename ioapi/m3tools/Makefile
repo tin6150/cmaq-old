@@ -54,6 +54,7 @@ OBJDIR  = ${BASEDIR}/${BIN}
 
 # Architecture dependent stuff
 # Assumes FC is an f90
+## where did I get the idea that i should use f95?! netcdf?
 
 include $(IODIR)/Makeinclude.${BIN}
 
@@ -70,7 +71,8 @@ LDFLAGS = -I$(IODIR) -DIOAPICPL $(DEFINEFLAGS) $(ARCHFLAGS)
 #
 #LIBS = -L${OBJDIR} -lioapi -lnetcdf -lnetcdff $(PVMLIBS) $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
 
-LIBS = -L${OBJDIR} -lioapi -lnetcdf $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
+##LIBS = -L${OBJDIR} -lioapi -lnetcdf $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
+LIBS = -L/opt/lib -L/opt/CMAS4.5.1/rel/lib/ioapi_3 -L${OBJDIR}  -lioapi -lnetcdf $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
 
 VPATH = ${OBJDIR}
 

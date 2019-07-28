@@ -75,7 +75,8 @@
 
 ##SNHOME should be source, may need it in relative to container
 ##SNHOME     = /opt/cmaq/
-SNHOME     = /home/tin/tin-gh/cmaq
+#SNHOME     = /home/tin/tin-gh/cmaq
+SNHOME     = /local/home/tin/tin-gh/cmaq
 DSTBASE    = /opt/CMAS4.5.1/rel
 ##BASEDIR    = ${HOME}/web31
 BASEDIR    = ${SNHOME}/ioapi
