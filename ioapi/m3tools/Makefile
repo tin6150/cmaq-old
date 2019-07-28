@@ -9,6 +9,11 @@
 # Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 # See file "GPL.txt" for conditions of use.
 #.........................................................................
+####
+#### cmaq/ioapi/m3tools/Makefile , edit here. -Tin
+#### did NOT create cmaq/ioapi/m3tools/Makefile.pgi_container 
+####
+
 #  Environment Variables:
 #       BIN     machine/OS/compiler/mode type. Shows up as suffix
 #               for "Makeinclude.${BIN}" to determine compilation
@@ -42,7 +47,8 @@
 
 ##SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/
 ##DSTBASE    = /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/
-SNHOME     = /home/tin/tin-gh/cmaq
+##SNHOME     = /home/tin/tin-gh/cmaq
+SNHOME     = /local/home/tin/tin-gh/cmaq
 DSTBASE    = /opt/CMAS4.5.1/rel
 ##BASEDIR    = ${HOME}/web31
 BASEDIR    = ${SNHOME}/ioapi

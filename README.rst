@@ -27,9 +27,10 @@ Build plan
   commands (mostly) jogged into the pgi_netcdf.def, but may have missing steps.
   bofh now has singularity via SMFdev.
   cmaq.img is writable, with rebuild hdf5, libnetcdff compiled by pgi pgf95. [2019.0726, but ioapi isn't compiling]
-  cmaq.img is writable, with rebuild hdf5, libnetcdff compiled by pgi pgf90. [2019.0728]
   now rebuild ioapi...  see  ioapi/README.txt.rst
 
+  using a new version of PGI_netcdf.def file, at least c1576fc
+  cmaq.img is writable, with rebuild hdf5, libnetcdff compiled by pgi pgf90. [2019.0728]
 
 
 

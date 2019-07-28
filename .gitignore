@@ -1,8 +1,13 @@
 # ignore all singularity image file, they are huge binaries!
 cmaq*.img
+cmaq*.img.bak*
+
+# compiler generated
+ioapi/bin/
 
 # ignore these sym links, applicable mostly only in bofh
 pgi_netcdf.def
+cmaq.def
 singularity
 singularity26
 

@@ -75,10 +75,10 @@ mkdir -p ${DSTBASE}/lib/ioapi_3
 mkdir -p /opt/CMAS4.5.1/rel/lib/ioapi_3
 
 
-(still in ioapi/ )
+(still in cmaq/ioapi/ioapi/ )
 cp Makeinclude.Linux2_x86_64ifortdbg Makeinclude.Linux3 + edit  # for intel 
 	2 version too at this point
-cp Makeinclude.Linux2_x86_64pg       Makeinclude.Linux4 + edit  # for pgi in container...  (no meaningful edit at this time)
+cp Makeinclude.Linux2_x86_64pg       Makeinclude.Linux4.pgi + edit  # cp to Makeinclude.Linux4
 
 
 #module load netcdf/4.6.1-intel-p	# so that -lnetcdf can find it

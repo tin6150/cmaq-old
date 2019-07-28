@@ -1,6 +1,9 @@
 # VERSION "$Id: Makeinclude.Linux2_x86_64pg 1 2014-03-14 20:22:54Z coats $"
 ####
-#### cp Makeinclude.Linux2_x86_64pg Makeinclude.Linux4.pgi   + edit  # for pgi in container...
+#### cmaq/ioapi/ioapi/Makeinclude.Linux4.pgi , edit here. -Tin
+#### cp Makeinclude.Linux4.pgi Makeinclude.Linux4   
+####
+#### orig template: cp Makeinclude.Linux2_x86_64pg Makeinclude.Linux4.pgi   + edit  # for pgi in container...
 ####
 #
 #  In some ways, this is the most problematical install, because of 
@@ -31,16 +34,21 @@
 
 AR   = ar
 CC   = pgcc
-#FC   = pgf90		## this exist in cmaq.img as /opt/pgi/linux86-64/19.4/bin/pgf90
+## AVOID spurious space and comment in Makefile defintions... !!!
+##FC   = pgf90		## this exist in cmaq.img as /opt/pgi/linux86-64/19.4/bin/pgf90
 FC   = pgf90 -Bstatic_pgi 		
+#FC   = pgf95 -Bstatic_pgi 		
 M4   = m4
 CPP  = cpp
 LINK = $(CC)
 
 MODI = "-module "       ## Module-include-directory command
 
+## AVOID spurious space and comment in Makefile defintions... !!!
+
 ##MFLAGS    = -fast # -Mnoupcase
-MFLAGS    = -fast -mcmodel=medium   ## is this applicable to PGI ? or intel only??
+#MFLAGS    = -fast -mcmodel=medium   ## is this applicable to PGI ? or intel only??
+MFLAGS    = -fast -mcmodel=medium 
 
 OMPFLAGS  = # -mp
 OMPLIBS   = # -lmp

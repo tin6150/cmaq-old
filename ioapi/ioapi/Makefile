@@ -2,6 +2,10 @@
 # VERSION "$Id: Makefile 186 2015-04-28 19:20:36Z coats $"
 #    EDSS/Models-3 I/O API Version 3.1
 #.........................................................................
+####
+#### cmaq/ioapi/ioapi/Makefile.pgi_container , edit here. -Tin
+#### cp to Makefile 
+####
 # COPYRIGHT
 #    (C) 1992-2002 MCNC and Carlie J. Coats, Jr.,
 #    (C) 2003-2004 by Baron Advanced Meteorological Systems, and
@@ -75,7 +79,8 @@
 
 ##SNHOME should be source, may need it in relative to container
 ##SNHOME     = /opt/cmaq/
-SNHOME     = /home/tin/tin-gh/cmaq
+#SNHOME     = /home/tin/tin-gh/cmaq
+SNHOME     = /local/home/tin/tin-gh/cmaq
 DSTBASE    = /opt/CMAS4.5.1/rel
 ##BASEDIR    = ${HOME}/web31
 BASEDIR    = ${SNHOME}/ioapi
