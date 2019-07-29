@@ -39,7 +39,10 @@ Singularity
 
 :: 
 
-	sudo /opt/singularity-2.5.2/bin/singularity build --writable cmaq_b0721e.img pgi_netcdf.def
+	sudo /opt/singularity-2.5.2/bin/singularity build --writable cmaq_b072xx.img cmaq.def 2>&1  | tee singularity_build.log
+	#tmp bulid stopped after erro.  even --notest doesn't produce img file for use from where build borked :(
+	# 28b and 28c end up being the same, cuz forgot to remove the `exit 0`
+
 	module load tools/singularity/2.5.2 # SMFdev for bofh
 	singularity shell --writable cmaq.img 
 	# ++ need to start interactive container so content are saved, not ephemeral... 

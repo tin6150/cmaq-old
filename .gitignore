@@ -1,6 +1,7 @@
 # ignore all singularity image file, they are huge binaries!
 cmaq*.img
 cmaq*.img.bak*
+cmaq*.img.orig*
 
 # compiler generated
 ioapi/bin/
