@@ -49,7 +49,7 @@ Singularity
 	# home dir is mapped, so source code for ioapi already avail in my use
 	# .def file would need to do more things...
 	# see the various rst files for commands.
-	sudo singularity shell --writable -B /home/tin cmaq.img 
+	sudo ./singularity shell --writable -B /home/tin cmaq.img 
 	# then `su  tin` as necessary (eg to compile cmaq)  ## dont use su - or prompt loose idea of inside singularity
 	
 	# if persistent overlay is avail (2.6 has), 
