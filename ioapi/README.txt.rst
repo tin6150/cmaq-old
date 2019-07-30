@@ -209,8 +209,11 @@ I/O API INSTALLATION
 	make
 
 ##++ not working yet, probaly cuz not finding libnetcdf.a or libnetcdff.a ??
+##   cmd are now logged in setup.sh
 
 	##cd cmaq/ioapi/bin; ln -s ../Linux4/libioapi.a .
+
+
 
 //**
 

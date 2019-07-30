@@ -42,7 +42,8 @@
 
 ##SNHOME     = /global/home/users/tin/gs/tin-gh/cmaq/
 ##DSTBASE    = /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/
-SNHOME     = /home/tin/tin-gh/cmaq
+##SNHOME     = /home/tin/tin-gh/cmaq
+SNHOME     = /local/home/tin/tin-gh/cmaq
 DSTBASE    = /opt/CMAS4.5.1/rel
 ##BASEDIR    = ${HOME}/web31
 BASEDIR    = ${SNHOME}/ioapi
@@ -51,6 +52,8 @@ BASEDIR    = ${SNHOME}/ioapi
 SRCDIR  = ${BASEDIR}/m3tools
 IODIR   = ${BASEDIR}/ioapi
 OBJDIR  = ${BASEDIR}/${BIN}
+
+INSTDIR = /opt/CMAS4.5.1/rel/bin 
 
 # Architecture dependent stuff
 # Assumes FC is an f90
@@ -72,7 +75,8 @@ LDFLAGS = -I$(IODIR) -DIOAPICPL $(DEFINEFLAGS) $(ARCHFLAGS)
 #LIBS = -L${OBJDIR} -lioapi -lnetcdf -lnetcdff $(PVMLIBS) $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
 
 ##LIBS = -L${OBJDIR} -lioapi -lnetcdf $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
-LIBS = -L/opt/lib -L/opt/CMAS4.5.1/rel/lib/ioapi_3 -L${OBJDIR}  -lioapi -lnetcdf $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
+##LIBS = -L/opt/lib -L/usr/local/lib -L/opt/CMAS4.5.1/rel/lib/ioapi_3 -L${OBJDIR}  -lioapi -lnetcdf $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
+LIBS = -L/opt/lib -L/usr/local/lib -L/opt/CMAS4.5.1/rel/lib/ioapi_3 -L${OBJDIR}  -lioapi -lnetcdf -lnetcdff $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
 
 VPATH = ${OBJDIR}
 
@@ -119,7 +123,9 @@ all: $(EXE)
 clean:
 	cd ${OBJDIR}; rm $(EXE) $(OBJ)
 
-install: $(INSTDIR)
+##install: $(INSTDIR)
+##  if use $(INSTDIR) above, at least in bash, get untractable error -Tin
+install: 
 	echo "Installing M3TOOLS in ${INSTDIR}"
 	cd ${OBJDIR}; cp $(EXE) $(INSTDIR)
 

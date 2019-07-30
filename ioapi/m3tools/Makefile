@@ -9,11 +9,6 @@
 # Distributed under the GNU GENERAL PUBLIC LICENSE version 2
 # See file "GPL.txt" for conditions of use.
 #.........................................................................
-####
-#### cmaq/ioapi/m3tools/Makefile , edit here. -Tin
-#### did NOT create cmaq/ioapi/m3tools/Makefile.pgi_container 
-####
-
 #  Environment Variables:
 #       BIN     machine/OS/compiler/mode type. Shows up as suffix
 #               for "Makeinclude.${BIN}" to determine compilation
@@ -58,6 +53,8 @@ SRCDIR  = ${BASEDIR}/m3tools
 IODIR   = ${BASEDIR}/ioapi
 OBJDIR  = ${BASEDIR}/${BIN}
 
+INSTDIR = /opt/CMAS4.5.1/rel/bin 
+
 # Architecture dependent stuff
 # Assumes FC is an f90
 ## where did I get the idea that i should use f95?! netcdf?
@@ -78,7 +75,8 @@ LDFLAGS = -I$(IODIR) -DIOAPICPL $(DEFINEFLAGS) $(ARCHFLAGS)
 #LIBS = -L${OBJDIR} -lioapi -lnetcdf -lnetcdff $(PVMLIBS) $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
 
 ##LIBS = -L${OBJDIR} -lioapi -lnetcdf $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
-LIBS = -L/opt/lib -L/opt/CMAS4.5.1/rel/lib/ioapi_3 -L${OBJDIR}  -lioapi -lnetcdf $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
+##LIBS = -L/opt/lib -L/usr/local/lib -L/opt/CMAS4.5.1/rel/lib/ioapi_3 -L${OBJDIR}  -lioapi -lnetcdf $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
+LIBS = -L/opt/lib -L/usr/local/lib -L/opt/CMAS4.5.1/rel/lib/ioapi_3 -L${OBJDIR}  -lioapi -lnetcdf -lnetcdff $(OMPLIBS) $(ARCHLIB) $(ARCHLIBS)
 
 VPATH = ${OBJDIR}
 
@@ -125,7 +123,9 @@ all: $(EXE)
 clean:
 	cd ${OBJDIR}; rm $(EXE) $(OBJ)
 
-install: $(INSTDIR)
+##install: $(INSTDIR)
+## 
+install: 
 	echo "Installing M3TOOLS in ${INSTDIR}"
 	cd ${OBJDIR}; cp $(EXE) $(INSTDIR)
 
