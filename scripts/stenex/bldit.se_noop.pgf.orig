@@ -1,11 +1,11 @@
 #! /bin/csh -f
 
 # RCS file, release, date & time of last delta, author, state, [and locker]
-# $Header: /project/work/rep/SCRIPTS/src/stenex/bldit.se.pgf,v 1.3 2006/03/10 21:18:42 sjr Exp $ 
+# $Header: /project/work/rep/SCRIPTS/src/stenex/bldit.se_noop.pgf,v 1.3 2006/03/10 21:18:42 sjr Exp $ 
 
 # ======================= STENEXv4.5.1 Build Script ================= #
-# Usage: bldit.se.pgf >&! bldit.se.log                                #
-# Requirements: CVS, and PGI Fortran compiler, MPICH include files    #
+# Usage: bldit.se_noop.pgf >&! bldit.se_noop.log                      #
+# Requirements: CVS, and PGI Fortran compiler                         #
 # Note that this script is configured/tested for Red Hat Linux O/S    #
 # The following environment variables must be set for this script to  #
 # build an executable.                                                #
@@ -32,36 +32,28 @@
  set echo
 
 #:#:#:#:#:#:#:#:#:#:#:Begin User Input Section #:##:#:#:#:#:#:#:#:#:#:#
- 
+
  set BASE = $cwd
  set DEST = ${M3LIB}/stenex/${BLD_OS}   # location of output library files
  if ( ! -d "$DEST" ) mkdir -p $DEST
  set RM = "/bin/rm -f"
  set MV = "/bin/mv -f"
 
-#> Set location of MPICH include files
- ##set INCL = /share/linux/bin/mpich-ch_p4/include
- set INCL = /share/linux/bin/mpich-ch_p4/include
-
 #> Set full path of Fortran 90 compiler 
- ##set FC = /share/linux/pgi/linux86/5.0/bin/pgf90
- ##set FSTD = "-Mfixed -Mextend -c"
- ##set FC = /global/software/sl-7.x86_64/modules/langs/intel/2018.1.163/bin/fpp # PreProcessor
- #set FC = /global/software/sl-7.x86_64/modules/langs/intel/2018.1.163/bin/ifort
- set FC = /global/software/sl-7.x86_64/modules/intel/2018.1.163/openmpi/2.0.2-intel/bin/mpifort
- set FSTD = ""
+ set FC = /share/linux/pgi/linux86/5.0/bin/pgf90
+ set FSTD = "-Mfixed -Mextend -c"
 # set DEBUG     # Uncomment to create debug version of library
  if ( $?DEBUG ) then
-    set F_FLAGS = "${FSTD} -g -I${INCL}"
+    set F_FLAGS = "${FSTD} -g"
  else
-    set F_FLAGS = "${FSTD} -O2 -I${INCL}"
+    set F_FLAGS = "${FSTD} -O2"
  endif
 
 #:#:#:#:#:#:#:#:#:#:#:# End of User Input Section :#:#:#:#:#:#:#:#:#:#:#:#:#
 
  setenv CVSROOT $M3MODEL/STENEX
 
- set Bld = $BASE/BLD
+ set Bld = $BASE/BLD_noop
  if ( ! -e "$Bld" ) then
     mkdir $Bld
     else
@@ -80,42 +72,27 @@
  echo " "
 
  set flist = (\
-    se_comm_info_ext.f\
-    se_disp_info_ext.f\
-    se_domain_info_ext.f\
-    se_ori_ext.f\
-    se_pe_info_ext.f\
-    se_subgrid_info_ext.f\
-    se_reconfig_grid_info_ext.f\
-    se_bndy_copy_info_ext.f\
-    se_internal_util_module.f\
-    se_global_max_module.f\
-    se_global_min_module.f\
-    se_global_sum_module.f\
-    se_util_module.f\
-    se_data_send_module.f\
-    se_data_recv_module.f\
-    se_slice_module.f\
-    se_comm_module.f\
-    se_gather_module.f\
-    se_data_copy_module.f\
-    se_reconfig_grid_module.f\
-    se_bndy_copy_module.f\
-    swap_sandia.f\
-    swap_sandia_routines.f\
-    se_init_module.F\
-    se_term_module.f\
-    se_modules.f )
+    noop_comm_module.f\
+    noop_data_copy_module.f\
+    noop_gather_module.f\
+    noop_global_max_module.f\
+    noop_global_min_module.f\
+    noop_global_sum_module.f\
+    noop_init_module.f\
+    noop_term_module.f\
+    noop_slice_module.f\
+    noop_util_module.f\
+    noop_modules.f )
 
 #> extract source files from cvs archive
  foreach file ( $flist )
-    cvs export -r HEAD -d $Bld se_snl/$file
+    cvs export -r HEAD -d $Bld noop_f90/$file
     end
 
  if ( $?DEBUG ) then
-    set Arc = libse_snl.debug.a
+    set Arc = libsef90_noop.debug.a
     else
-    set Arc = libse_snl.a
+    set Arc = libsef90_noop.a
     endif
  if ( -e "$Arc" ) $RM $Arc *.mod
 
@@ -128,7 +105,7 @@
  chmod 444 $Arc
  if ( -e "$DEST/$Arc" ) $MV $DEST/$Arc $DEST/$Arc.old
  $MV $Arc $DEST
- $MV *.mod $DEST      # for ifc 7.1
+ $MV *.mod $DEST
 
  if ( $?DEBUG ) then
     $MV *.o $DEST
