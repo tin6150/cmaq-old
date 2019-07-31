@@ -32,6 +32,10 @@ Build plan
   using a new version of PGI_netcdf.def file, at least c1576fc
   cmaq.img is writable, with rebuild hdf5, libnetcdff compiled by pgi pgf90. [2019.0728]
 
+* setup.sh to have scripted compilation for ioapi, m3tools. 2019.0730.
+  focus is singularity container with PGI compiler, pgf90.  using cmaq.b0728c.img
+  cmaq coming next, per instruction in doc/README.txt.rst
+  edits will be checked into git
 
 
 Singularity
@@ -73,5 +77,6 @@ pgc++             pgcollect         pgf901-llvm       pggpp2ex-llvm     pgobjinf
 pgcc              pgcpuid           pgf902-llvm       pggpp2-llvm       pgprepro          pgunzip
 pgcc11            pgcudainit        pgf90-llvm        pgicg             pgprof            pgzip
 
+mpi wrapper is ??
 
 

@@ -67,7 +67,7 @@ so now can just do diff
  o M3DATA.tar.gz            - gzipped tar file (~109 Mb) containing the
                               required datasets not produced by this package
 							  *>>* where is this file??
-							  		got from 4.7.1 download.  ~tin/gs/Downloads/CMAQ
+							  		got from 4.7.1 download.  lrc:~tin/gs/Downloads/CMAQ
 
 
  o SCRIPTS.tar.gz           - gzipped tar file (~16 Kb) containing C-Shell
@@ -94,6 +94,7 @@ so now can just do diff
 
 
 *vv*
+	CMAQ download site:
 	https://www.cmascenter.org/download/software/cmaq/cmaq_4-5-1.cfm?DB=TRUE
 	talks about M3DATA.CMAQv4.5.1.tar and M3DATA_REF.CMAQv4.5.1.tar 
 	but does not show such file for download :(
@@ -136,11 +137,12 @@ so now can just do diff
           pario/
           stenex/
 
+*>> I am setting LD_LIBRARY_PATH to include netCDF (/usr/local/lib), hope work instead of hard coding with a sym link <<*
+
   **Concerning netCDF:  The scripts assume that netCDF resides in the 
     $M3LIB path as $M3LIB/netCDF.  If netCDF is installed elsewhere on your 
     system, create a symbolic link in $M3LIB/netCDF to the existing netCDF 
     (see CVS_NETCDF).
-
     Example for Linux cluster:
 
        mkdir -p $M3LIB/netCDF/Linux

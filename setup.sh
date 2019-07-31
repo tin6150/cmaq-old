@@ -75,16 +75,17 @@ setup_m3tools() {
 }
 
 
-setup_cmaq() {
-	# should read README.txt.rst again and redo, rather than follow build.rst
+setup_cmaq451() {
+	# read doc/README.txt.rst again (build.rst was for intel on lrc).  this is for PGI on singularity container.
 	#export DSTBASE=/opt/CMAS4.5.1/rel # done by env_prep fn above
 
 	#export M3HOME=/global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel
 	#export WORK=$M3HOME/scripts     # ie /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/scripts
-	export M3HOME=${DSTBASE}
+	export M3HOME=${DSTBASE}		 # doc eg use /project/air5/sjr/CMAS4.5.1/rel, not sure if it is part of source tree :(
 	export WORK=${DSTBASE}/scripts
 	export M3MODEL=${M3HOME}/models
 	export M3LIB=${M3HOME}/lib
+	export M3LIB=${M3HOME}/data      # may not have this yet, may need to get from 4.7.  source: 58MB, output: 291MB
 	#? export CVSROOT=${M3MODEL}/STENEX
 	#export CVSROOT=/home/tin/tin-gh/cmaq/models/BUILD
 
@@ -100,10 +101,22 @@ setup_cmaq() {
 	[[ -d $M3LIB/pario   ]] || mkdir $M3LIB/pario/
 	[[ -d $M3LIB/stenex  ]] || mkdir $M3LIB/stenex/
 
+	##### doc/README.txt.rst step 3 ####
+	cd ${M3HOME} # same as ${DSTBASE}  eg /opt/CMAS4.5.1/rel
+	wget 'https://drive.google.com/uc?export=download&id=0B4Gx-y00i4D0TWF4SHNtc29vZ2c' -O  m3data.tgz  # create data/ dir 
+	tar xfz m3data.tgz
 
-	# see build.rst step 7 for many files edit
-	# these are expected to be commited to my git repo
-	# so this setup.sh just compile
+	##### doc/README.txt.rst step 5 ####
+	cd ${M3HOME} # same as ${DSTBASE}  eg /opt/CMAS4.5.1/rel
+	??get M3MODELS.CMAQv4.5.1.tar.gz
+	tar xfz M3MODELS.CMAQv4.5.1.tar.gz # create models/ dir
+
+	# looking at cmaq 4.7.1 download page (cached to cmaq.4.7.1.download.rst)
+	# don't seems to find m3models tgz there either...
+
+	# pfff... really think should start with current version of cmaq, which is well documented
+	# learn, then only when needed, come back to this old version.
+	# see https://www.epa.gov/cmaq/cmaq-models-0
 
 	#cd ${WORK}/stenex # formerly # /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/scripts/stenex
 	cd ${M3LIB}/stenex # compile in source code tree for now, hopefully not a bad idea... ++
@@ -117,7 +130,7 @@ main() {
 	env_prep
 	#setup_ioapi
 	#setup_m3tools
-	setup_cmaq
+	setup_cmaq451
 
 }
 

@@ -3,8 +3,9 @@ cmaq*.img
 cmaq*.img.bak*
 cmaq*.img.orig*
 
-# compiler generated
+# compiler generated, logs
 ioapi/bin/
+OLD_LOG/
 
 # ignore these sym links, applicable mostly only in bofh
 pgi_netcdf.def
