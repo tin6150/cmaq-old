@@ -18,6 +18,7 @@ env_prep() {
     # export SRCBASE=/Downloads                     # -or-
     #export SRCBASE=/local/home/tin/tin-gh    # as appropriate 
 	export SRCBASE=$(pwd)
+	export DSTBASE=/opt/CMAS4.5.1/rel
 
     export LD_LIBRARY_PATH=/opt/CMAS4.5.1/rel/lib/ioapi_3:$LD_LIBRARY_PATH
     export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
@@ -51,6 +52,7 @@ setup_ioapi() {
 
 #### cmaq m3tools #####
 setup_m3tools() {
+		## hmm... refer to build.rst have steps i no longer do... 
         ##defined above## SRCBASE=/local/home/tin/tin-gh    
         #cd $SRCBASE/cmaq/ioapi/m3tools # cd $HOME/tin-gh/cmaq/ioapi/m3tools
         #cd cmaq/ioapi/m3tools # cd $HOME/tin-gh/cmaq/ioapi/m3tools
@@ -74,15 +76,48 @@ setup_m3tools() {
 
 
 setup_cmaq() {
-	echo tbd
+	# should read README.txt.rst again and redo, rather than follow build.rst
+	#export DSTBASE=/opt/CMAS4.5.1/rel # done by env_prep fn above
+
+	#export M3HOME=/global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel
+	#export WORK=$M3HOME/scripts     # ie /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/scripts
+	export M3HOME=${DSTBASE}
+	export WORK=${DSTBASE}/scripts
+	export M3MODEL=${M3HOME}/models
+	export M3LIB=${M3HOME}/lib
+	#? export CVSROOT=${M3MODEL}/STENEX
+	#export CVSROOT=/home/tin/tin-gh/cmaq/models/BUILD
+
+
+	#export FC=mpifort   ## exist for pgi??
+	export FC=mpirun_dbg.pgdbg  ## /opt/pgi/linux86-64-llvm/19.4/bin/mpirun_dbg.pgdbg 
+	export F_FLAGS="" ## since don't know what's intel equiv of pgi options
+
+	[[ -d $M3LIB         ]] || mkdir $M3LIB/
+	[[ -d $M3LIB/build   ]] || mkdir $M3LIB/build/
+	[[ -d $M3LIB/ioapi_3 ]] || mkdir $M3LIB/ioapi_3/
+	[[ -d $M3LIB/netCDF  ]] || mkdir $M3LIB/netCDF/
+	[[ -d $M3LIB/pario   ]] || mkdir $M3LIB/pario/
+	[[ -d $M3LIB/stenex  ]] || mkdir $M3LIB/stenex/
+
+
+	# see build.rst step 7 for many files edit
+	# these are expected to be commited to my git repo
+	# so this setup.sh just compile
+
+	#cd ${WORK}/stenex # formerly # /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/scripts/stenex
+	cd ${M3LIB}/stenex # compile in source code tree for now, hopefully not a bad idea... ++
+	csh  bldit.se.pgf 2>&1 |  tee bldit.se.pgf.log
+
 }
+
 
 
 main() {
 	env_prep
 	#setup_ioapi
-	setup_m3tools
-	#setup_cmaq
+	#setup_m3tools
+	setup_cmaq
 
 }
 

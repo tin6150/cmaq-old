@@ -6,6 +6,14 @@ download was for Linux Intel.  but seems like script is still for PGI
 
 Plan is to build on lrc, using intel SMF
 
+#### ######################################################################################
+#### this is obsolete.  
+#### moving to use setup.sh, so can build inside singularity or script it
+#### this was using intel compiler, container use PGI.
+#### approach also change a bit (eg vi will be checked into git rather than repeated here
+#### tin 2019.0730
+#### ######################################################################################
+
 
 ** just cuz don't have cvs... and singularity does not bind path for /global/home/groups-sw
 ** have to move this to my own scratch dir.
@@ -38,6 +46,8 @@ export M3DATA_TGZ=~/gs/Downloads/CMAQ/DATA.CMAQv4.7.1.tar.gz
 
 **Step 4**
 
+(this is now setup.sh setup_m3tools, but done in a diff way...)
+
 cd $M3HOME    				# /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel
 tar xfz $M3DATA_TGZ
 
@@ -68,7 +78,7 @@ module load netcdf/4.6.1-intel-p
 
 		**>>** details on ioapi not done yet
 		       may need this now, cuz stuck at step 7
-			   xref: build-ioapi.rst
+			   xref: build-ioapi.rst, setup.sh setup_ioapi fn.
 
 **Step 5**
 
@@ -91,7 +101,7 @@ cd $WORK/stenex 					# /global/home/groups-sw/pc_adjoint/Tin_Ho/CMAS4.5.1/rel/sc
 
 	cp -p bldit.se_noop.pgf bldit.se_noop.pgf.orig
   cp -p bldit.se.pgf bldit.se.pgf.orig
-
+	## for setup.sh, may have been better make changes to a file with .pgi extension, then cp them over...
 
 		vi bldit.se.pgf
 		# change lines 46
@@ -152,3 +162,5 @@ xref:
 * https://wiki.uiowa.edu/display/hpcdocs/CMAQ
 
 * https://blog.chenzhang.org/post/gis/cmaq-installation/   for CMAQ 5.1 or so...
+
+* setup.sh try to script this thing, vi will check into git.  so can build in singularity (or docker) or hima or lrc...  but with my desired compiler in a container, hopefully.
