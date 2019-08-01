@@ -1,3 +1,11 @@
+
+*****************************************************************************
+** this repo is being renamed to cmaq-old                                ****
+** it contained an old version of cmaq before they used git as the repo  ****
+** but the new git-based repo is also called cmaq, thus renaming this    ****
+*****************************************************************************
+
+
 cmaq
 ====
 personal notes on using cmaq, contain cached version of the source code (old version(s)).  Hopefully no edits needed.
